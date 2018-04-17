@@ -14,7 +14,6 @@ for p = 1:length(paths),
     %% LOOP OVER SUBJECTS, DAYS AND SESSIONS
     for sjidx = 1:length(subjects)
         days  = nohiddendir(fullfile(mypath, subjects{sjidx})); % make sure that date folders start with year
-        cmap  = viridis(numel(days));
         
         % make subplots
         close all;
@@ -41,31 +40,74 @@ for p = 1:length(paths),
                 end
                 
                 % REACTION TIME
-                plot(data.trialNum, data.rt, 'k-', 'linewidth', 0.1);
-                xlim([0 700]); ylim([0 60]);
-                set(gca, 'xtick', 0:100:700, 'xticklabel', [], 'ytick', 0:20:60, 'yticklabel', [], 'ycolor', 'w'); % save space in the plot
+                %plot(data.trialNum, data.rt, 'k-', 'linewidth', 0.1);
+                %xlim([0 700]); ylim([0 60]);
+                %set(gca, 'xtick', 0:300:600, 'xminortick', 'on', 'xticklabel', [], 'ytick', 0:20:60, 'yticklabel', [], 'ycolor', 'w'); % save space in the plot
                 
                 % ACCURACY ON EASIEST TRIALS IN A SLIDING WINDOW
-                yyaxis right
+                %yyaxis right
                 
                 % for bins of 10 trials, compute the average correct
                 k = 10;
-                easytrials = find((abs(data.signedContrast) > 40));
-                plot(movmean(data.trialNum(easytrials), k), movmean(data.correct(easytrials), k, 'omitnan'), '-', 'linewidth', 0.5);
-                ylim([0.5 1]);
+                %plot(movmean(data.trialNum(easytrials), k), movmean(data.correct(easytrials), k, 'omitnan'), '-', 'linewidth', 0.5);
+                %ylim([0.5 1]);
                 
                 % layout
-                box off;
+                %box off;
                 % title(sprintf('%s, s%d', days(dayidx).name, sessionidx), 'fontsize', 1, 'fontweight', 'normal');
+                %set(gca, 'xtick', 0:100:700, 'xticklabel', [], 'ytick', 0.5:0.1:1, 'yticklabel', [],  'ycolor', 'w'); % save space in the plot
+                
+                %% A PROPOSED CRITERION:
+                % 1. compute median RT and % correct on high contrast for
+                % first 300 trials
+                minimumNrTrials = 200;
+                data.correct_easy = double(data.correct);
+                data.correct_easy((abs(data.signedContrast) < 40)) = NaN;
+                
+                first300_rt     = nanmedian(data.rt(data.trialNum < minimumNrTrials));
+                first300_perf   = nanmean(data.correct_easy(data.trialNum < minimumNrTrials));
+                
+                % then, plot a running average of the percentage of that
+                percentageChange = @(new, old) (new-old) ./ old;
+                
+                data.rt_track    = percentageChange(movmean(data.rt, k, 'Endpoints','shrink'), first300_rt);
+                data.perf_track  = movmean(data.correct_easy, k, 'omitnan', 'Endpoints','shrink') - first300perf + 1;
+                
+                % plot this
+                cla;
+                plot(data.rt_track); hold on; 
+                axis on; box off;
                 spcnt = spcnt + 1;
-                set(gca, 'xtick', 0:100:700, 'xticklabel', [], 'ytick', 0.5:0.1:1, 'yticklabel', [],  'ycolor', 'w'); % save space in the plot
+                xlim([0 600]); ylim([0 50]);
+                set(gca, 'xtick', 0:100:600, 'yticklabel', []);
+                
+                yyaxis rights
+                plot(data.perf_track);
+                xlim([0 600]);  ylim([0 1]);
+                set(gca, 'xtick', 0:100:600);
+                
+                %axis off;
+                set(gca, 'xticklabel', [], 'yticklabel', []);
+                
+                %% SET A RULE
+                vline(minimumNrTrials, 'color', [0.5 0.5 0.5]);
+                
+                rtChange = 20; % in % of original median RT
+                perfChange  = 0.8; % in fraction of original performance
+                data.rt_track(1:minimumNrTrials)    = NaN;
+                data.perf_track(1:minimumNrTrials)  = NaN;
+                stopTheSession = min([find(data.rt_track > rtChange, 1, 'first') ...
+                    find(data.perf_track < perfChange, 1, 'first')]);
+                if ~isempty(stopTheSession)
+                    vline(stopTheSession, 'color', 'g');
+                end
             end
         end
         
         site = strsplit(paths{p}, '/');
         name = regexprep(subjects(sjidx), '_', ' ');
         suplabel([name{1} ' - ' site{1}], 't');
-        suplabel('Trial [0-700 #]', 'x');
+        suplabel('Trial [0-600 #]', 'x');
         suplabel('RT [0-60s]', 'y');
         suplabel('Accuracy on highest contrast [50-100%]', 'yy');
         print(gcf, '-dpdf', sprintf('%s/Disengagement_RT_%s_%s.pdf', '~/Data/IBL_data/Disengagement_figures', name{1}, site{1}));

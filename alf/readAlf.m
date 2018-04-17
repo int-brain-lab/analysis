@@ -35,9 +35,11 @@ catch
     return;
 end
 
-try
+if exist(sprintf('%s/cwFeedback.rewardVolume.npy', foldername), 'file'),
     % not all files will have this...
     outp.rewardVolume       = readNPY(sprintf('%s/cwFeedback.rewardVolume.npy', foldername));
+elseif exist(sprintf('%s/cwReward.type.npy', foldername), 'file'),
+    outp.rewardVolume       = readNPY(sprintf('%s/cwReward.type.npy', foldername));
 end
 
 % if this doesn't look like a proper session, return empty
@@ -61,6 +63,9 @@ end
 % ADD SOME MORE USEFUL INFO
 outp.rt                 = outp.responseOnTime - outp.goCueTime; % RT from stimulus offset = go cue
 outp.trialNum           = transpose(1:length(outp.stimOnTime));
+if max(abs(outp.signedContrast)) == 1, 
+    outp.signedContrast = outp.signedContrast * 100; % in %
+end
 
 % output a table in Matlab >= 2013b
 if ~verLessThan('matlab','8.2')
