@@ -18,7 +18,7 @@ tmp             = splitapply(@binoCI, (data.response > 0), gr);
 % plot
 close all; subplot(221);
 errorbar(avg_stim, tmp(:, 1), tmp(:, 2)-tmp(:, 1), tmp(:, 3)-tmp(:, 1), 'k-o', ...
-    'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', 'k', 'capsize', 0);
+    'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', 'k', 'capsize', 0, 'linewidth', 1);
 xlabel('Signed contrast (%)');
 ylabel('P(choose right)');
 
