@@ -34,14 +34,14 @@ for l = 1:length(labs),
             %% MERGE DATA FROM 2 SESSIONS IN A SINGLE DAY
             data = cat(1, sessiondata{:});
             if isempty(data ) || height(data ) < 10, continue;  end
-
+            
             %% COMPUTE SOME MEASURES OF PERFORMANCE
             accuracy = nanmean(data.correct(abs(data.signedContrast) > 80));
             
             %% SAVE IN LARGE TABLE
             performance = struct('lab', {site(1)}, 'animal', {name}, ...
                 'date', datetime(days(dayidx).name), 'dayidx', dayidx, 'session', sessionidx, ...
-                'accuracy', accuracy, 'ntrials', height(data));
+                'accuracy', accuracy, 'ntrials', height(data), 'rt', nanmedian(data.rt));
             
             if ~exist('performance_summary', 'var'),
                 performance_summary = struct2table(performance);
@@ -53,18 +53,21 @@ for l = 1:length(labs),
     end
 end
 
-%% MERGE TOGETHER STATS FROM 2 SESSIONS ON THE SAME DAY!
-
-
 % ====================================== %
 %% OUTPUT SUMMARY STATS
 % ====================================== %
 
 % On average, x% of all animals trained were successful (defined as x y z) (report % for each location).
-performance_summary.istrained   = (performance_summary.accuracy > 0.8);
+performanceCriterion            = 0.85;
+performance_summary.istrained   = (performance_summary.accuracy > performanceCriterion & performance_summary.rt < 3);
+
+% group per lab & animal
 [gr, lab, animal]               = findgroups(performance_summary.lab, performance_summary.animal);
 performance_perlab              = array2table([lab, animal], 'variablenames', {'lab', 'animal'});
 performance_perlab.istrained    = splitapply(@nanmax, performance_summary.istrained, gr);
+
+% for mice that don't reach this on average, set all istrained to 0
+performance_summary.istrained(ismember(performance_summary.animal, performance_perlab.animal(~performance_perlab.istrained))) = 0;
 
 % summary statement about the data
 fprintf('A total of %d mice were trained across the three labs (%d at UCL, %d at CCU, %d at CSHL) using the same behavioral rig and automated training protocol. \n\n', ...
@@ -105,5 +108,7 @@ fprintf('%d +- %d at UCL, %d +- %d at CCU, %d +- %d at CSHL. \n\n', ...
     round(nanmean(performance_perlab.ntrials_trained(ismember(performance_perlab.lab, 'CSHL')))), ...
     round(nanstd(performance_perlab.ntrials_trained(ismember(performance_perlab.lab, 'CSHL')))));
 
+
+disp('fin');
 
 

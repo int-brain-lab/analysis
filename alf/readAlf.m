@@ -6,6 +6,7 @@ function outp = readAlf(foldername)
 
 % requires https://github.com/kwikteam/npy-matlab
 assert(exist('readNPY', 'file') > 0, 'readNPY must be on your Matlab path, get it at github.com/kwikteam/npy-matlab');
+fprintf('Reading Alf folder %s \n', foldername);
 
 % if no input folder was specified, prompt the user
 if ~exist('foldername', 'var') || (exist('foldername', 'var') & isempty(foldername)),
@@ -43,7 +44,7 @@ elseif exist(sprintf('%s/cwReward.type.npy', foldername), 'file'),
 end
 
 % if this doesn't look like a proper session, return empty
-if all(isnan(outp.response)),
+if all(isnan(outp.response)) || length(outp.response) < 10,
     outp = [];
     return;
 end
@@ -58,6 +59,13 @@ for f = 1:length(flds),
     elseif length(outp.(flds{f})) > length(outp.stimOnTime),
         outp.(flds{f}) = outp.(flds{f})(1:length(outp.stimOnTime));
     end
+end
+
+% If reward volume was only written for correct trials, account for this
+if length(outp.rewardVolume) < length(outp.correct),
+    rewardVolume = zeros(size(outp.correct));
+    rewardVolume(outp.correct == 1) = outp.rewardVolume(~isnan(outp.rewardVolume));
+    outp.rewardVolume = rewardVolume;
 end
 
 % ADD SOME MORE USEFUL INFO
