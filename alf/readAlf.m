@@ -4,6 +4,11 @@ function outp = readAlf(foldername)
 % Anne Urai, CSHL
 % 17 April 2018
 
+% if no input was specified, prompt the user
+if ~exist('foldername', 'var') || (exist('foldername', 'var') & isempty(foldername)),
+    foldername = uigetdir('', 'Choose a session folder with Alf files');
+end
+
 % requires https://github.com/kwikteam/npy-matlab
 assert(exist('readNPY', 'file') > 0, 'readNPY must be on your Matlab path, get it at github.com/kwikteam/npy-matlab');
 fprintf('Reading Alf folder %s \n', foldername);
@@ -62,16 +67,20 @@ for f = 1:length(flds),
 end
 
 % If reward volume was only written for correct trials, account for this
-if length(outp.rewardVolume) < length(outp.correct),
-    rewardVolume = zeros(size(outp.correct));
-    rewardVolume(outp.correct == 1) = outp.rewardVolume(~isnan(outp.rewardVolume));
-    outp.rewardVolume = rewardVolume;
+if ~isfield(outp, 'rewardVolume'),
+    outp.rewardVolume = nan(size(outp.correct));
+else
+    if length(outp.rewardVolume) < length(outp.correct),
+        rewardVolume = zeros(size(outp.correct));
+        rewardVolume(outp.correct == 1) = unique(outp.rewardVolume(~isnan(outp.rewardVolume)));
+        outp.rewardVolume = rewardVolume;
+    end
 end
 
 % ADD SOME MORE USEFUL INFO
 outp.rt                 = outp.responseOnTime - outp.goCueTime; % RT from stimulus offset = go cue
 outp.trialNum           = transpose(1:length(outp.stimOnTime));
-if max(abs(outp.signedContrast)) == 1, 
+if max(abs(outp.signedContrast)) == 1,
     outp.signedContrast = outp.signedContrast * 100; % in %
 end
 
