@@ -1,6 +1,7 @@
 function plotPsychFunc(foldername)
 
-addpath(genpath('/Users/anne/Desktop/code/npy-matlab'));
+% addpath(genpath('/Users/anne/Desktop/code/npy-matlab')); % user specific environment code should be kept out of the repository
+
 % if no input was specified, prompt the user
 if ~exist('foldername', 'var') || (exist('foldername', 'var') & isempty(foldername)),
     foldername = uigetdir('', 'Choose a session folder with Alf files');
@@ -17,8 +18,14 @@ tmp             = splitapply(@binoCI, (data.response > 0), gr);
 
 % plot
 close all; subplot(221);
+
+% this doesn't work on 8.6.0.267246 (R2015b)
+% errorbar(avg_stim, tmp(:, 1), tmp(:, 2)-tmp(:, 1), tmp(:, 3)-tmp(:, 1), 'k-o', ...
+%     'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', 'k', 'capsize', 0, 'linewidth', 1);
+
 errorbar(avg_stim, tmp(:, 1), tmp(:, 2)-tmp(:, 1), tmp(:, 3)-tmp(:, 1), 'k-o', ...
-    'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', 'k', 'capsize', 0, 'linewidth', 1);
+    'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', 'k', 'linewidth', 1);
+
 xlabel('Signed contrast (%)');
 ylabel('P(choose right)');
 
