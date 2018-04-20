@@ -1,4 +1,4 @@
-function quantifyDisengagement(whichplot)
+function quantifyDisengagement(whichplot, datapath)
 % Anne Urai, 17 April 2018
 
 paths           = {'CSHL/Subjects', 'CCU/npy', 'UCL/Subjects'};
@@ -10,7 +10,7 @@ figure(1);
 
 for whichplot = 1:10,
     for p = 1; %:length(paths),
-        mypath    = sprintf('/Users/anne/Google Drive/IBL_DATA_SHARE/%s/', paths{p});
+        mypath    = sprintf('%s/%s/', datapath, paths{p});
         subjects  = nohiddendir(mypath);
         subjects  = {subjects.name};
         

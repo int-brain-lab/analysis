@@ -1,9 +1,9 @@
-function quantifyTrainingSuccess
+function quantifyTrainingSuccess(datapath)
 % quantify for each mouse how long it took them to get trained on
 % basicChoiceWorld, for SfN18 abstract
 % Anne Urai, 2018
 
-datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
+% datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
 labs            = {'CSHL/Subjects', 'CCU/npy', 'UCL/Subjects'};
 clc;
 

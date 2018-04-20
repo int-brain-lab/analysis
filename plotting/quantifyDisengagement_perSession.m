@@ -1,8 +1,8 @@
-function quantifyDisengagement_perSession()
+function quantifyDisengagement_perSession(datapath, imagepath)
 % Anne Urai, 17 April 2018
 
-imagepath       = '~/Data/IBL_data/Disengagement_figures';
-datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
+% imagepath       = '~/Data/IBL_data/Disengagement_figures';
+% datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
 paths           = {'CSHL/Subjects', 'CCU/npy', 'UCL/Subjects'};
 close all;
 figure(1);
