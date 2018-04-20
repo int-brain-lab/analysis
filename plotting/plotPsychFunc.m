@@ -10,7 +10,6 @@ end
 data             = readAlf(foldername);
 
 [gr, idx]        = findgroups(data.signedContrast);
-p_right          = splitapply(@nanmean, (data.response > 0), gr);
 avg_stim         = splitapply(@nanmean, data.signedContrast, gr);
 
 % also compute binomial confidence intervals

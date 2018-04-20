@@ -3,20 +3,21 @@ function quantifyTrainingSuccess(datapath)
 % basicChoiceWorld, for SfN18 abstract
 % Anne Urai, 2018
 
-% datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
+datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
 labs            = {'CSHL/Subjects', 'CCU/npy', 'UCL/Subjects'};
 clc;
 
 for l = 1:length(labs),
     
     mypath    = sprintf('%s/%s/', datapath, labs{l});
-    subjects  = nohiddendir(mypath);
+    subjects  = dir(mypath);
     subjects  = {subjects.name};
     subjects(ismember(subjects, {'default', 'saveAlf.m'})) = []; % remove some non-subjects
     
     %% LOOP OVER SUBJECTS, DAYS AND SESSIONS
     for sjidx = 1:length(subjects),
-        days  = nohiddendir(fullfile(mypath, subjects{sjidx})); % make sure that date folders start with year
+        if ~isdir(fullfile(mypath, subjects{sjidx})), continue; end
+        days  = dir(fullfile(mypath, subjects{sjidx})); % make sure that date folders start with year
         site  = strsplit(labs{l}, '/');
         name  = regexprep(subjects(sjidx), '_', ' ');
         if ~iscell(name), name = {name}; end
@@ -24,7 +25,7 @@ for l = 1:length(labs),
         for dayidx = 1:length(days), % skip the first week!
             
             clear sessiondata;
-            sessions = nohiddendir(fullfile(days(dayidx).folder, days(dayidx).name)); % make sure that date folders start with year
+            sessions = dir(fullfile(days(dayidx).folder, days(dayidx).name)); % make sure that date folders start with year
             for sessionidx = 1:length(sessions),
                 
                 %% READ DATA FOR THIS ANIMAL, DAY AND SESSION
@@ -107,7 +108,6 @@ fprintf('%d +- %d at UCL, %d +- %d at CCU, %d +- %d at CSHL. \n', ...
     round(nanstd(performance_perlab.ntrials_trained(ismember(performance_perlab.lab, 'CCU')))), ...
     round(nanmean(performance_perlab.ntrials_trained(ismember(performance_perlab.lab, 'CSHL')))), ...
     round(nanstd(performance_perlab.ntrials_trained(ismember(performance_perlab.lab, 'CSHL')))));
-
 
 disp('fin');
 
