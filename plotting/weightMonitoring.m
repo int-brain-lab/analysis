@@ -3,9 +3,11 @@ function weightMonitoring
 % grab the latest data from Google Drive
 weightFile = '~/Google Drive/Rig building WG/Data/weightMonitoringCSHL.xls';
 [~,sheetsnames] = xlsfinfo(weightFile);
+disp(sheetsnames);
 
 for a = 1:length(sheetsnames),
     tab = readtable(weightFile, 'sheet', a);
+    tab.Properties.VariableNames = cellfun(@lower, tab.Properties.VariableNames, 'un', 0);
     
     % PLOT
     close all; hold on;
@@ -15,8 +17,8 @@ for a = 1:length(sheetsnames),
     ylabel('Water intake (microlitre)');
     
     yyaxis right
-    plot([min(tab.times) max(tab.times)+1], [tab.weight(1)*0.85 tab.weight(1)*0.85],  'color', [0.5 0.5 0.5]);
-    plot([min(tab.times) max(tab.times)+1], [tab.weight(1)*0.80 tab.weight(1)*0.80],  'color', [0.5 0.5 0.5]);
+    plot([min(tab.times)-1 max(tab.times)+1], [tab.weight(1)*0.85 tab.weight(1)*0.85],  'color', [0.5 0.5 0.5]);
+    plot([min(tab.times)-1 max(tab.times)+1], [tab.weight(1)*0.80 tab.weight(1)*0.80],  'color', [0.5 0.5 0.5]);
     plot(tab.times, tab.weight, 'ko-', 'markerfacecolor', 'k', 'markeredgecolor', 'k');
         ylabel('Weight (gram)');
 

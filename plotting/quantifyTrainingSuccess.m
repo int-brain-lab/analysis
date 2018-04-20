@@ -3,7 +3,18 @@ function quantifyTrainingSuccess(datapath)
 % basicChoiceWorld, for SfN18 abstract
 % Anne Urai, 2018
 
-datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
+if ~exist('datapath', 'var'),
+    % without inputs, make some informed guesses about the most likely user
+    usr = getenv('USER');
+    switch usr
+        case 'anne'
+            datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
+    end
+else % ask the user for input
+    datapath = uigetdir('', 'Where is the IBL_DATA_SHARE folder?');
+end
+
+% iterate over the different labs
 labs            = {'CSHL/Subjects', 'CCU/npy', 'UCL/Subjects'};
 clc;
 
@@ -12,7 +23,6 @@ for l = 1:length(labs),
     mypath    = sprintf('%s/%s/', datapath, labs{l});
     subjects  = dir(mypath);
     subjects  = {subjects.name};
-    subjects(ismember(subjects, {'default', 'saveAlf.m'})) = []; % remove some non-subjects
     
     %% LOOP OVER SUBJECTS, DAYS AND SESSIONS
     for sjidx = 1:length(subjects),
