@@ -4,13 +4,19 @@ function outp = readAlf(foldername)
 % Anne Urai, CSHL
 % 17 April 2018
 
+% requires https://github.com/kwikteam/npy-matlab
+assert(exist('readNPY', 'file') > 0, 'readNPY must be on your Matlab path, get it at github.com/kwikteam/npy-matlab');
+
 % if no input was specified, prompt the user
-if ~exist('foldername', 'var') || (exist('foldername', 'var') & isempty(foldername)),
+if ~exist('foldername', 'var') || (exist('foldername', 'var') && isempty(foldername)),
     foldername = uigetdir('', 'Choose a session folder with Alf files');
 end
 
-% requires https://github.com/kwikteam/npy-matlab
-assert(exist('readNPY', 'file') > 0, 'readNPY must be on your Matlab path, get it at github.com/kwikteam/npy-matlab');
+% make sure that the directory we're using looks correct-ish
+files = dir(foldername);
+if sum(strfind([files(:).name], '.npy')) < 1, % if there are no .npy files in this folder
+   outp = []; return;
+end
 fprintf('Reading Alf folder %s \n', foldername);
 
 % if no input folder was specified, prompt the user
