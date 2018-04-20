@@ -1,18 +1,27 @@
-function weightMonitoring
+function weightMonitoring(weightFile)
+
+if ~exist('weightFile', 'var'),
+    % make an informed guess
+    if exist('~/Google Drive/Rig building WG/Data/weightMonitoringCSHL.xls', 'file'),
+        weightFile = '~/Google Drive/Rig building WG/Data/weightMonitoringCSHL.xls';
+    else
+        weightFile = uigetfile('*.xls', 'Where is the weight monitoring Excel file?');
+    end
+end
 
 % grab the latest data from Google Drive
-weightFile = '~/Google Drive/Rig building WG/Data/weightMonitoringCSHL.xls';
 [~,sheetsnames] = xlsfinfo(weightFile);
-disp(sheetsnames);
 
 for a = 1:length(sheetsnames),
     tab = readtable(weightFile, 'sheet', a);
     tab.Properties.VariableNames = cellfun(@lower, tab.Properties.VariableNames, 'un', 0);
     
     % PLOT
-    close all; hold on;
+    close all;
+    subplot(2,2,[1 2]);
+    hold on;
     yyaxis left;
-    stem(tab.times, tab.water, 'filled', 'markersize', 2, 'linewidth', 3, 'linestyle', '-',  'marker', '.');
+    stem(tab.times, tab.water, 'filled', 'markersize', 5, 'linewidth', 2, 'linestyle', '-',  'marker', '.');
     stem(tab.times, tab.hydrogel,  'filled','color', [0.5 0.5 0.5], 'markersize', 2, 'linewidth', 3, 'linestyle', '-',  'marker', '.');
     ylabel('Water intake (microlitre)');
     
@@ -28,9 +37,11 @@ for a = 1:length(sheetsnames),
     xlim([min(tab.times)-1 max(tab.times)+1]);
     set(gca, 'ycolor', 'k');
     
-    title(sheetsnames{a});
-    print(gcf, '-dpng', sprintf('~/Google Drive/Rig building WG/Data/weightMonitoring_%s.png', sheetsnames{a}));
-
+    title(sprintf('%s, %s', sheetsnames{a}, datestr(today)));
+    figurefile = sprintf('%s/weightMonitoring_%s.png', fileparts(weightFile), sheetsnames{a});
+    print(gcf, '-dpng', figurefile);
+    fprintf('Saving %s \n', figurefile);
+    
 end
 
 end
