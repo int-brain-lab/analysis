@@ -8,7 +8,7 @@ if ~exist('datapath', 'var'),
     usr = getenv('USER');
     switch usr
         case 'anne'
-            datapath        = '/Users/anne/Google Drive/IBL_DATA_SHARE';
+            datapath = '/Users/anne/Google Drive/IBL_DATA_SHARE';
     end
 else % ask the user for input
     datapath = uigetdir('', 'Where is the IBL_DATA_SHARE folder?');
@@ -49,10 +49,23 @@ for l = 1:length(labs),
             %% COMPUTE SOME MEASURES OF PERFORMANCE
             accuracy = nanmean(data.correct(abs(data.signedContrast) > 80));
             
+            %% ALSO FIT SOME BASIC PSYCHOMETRIC FUNCTION STUFF...
+            prevCorrect = circshift(data.correct, 1);
+            prevResp    = circshift(data.response, 1);
+            prevResp_correct = prevResp; 
+            prevResp_correct(prevCorrect == 0) = 0;
+            prevResp_error = prevResp; 
+            prevResp_error(prevCorrect == 1) = 0;
+
+            [betas, ~, stats] = glmfit([data.signedContrast, prevResp_correct, prevResp_error], ...
+                (data.response > 0), 'binomial', 'link', 'logit');
+            betas(stats.p > 0.05) = NaN;
+            
             %% SAVE IN LARGE TABLE
             performance = struct('lab', {site(1)}, 'animal', {name}, ...
                 'date', datetime(days(dayidx).name), 'dayidx', dayidx, 'session', sessionidx, ...
-                'accuracy', accuracy, 'ntrials', height(data), 'rt', nanmedian(data.rt));
+                'accuracy', accuracy, 'ntrials', height(data), 'rt', nanmedian(data.rt), ...
+                'bias', betas(1), 'slope', betas(2), 'winstay', betas(3), 'losestay', betas(4));
             
             if ~exist('performance_summary', 'var'),
                 performance_summary = struct2table(performance);
@@ -60,6 +73,11 @@ for l = 1:length(labs),
                 performance_summary = cat(1, performance_summary, struct2table(performance));
             end
             
+              if ~exist('performance_all', 'var'),
+                performance_all = data;
+            else
+                performance_all = cat(1, performance_all, data);
+            end
         end
     end
 end
@@ -76,6 +94,7 @@ performance_summary.istrained   = (performance_summary.accuracy > performanceCri
 [gr, lab, animal]               = findgroups(performance_summary.lab, performance_summary.animal);
 performance_perlab              = array2table([lab, animal], 'variablenames', {'lab', 'animal'});
 performance_perlab.istrained    = splitapply(@nanmax, performance_summary.istrained, gr);
+performance_perlab.winstay      = splitapply(@nanmax, performance_summary.istrained, gr);
 
 % for mice that don't reach this on average, set all istrained to 0
 performance_summary.istrained(ismember(performance_summary.animal, performance_perlab.animal(~performance_perlab.istrained))) = 0;
@@ -120,5 +139,39 @@ fprintf('%d +- %d at UCL, %d +- %d at CCU, %d +- %d at CSHL. \n', ...
     round(nanstd(performance_perlab.ntrials_trained(ismember(performance_perlab.lab, 'CSHL')))));
 
 disp('fin');
+
+% ====================================== %
+%% OUTPUT SUMMARY STATS
+% ====================================== %
+
+%% WHAT FRACTION OF SESSIONS HAVE SIGNIFICANT HISTORY TERMS?
+scatter(performance_summary.winstay(performance_summary.istrained),...
+    performance_summary.winstay(performance_summary.istrained), 10, ...
+    findgroups(performance_summary.animal(performance_summary.istrained)))
+
+fprintf('Animals showed significant side bias in %d%% of sessions \n', ...
+    round(sum(~isnan(performance_summary.bias(performance_summary.istrained))) ./ ...
+    sum(performance_summary.istrained) * 100));
+
+fprintf('Animals showed significant win-stay bias in %d%% of sessions \n', ...
+    round(sum(~isnan(performance_summary.winstay(performance_summary.istrained))) ./ ...
+    sum(performance_summary.istrained) * 100));
+
+fprintf('Animals showed significant lose-stay bias in %d%% of sessions \n', ...
+    round(sum(~isnan(performance_summary.losestay(performance_summary.istrained))) ./ ...
+    sum(performance_summary.istrained) * 100));
+
+%% DOES RT DECREASE WITH CONTRAST?
+rts = splitapply(@nanmedian, performance_all.rt, findgroups(abs(performance_all.signedContrast)));
+
+%% in how many mice is the choice bias consistent across sessions (i.e. significantly different from zero?)
+testBias = @(x) ttest(x);
+performance_perlab.biasSignificant = splitapply(testBias, performance_summary.bias, gr);
+performance_perlab.bias = splitapply(@nanmean, performance_summary.bias, gr);
+
+bar(performance_perlab.bias(performance_perlab.biasSignificant == 1))
+set(gca, 'xtick', 1:sum((performance_perlab.biasSignificant == 1)), 'xticklabel', performance_perlab.lab((performance_perlab.biasSignificant == 1)))
+ylabel('Side bias');
+
 
 

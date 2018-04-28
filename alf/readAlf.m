@@ -12,6 +12,13 @@ if ~exist('foldername', 'var') || (exist('foldername', 'var') && isempty(foldern
     foldername = uigetdir('', 'Choose a session folder with Alf files');
 end
 
+% skip the 'default' subject
+if strfind(foldername, 'default'),
+    outp = [];
+    warning('skipping %s \n', foldername);
+    return;
+end
+
 % make sure that the directory we're using looks correct-ish
 files = dir(foldername);
 if sum(strfind([files(:).name], '.npy')) < 1, % if there are no .npy files in this folder

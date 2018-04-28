@@ -12,7 +12,7 @@ end
 % grab the latest data from Google Drive
 [~,sheetsnames] = xlsfinfo(weightFile);
 
-for a = 1:length(sheetsnames),
+for a = 4:length(sheetsnames),
     tab = readtable(weightFile, 'sheet', a);
     tab.Properties.VariableNames = cellfun(@lower, tab.Properties.VariableNames, 'un', 0);
     
@@ -31,7 +31,7 @@ for a = 1:length(sheetsnames),
     plot(tab.times, tab.weight, 'ko-', 'markerfacecolor', 'k', 'markeredgecolor', 'k');
         ylabel('Weight (gram)');
 
-    xtick = (datetime(min(tab.times)):datetime(datestr(today, 'yyyy-mm-dd')));
+    xtick = (datetime(min(tab.times)):datetime(max(tab.times)));
     [~, xticklb] = weekday(xtick);
     set(gca, 'xtick', xtick, 'xticklabel', xticklb, 'xticklabelrotation', -30);
     xlim([min(tab.times)-1 max(tab.times)+1]);
