@@ -12,7 +12,7 @@ end
 % grab the latest data from Google Drive
 [~,sheetsnames] = xlsfinfo(weightFile);
 
-for a = 4:length(sheetsnames),
+for a = 1:length(sheetsnames),
     tab = readtable(weightFile, 'sheet', a);
     tab.Properties.VariableNames = cellfun(@lower, tab.Properties.VariableNames, 'un', 0);
     
