@@ -42,7 +42,7 @@ g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)', 'color', 'Days', '
 g.set_continuous_color('active', false);  
 g.set_color_options('map', flipud(plasma(100)));
 g.stat_summary('type', 'std', 'geom', 'line'); % no errorbars within a session
-g.facet_grid(data.animal, []);
+g.facet_wrap(data.animal, 'ncols', 6);
 g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 9);
 g.no_legend();
 g.draw();
@@ -136,16 +136,17 @@ correct(data.dayidx < 11) = NaN;
 correctPerMouse = splitapply(@nanmean, correct, gr);
 goodAnimals = animalName(correctPerMouse > 0.6);
 
+goodAnimals = {'4581', 'M6', 'Burnet'};
+
 close all;
 g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', ...
     data.animal, 'subset', (data.dayidx > 10 & ismember(data.animal, goodAnimals)));
-g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)', 'color', 'Animal', 'Row', 'Lab');
-% g.geom_hline('yintercept', 0.5);
-g.set_color_options('map', repmat(linspecer(8, 'qualitative'), 3, 1));
+g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)');
 g.stat_summary('type', 'sem', 'geom', 'line', 'setylim', 1); % no errorbars within a session
-g.facet_grid(data.lab, []);
-g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 9);
-%g.set_title('Performance on > 80% contrast trials');
+g.facet_wrap(data.lab, 'ncols', 3);
+g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 10);
+g.no_legend();
+g.axe_property('PlotBoxAspectRatio', [1 1 1]);
 g.draw();
 
 % overlay the summary psychometric in black for the later sessions
@@ -153,8 +154,6 @@ g.update('x', data.signedContrast, 'y', (data.response > 0), 'color', ...
     ones(size(data.animal)), 'subset', (data.dayidx > 10 & ismember(data.animal, goodAnimals)));
 g.stat_summary('type', 'bootci', 'geom', 'errorbar', 'setylim', 1);
 g.stat_summary('type', 'sem', 'geom', 'line', 'setylim', 1); % hack to get a connected errorbar
-g.set_color_options('map', zeros(max(data.dayidx), 3)); % black
-g.no_legend();
 g.draw();
 
 print(gcf, '-dpdf', '/Users/anne/Google Drive/Rig building WG/Data/psychfuncs_perlab.pdf');
