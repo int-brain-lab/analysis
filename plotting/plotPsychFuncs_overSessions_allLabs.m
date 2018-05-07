@@ -129,31 +129,35 @@ print(gcf, '-dpng', '/Users/anne/Google Drive/Rig building WG/Data/learningrates
 
 %% PSYCHOMETRIC FUNCTION PER LAB
 % ONLY USE MICE THAT ARE CONSIDERED TRAINED!
-correct = data.correct;
-correct(abs(data.signedContrast) < 80) = NaN;
-correct(data.dayidx < 11) = NaN;
-[gr, animalName] = findgroups(data.animal);
-correctPerMouse = splitapply(@nanmean, correct, gr);
-goodAnimals = animalName(correctPerMouse > 0.6);
+% correct = data.correct;
+% correct(abs(data.signedContrast) < 80) = NaN;
+% correct(data.dayidx < 11) = NaN;
+% [gr, animalName] = findgroups(data.animal);
+% correctPerMouse = splitapply(@nanmean, correct, gr);
+% goodAnimals = animalName(correctPerMouse > 0.6);
 
 goodAnimals = {'4581', 'M6', 'Burnet'};
 
 close all;
-g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', ...
-    data.animal, 'subset', (data.dayidx > 10 & ismember(data.animal, goodAnimals)));
+g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'subset', (data.dayidx > 10 & ismember(data.animal, goodAnimals)));
 g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)');
-g.stat_summary('type', 'sem', 'geom', 'line', 'setylim', 1); % no errorbars within a session
+
+% summary stats
+g.stat_fit('fun', @(a,b,g,l,x) g+(1-g-l) * (1./(1+exp(- ( a + b.*x )))), ...
+    'StartPoint', [0 1 0.1 0.1], 'geom', 'line', 'disp_fit', false, 'fullrange', false);
+g.set_color_options('map', zeros(max(data.dayidx), 3)); % black
 g.facet_wrap(data.lab, 'ncols', 3);
 g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 10);
 g.no_legend();
 g.axe_property('PlotBoxAspectRatio', [1 1 1]);
 g.draw();
 
-% overlay the summary psychometric in black for the later sessions
-g.update('x', data.signedContrast, 'y', (data.response > 0), 'color', ...
-    ones(size(data.animal)), 'subset', (data.dayidx > 10 & ismember(data.animal, goodAnimals)));
+% overlay logistic fit in black
+g.update()
+%g.stat_summary('type', 'sem', 'geom', 'line', 'setylim', 1); % hack to get a connected errorbar
 g.stat_summary('type', 'bootci', 'geom', 'errorbar', 'setylim', 1);
-g.stat_summary('type', 'sem', 'geom', 'line', 'setylim', 1); % hack to get a connected errorbar
+red = linspecer(2);
+g.set_color_options('map', repmat(red(2, :), 3, 1)); % black
 g.draw();
 
 print(gcf, '-dpdf', '/Users/anne/Google Drive/Rig building WG/Data/psychfuncs_perlab.pdf');
