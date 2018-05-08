@@ -23,12 +23,24 @@ for l = 1:length(labs),
     subjects  = {subjects.name};
     subjects(ismember(subjects, {'default'})) = [];
     subjects(ismember(subjects, {'exampleSubject'})) = [];
-        
+    
     %% LOOP OVER SUBJECTS, DAYS AND SESSIONS
     for sjidx = 1:length(subjects),
         if ~isdir(fullfile(mypath, subjects{sjidx})), continue; end
         days  = nohiddendir(fullfile(mypath, subjects{sjidx})); % make sure that date folders start with year
-
+        
+        %% FOR UCL MICE, CHECK THE PROTOCOLS.TXT FILE TO ONLY USE BASICCHOICEWORLD
+        %         protocolsfile = nohiddendir(fullfile(mypath, subjects{sjidx}, 'protocols.txt'));
+        %         if ~isempty(protocolsfile),
+        %             protocols = readtable(sprintf('%s/%s', protocolsfile.folder, protocolsfile.name));
+        %
+        %             % find the days where the animals did basicChoiceWorld
+        %             basicChoiceWorld_days = protocols{~cellfun(@isempty, strfind(lower(protocols{:, end}), 'basicchoiceworld')), 1};
+        %             days2use = find(ismember({days(:).name}, basicChoiceWorld_days));
+        %         else
+        %             days2use = 1:length(days);
+        %         end
+        %
         % for each day, print in a different color
         for dayidx = 1:length(days), % skip the first week!
             
