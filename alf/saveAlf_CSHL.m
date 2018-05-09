@@ -1,3 +1,4 @@
+
 function saveAlf_CSHL(subjects)
 % Saves Rigbox files from Matlab to ALF structure.
 % Dependencies:
@@ -48,8 +49,8 @@ newpath = fullfile(pythonPath, filename);
 if ~exist(newpath, 'dir'),
     mkdir(newpath); fprintf('Created directory %s \n', newpath);
 else
-    % fprintf('Directory %s already exists, skipping \n', newpath);
-    % return
+   % fprintf('Directory %s already exists, skipping \n', newpath);
+    return
 end
 
 % GET THE DATA FROM THE MATLAB FOLDER
@@ -95,10 +96,14 @@ end
 
 %% Write reward volume: cwFeedback.rewardVolume
 try
-    rewardSize  = regexp(block.events.totalWaterValues, '\d[.]\d', 'match');
-    rewardSize  = str2double(rewardSize{1});
-    feedback(feedback == -1) = 0;
-    reward      = feedback * rewardSize;
+    reward = feedback;
+    reward(reward == -1) = 0;
+    
+    % find times that were both feedback and reward
+    sharedTimeStamps_fb = ismember(round(block.events.feedbackTimes), round(block.outputs.rewardTimes));
+    sharedTimeStamps_rew = ismember(round(block.outputs.rewardTimes), round(block.events.feedbackTimes));
+
+    reward(sharedTimeStamps_fb) = block.outputs.rewardValues(sharedTimeStamps_rew);
     writeNPY(reward(:), fullfile(expPath, 'cwFeedback.rewardVolume.npy'));
     movefile(fullfile(expPath, 'cwFeedback.rewardVolume.npy'), newpath, 'f');
     
@@ -244,10 +249,13 @@ catch
     warning('Failed to write wheel values')
 end
 
-%% 14 April 2018, hack for now: remove the wheel data, take up most space which we now don't have on Google Drive
-delete(fullfile(newpath, 'Wheel.timestamps.npy'));
-delete(fullfile(newpath, 'Wheel.position.npy'));
-delete(fullfile(newpath, 'Wheel.velocity.npy'));
+%% basicChoiceWorld2: highRewardSide
+try
+writeNPY(block.events.highRewardSideValues, fullfile(expPath, 'cwFeedback.highRewardSide.npy'));
+movefile(fullfile(expPath, 'cwFeedback.highRewardSide.npy'), newpath, 'f');
+catch
+    warning('Failed to write wheel values')
+end
 
 %% end of writing to numpy
 disp('Writing to ALF format completed, now trying to register to Alyx');

@@ -21,8 +21,12 @@ for a = 1:length(sheetsnames),
     subplot(2,2,[1 2]);
     hold on;
     yyaxis left;
+    try
     stem(tab.times, tab.water, 'filled', 'markersize', 5, 'linewidth', 2, 'linestyle', '-',  'marker', '.');
     stem(tab.times, tab.hydrogel,  'filled','color', [0.5 0.5 0.5], 'markersize', 2, 'linewidth', 3, 'linestyle', '-',  'marker', '.');
+    catch
+        assert(1==0);
+    end
     ylabel('Water intake (microlitre)');
     
     yyaxis right
