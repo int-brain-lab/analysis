@@ -12,8 +12,8 @@ if ~exist('foldername', 'var') || (exist('foldername', 'var') && isempty(foldern
     foldername = uigetdir('', 'Choose a session folder with Alf files');
 end
 
-% skip the 'default' subject
-if strfind(foldername, 'default'),
+% skip the 'default' subjects
+if strfind(foldername, 'default') | strfind(foldername, 'exampleSubject'),
     outp = [];
     warning('skipping %s \n', foldername);
     return;
@@ -22,14 +22,9 @@ end
 % make sure that the directory we're using looks correct-ish
 files = dir(foldername);
 if sum(strfind([files(:).name], '.npy')) < 1, % if there are no .npy files in this folder
-   outp = []; return;
+    outp = []; return;
 end
 fprintf('Reading Alf folder %s \n', foldername);
-
-% if no input folder was specified, prompt the user
-if ~exist('foldername', 'var') || (exist('foldername', 'var') & isempty(foldername)),
-    foldername = uigetdir('', 'Choose a session folder with Alf files');
-end
 
 try
     % READ IN ALL THE RELEVANT FILES
@@ -48,17 +43,38 @@ try
     outp.feedbackOnTime     = readNPY(sprintf('%s/cwFeedback.times.npy', foldername));
     outp.correct            = readNPY(sprintf('%s/cwFeedback.type.npy', foldername));
     outp.correct            = (outp.correct > 0);
+    
 catch
     % if for some reason not all the files are readable, return empty
     outp = [];
+    warning('Failed to read %s \n', foldername);
     return;
 end
 
+% rewardVolume is written in different ways...
 if exist(sprintf('%s/cwFeedback.rewardVolume.npy', foldername), 'file'),
-    % not all files will have this...
     outp.rewardVolume       = readNPY(sprintf('%s/cwFeedback.rewardVolume.npy', foldername));
 elseif exist(sprintf('%s/cwReward.type.npy', foldername), 'file'),
+    % also read in the older way - at some point correct these filenames
     outp.rewardVolume       = readNPY(sprintf('%s/cwReward.type.npy', foldername));
+else
+    outp.rewardVolume = nan(size(outp.correct));
+end
+
+% in basicChoiceWorld2, also code for highRewardSide
+if exist(sprintf('%s/cwFeedback.highRewardSide.npy', foldername), 'file'),
+    outp.highRewardSide       = readNPY(sprintf('%s/cwFeedback.highRewardSide.npy', foldername));
+    if ~iscolumn(outp.highRewardSide),
+        outp.highRewardSide = outp.highRewardSide';
+    end
+    % if there is a highRewardSize file present, confirm that it makes sense
+    highrewardtrls = (outp.correct == 1 & (outp.response == outp.highRewardSide))
+    
+elseif numel(unique(outp.rewardVolume(outp.rewardVolume > 0))) > 1,
+    outp.highRewardSize = 1;
+    
+else
+    outp.highRewardSide = nan(size(outp.response));
 end
 
 % if this doesn't look like a proper session, return empty
@@ -72,23 +88,19 @@ end
 % reward vectors
 flds = fieldnames(outp);
 for f = 1:length(flds),
-    if length(outp.(flds{f})) < length(outp.stimOnTime),
+    if length(outp.(flds{f})) < length(outp.responseOnTime),
         outp.(flds{f}) = [outp.(flds{f}); NaN];
-    elseif length(outp.(flds{f})) > length(outp.stimOnTime),
-        outp.(flds{f}) = outp.(flds{f})(1:length(outp.stimOnTime));
+    elseif length(outp.(flds{f})) > length(outp.responseOnTime),
+        outp.(flds{f}) = outp.(flds{f})(1:length(outp.responseOnTime));
     end
 end
 
-% If reward volume was only written for correct trials, account for this
-if ~isfield(outp, 'rewardVolume'),
-    outp.rewardVolume = nan(size(outp.correct));
-else
-    if length(outp.rewardVolume) < length(outp.correct),
-        rewardVolume = zeros(size(outp.correct));
-        rewardVolume(outp.correct == 1) = unique(outp.rewardVolume(~isnan(outp.rewardVolume)));
-        outp.rewardVolume = rewardVolume;
-    end
-end
+% SANITY CHECKS ON THE FILE TIMINGS
+assert(~any((outp.responseOnTime - outp.goCueTime) < 0), 'response cannot be earlier than go cue');
+assert(~any((outp.responseOnTime - outp.stimOnTime) < 0), 'response cannot be earlier than stimulus');
+assert(~any((outp.goCueTime - outp.stimOnTime) < 0), 'go cue cannot be earlier than stimulus');
+assert(~any((outp.feedbackOnTime - outp.responseOnTime) < 0), 'feedback cannot be earlier than response');
+assert(isequal((sign(outp.signedContrast) == sign(outp.response)), outp.correct), 'stimulus and response do not match to feedback');
 
 % ADD SOME MORE USEFUL INFO
 outp.rt                 = outp.responseOnTime - outp.goCueTime; % RT from stimulus offset = go cue

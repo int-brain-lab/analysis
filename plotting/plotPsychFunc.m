@@ -1,4 +1,6 @@
-function plotPsychFunc(foldername)
+function plotPsychFunc(foldername, color)
+
+if ~exist('color', 'var'), color = [0 0 0]; end
 
 % addpath(genpath('/Users/anne/Desktop/code/npy-matlab')); % user specific environment code should be kept out of the repository
 
@@ -16,14 +18,14 @@ avg_stim         = splitapply(@nanmean, data.signedContrast, gr);
 tmp             = splitapply(@binoCI, (data.response > 0), gr);
 
 % plot
-close all; subplot(221);
+% close all; subplot(221);
 
 % this doesn't work on 8.6.0.267246 (R2015b)
 % errorbar(avg_stim, tmp(:, 1), tmp(:, 2)-tmp(:, 1), tmp(:, 3)-tmp(:, 1), 'k-o', ...
 %     'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', 'k', 'capsize', 0, 'linewidth', 1);
 
-errorbar(avg_stim, tmp(:, 1), tmp(:, 2)-tmp(:, 1), tmp(:, 3)-tmp(:, 1), 'k-o', ...
-    'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', 'k', 'linewidth', 1);
+errorbar(avg_stim, tmp(:, 1), tmp(:, 2)-tmp(:, 1), tmp(:, 3)-tmp(:, 1), '-o', 'color', color, ...
+    'MarkerSize', 5,'markerfacecolor', 'w', 'markeredgecolor', color, 'linewidth', 1);
 
 xlabel('Signed contrast (%)');
 ylabel('P(choose right)');

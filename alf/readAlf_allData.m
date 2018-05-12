@@ -13,7 +13,7 @@ else % ask the user for input
 end
 
 % iterate over the different labs
-labs            = {'CSHL/Subjects', 'CCU/npy', 'UCL/Subjects'};
+labs            = {'CSHL/Subjects', 'CCU/Subjects', 'UCL/Subjects'};
 alldata         = {};
 
 for l = 1:length(labs),
@@ -23,33 +23,28 @@ for l = 1:length(labs),
     subjects  = {subjects.name};
     subjects(ismember(subjects, {'default'})) = [];
     subjects(ismember(subjects, {'exampleSubject'})) = [];
+    subjects(ismember(subjects, {'180409'})) = [];
     
     %% LOOP OVER SUBJECTS, DAYS AND SESSIONS
     for sjidx = 1:length(subjects),
         if ~isdir(fullfile(mypath, subjects{sjidx})), continue; end
         days  = nohiddendir(fullfile(mypath, subjects{sjidx})); % make sure that date folders start with year
         
-        %% FOR UCL MICE, CHECK THE PROTOCOLS.TXT FILE TO ONLY USE BASICCHOICEWORLD
-        %         protocolsfile = nohiddendir(fullfile(mypath, subjects{sjidx}, 'protocols.txt'));
-        %         if ~isempty(protocolsfile),
-        %             protocols = readtable(sprintf('%s/%s', protocolsfile.folder, protocolsfile.name));
-        %
-        %             % find the days where the animals did basicChoiceWorld
-        %             basicChoiceWorld_days = protocols{~cellfun(@isempty, strfind(lower(protocols{:, end}), 'basicchoiceworld')), 1};
-        %             days2use = find(ismember({days(:).name}, basicChoiceWorld_days));
-        %         else
-        %             days2use = 1:length(days);
-        %         end
-        %
         % for each day, print in a different color
         for dayidx = 1:length(days), % skip the first week!
             
             clear sessiondata;
-            sessions = dir(fullfile(days(dayidx).folder, days(dayidx).name)); % make sure that date folders start with year
+            sessions = nohiddendir(fullfile(days(dayidx).folder, days(dayidx).name)); % make sure that date folders start with year
             for sessionidx = 1:length(sessions),
                 
+                
                 %% READ DATA FOR THIS ANIMAL, DAY AND SESSION
-                data = readAlf(sprintf('%s/%s', sessions(sessionidx).folder, sessions(sessionidx).name));
+               % try
+                    data = readAlf(sprintf('%s/%s', sessions(sessionidx).folder, sessions(sessionidx).name));
+               % catch
+                    % warning('Failed to read %s/%s \n', sessions(sessionidx).folder, sessions(sessionidx).name)
+                %    continue;
+               % end
                 
                 % add some info for the full table
                 if ~isempty(data),
@@ -68,6 +63,9 @@ for l = 1:length(labs),
         end
     end
 end
+
+% if not all of the data share the same variables, append with nans
+
 
 % put all the data in one large table
 alldata = cat(1, alldata{:});
