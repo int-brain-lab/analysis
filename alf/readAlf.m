@@ -31,7 +31,7 @@ try
     outp.stimOnTime         = readNPY(sprintf('%s/cwStimOn.times.npy', foldername));
     outp.contrastLeft       = readNPY(sprintf('%s/cwStimOn.contrastLeft.npy', foldername));
     outp.contrastRight      = readNPY(sprintf('%s/cwStimOn.contrastRight.npy', foldername));
-    outp.signedContrast     = sum([-outp.contrastLeft outp.contrastRight], 2);
+    outp.signedContrast     = -outp.contrastLeft + outp.contrastRight;
     
     outp.goCueTime          = readNPY(sprintf('%s/cwGoCue.times.npy', foldername)); % what's the go cue? auditory?
     
@@ -67,12 +67,19 @@ if exist(sprintf('%s/cwFeedback.highRewardSide.npy', foldername), 'file'),
     if ~iscolumn(outp.highRewardSide),
         outp.highRewardSide = outp.highRewardSide';
     end
+    
+    %% code manually for highrewardside
+% elseif numel(unique(outp.rewardVolume(outp.rewardVolume > 0))) > 1,
+%     if numel(find(histcounts(outp.rewardVolume, unique(outp.rewardVolume(outp.rewardVolume > 0)), ...
+%             'normalization', 'pdf') > 0.4)) > 1, % if the reward size distribution has more than 1 peak
+%         outp.highRewardSize = 1;
+%         assert(1==0);
+%     end
+end
+if isfield(outp, 'highRewardSide'),
     % if there is a highRewardSize file present, confirm that it makes sense
-    highrewardtrls = (outp.correct == 1 & (outp.response == outp.highRewardSide))
-    
-elseif numel(unique(outp.rewardVolume(outp.rewardVolume > 0))) > 1,
-    outp.highRewardSize = 1;
-    
+    checkHighReward = outp.rewardVolume( outp.correct(:) == 1 & (outp.response(:) == outp.highRewardSide(:)) & abs(outp.signedContrast(:)) > 0);
+    assert(mean(checkHighReward == max(outp.rewardVolume)) > 0.95, 'highRewardSide does not make sense');
 else
     outp.highRewardSide = nan(size(outp.response));
 end
@@ -80,7 +87,16 @@ end
 % if this doesn't look like a proper session, return empty
 if all(isnan(outp.response)) || length(outp.response) < 10,
     outp = [];
+    warning('Less than 10 responses present, not reading %s \n', foldername);
     return;
+end
+
+% MAKE SURE ALL ARE COLUMN VECTORS
+flds = fieldnames(outp);
+for f = 1:length(flds),
+    if ~iscolumn(outp.(flds{f})),
+        outp.(flds{f}) = outp.(flds{f})';
+    end
 end
 
 % MAKE SURE THAT ALL FIELDS HAVE THE SAME SIZE
@@ -99,8 +115,13 @@ end
 assert(~any((outp.responseOnTime - outp.goCueTime) < 0), 'response cannot be earlier than go cue');
 assert(~any((outp.responseOnTime - outp.stimOnTime) < 0), 'response cannot be earlier than stimulus');
 assert(~any((outp.goCueTime - outp.stimOnTime) < 0), 'go cue cannot be earlier than stimulus');
-assert(~any((outp.feedbackOnTime - outp.responseOnTime) < 0), 'feedback cannot be earlier than response');
-assert(isequal((sign(outp.signedContrast) == sign(outp.response)), outp.correct), 'stimulus and response do not match to feedback');
+% assert(~any((outp.feedbackOnTime - outp.responseOnTime) < 0), 'feedback cannot be earlier than response');
+
+% check if feedback is correctly coded
+if ~(nansum(abs(sign(outp.signedContrast(abs(outp.signedContrast) > 0)) == sign(outp.response(abs(outp.signedContrast) > 0))) - ...
+        outp.correct(abs(outp.signedContrast) > 0)) == 0),
+    warning('stimulus and response do not match to feedback');
+end
 
 % ADD SOME MORE USEFUL INFO
 outp.rt                 = outp.responseOnTime - outp.goCueTime; % RT from stimulus offset = go cue
@@ -111,6 +132,8 @@ end
 
 % output a table in Matlab >= 2013b
 if ~verLessThan('matlab','8.2')
+    
+    % make sure all the fields are the same size
     outp = struct2table(outp);
     
     % add metadata to the table

@@ -8,7 +8,7 @@ function saveAlf_CSHL(subjects)
 %
 % 6 April: added writing reward volume
 % 13 April: moving water volume to cwFeedback.rewardVolume.npy files
-% 13 April: save contrast in % 
+% 13 April: save contrast in %
 % 13 Apri: temporary, remove wheel timestamps to save space
 
 addpath('\\NEW-9SE8HAULSQE\Users\IBL_Master\Documents\IBLData_Shared\code\alyx-matlab-master');
@@ -49,8 +49,8 @@ newpath = fullfile(pythonPath, filename);
 if ~exist(newpath, 'dir'),
     mkdir(newpath); fprintf('Created directory %s \n', newpath);
 else
-   % fprintf('Directory %s already exists, skipping \n', newpath);
-    return
+   fprintf('Directory %s already exists, skipping \n', newpath);
+     return
 end
 
 % GET THE DATA FROM THE MATLAB FOLDER
@@ -67,67 +67,8 @@ end
 expDef = getOr(block, 'expDef', []);
 if isempty(expDef); return; end
 [~, expDef] = fileparts(expDef);
-if ~contains(lower(expDef), 'choiceworld') || ~isfield(block, 'events') % || length(block.events.newTrialValues) < 10
+if ~contains(lower(expDef), 'choiceworld') || ~isfield(block, 'events') || length(block.events.newTrialValues) < 10 || isempty(block.outputs.rewardValues)
     return
-end
-
-%% Write feedback
-if isfield(block.events, 'feedbackValues')
-    feedback = double(block.events.feedbackValues);
-else
-    feedback = double([block.events.hitValues]);
-end
-if isfield(block.events, 'feedbackTimes')
-    feedbackTimes = block.events.feedbackTimes;
-else
-    feedbackTimes = [block.events.hitTimes];
-end
-feedback(feedback == 0) = -1;
-
-try
-    writeNPY(feedback(:), fullfile(expPath, 'cwFeedback.type.npy'));
-    movefile(fullfile(expPath, 'cwFeedback.type.npy'), newpath, 'f');
-    
-    alf.writeEventseries(expPath, 'cwFeedback', feedbackTimes-block.events.expStartTimes, [], []);
-    movefile(fullfile(expPath, 'cwFeedback.times.npy'), newpath, 'f');
-catch
-    warning('No ''feedback'' events recorded, cannot register to Alyx')
-end
-
-%% Write reward volume: cwFeedback.rewardVolume
-try
-    reward = feedback;
-    reward(reward == -1) = 0;
-    
-    % find times that were both feedback and reward
-    sharedTimeStamps_fb = ismember(round(block.events.feedbackTimes), round(block.outputs.rewardTimes));
-    sharedTimeStamps_rew = ismember(round(block.outputs.rewardTimes), round(block.events.feedbackTimes));
-
-    reward(sharedTimeStamps_fb) = block.outputs.rewardValues(sharedTimeStamps_rew);
-    writeNPY(reward(:), fullfile(expPath, 'cwFeedback.rewardVolume.npy'));
-    movefile(fullfile(expPath, 'cwFeedback.rewardVolume.npy'), newpath, 'f');
-    
-    % remove the older file, avoid clutter
-   if exist(fullfile(expPath, 'cwReward.type.npy'), 'file'),
-       delete(fullfile(expPath, 'cwReward.type.npy'));
-   end
-   if exist(fullfile(expPath, 'cwReward.times.npy'), 'file'),
-       delete(fullfile(expPath, 'cwReward.times.npy'));
-   end
-catch
-    warning('No ''reward'' events recorded, cannot register to Alyx')
-end
-
-%% Write go cue
-interactiveOn = getOr(block.events, 'interactiveOnTimes', NaN);
-if isnan(interactiveOn)
-    interactiveOn = [block.events.stimulusOnTimes]+[block.paramsValues.interactiveDelay];
-end
-try
-    alf.writeEventseries(expPath, 'cwGoCue', interactiveOn-block.events.expStartTimes, [], []);
-    movefile(fullfile(expPath, 'cwGoCue.times.npy'), newpath, 'f');
-catch
-    warning('No ''interactiveOn'' events recorded, cannot register to Alyx')
 end
 
 %% Write response
@@ -145,21 +86,30 @@ if min(response) == -1
     response(response == 1) = 2;
     response(response == -1) = 1;
 end
+
+if isempty(response),
+    return;
+end
 try
     writeNPY(response(:), fullfile(expPath, 'cwResponse.choice.npy'));
     movefile(fullfile(expPath, 'cwResponse.choice.npy'), newpath, 'f');
+    responseTimes = [block.events.responseTimes]-block.events.expStartTimes;
     alf.writeEventseries(expPath, 'cwResponse', [block.events.responseTimes]-block.events.expStartTimes, [], []);
     movefile(fullfile(expPath, 'cwResponse.times.npy'), newpath, 'f');
 catch
-    warning('No ''feedback'' events recorded, cannot register to Alyx')
+    warning('No ''response'' events recorded, cannot register to Alyx')
 end
 
-%% Write stim on times
+%% Write stim on times - only those which had a response
 if isfield(block.events, 'stimulusOnTimes')
     stimOnTimes = [block.events.stimulusOnTimes]-block.events.expStartTimes;
 else
     stimOnTimes = [block.events.stimOnTimes]-block.events.expStartTimes;
 end
+if length(stimOnTimes) > length(responseTimes),
+    stimOnTimes = stimOnTimes(1:length(responseTimes));
+end
+assert(all(responseTimes > stimOnTimes), 'response cannot precede stimulus');
 
 try
     alf.writeEventseries(expPath, 'cwStimOn', stimOnTimes, [], []);
@@ -185,12 +135,128 @@ if all(isnan(contL)&isnan(contR))
 end
 
 try
-    writeNPY(contL(:)*100, fullfile(expPath, 'cwStimOn.contrastLeft.npy'));
+    writeNPY(contL(1:length(responseTimes))*100, fullfile(expPath, 'cwStimOn.contrastLeft.npy'));
     movefile(fullfile(expPath, 'cwStimOn.contrastLeft.npy'), newpath, 'f');
-    writeNPY(contR(:)*100, fullfile(expPath, 'cwStimOn.contrastRight.npy'));
+    writeNPY(contR(1:length(responseTimes))*100, fullfile(expPath, 'cwStimOn.contrastRight.npy'));
     movefile(fullfile(expPath, 'cwStimOn.contrastRight.npy'), newpath, 'f');
 catch
     warning('No ''contrastLeft'' and/or ''contrastRight'' events recorded, cannot register to Alyx')
+end
+
+%% Write go cue
+interactiveOn = getOr(block.events, 'interactiveOnTimes', NaN);
+if isnan(interactiveOn)
+    interactiveOn = [block.events.stimulusOnTimes]+[block.paramsValues.interactiveDelay];
+end
+
+if length(interactiveOn) > length(responseTimes),
+    interactiveOn = interactiveOn(1:length(responseTimes));
+end
+% assert(all(responseTimes > interactiveOn), 'response cannot precede go cue');
+
+try
+    alf.writeEventseries(expPath, 'cwGoCue', interactiveOn-block.events.expStartTimes, [], []);
+    movefile(fullfile(expPath, 'cwGoCue.times.npy'), newpath, 'f');
+catch
+    warning('No ''interactiveOn'' events recorded, cannot register to Alyx')
+end
+
+%% Write feedback
+if isfield(block.events, 'feedbackValues')
+    feedback = double(block.events.feedbackValues);
+else
+    feedback = double([block.events.hitValues]);
+end
+feedback(feedback == 0) = -1;
+
+if isfield(block.events, 'feedbackTimes')
+    feedbackTimes = block.events.feedbackTimes;
+else
+    feedbackTimes = [block.events.hitTimes];
+end
+feedbackTimes = feedbackTimes-block.events.expStartTimes;
+
+if length(feedbackTimes) > length(responseTimes),
+    % find only those feedback events that occur briefly after a response
+    useFbTimes      = dsearchn(feedbackTimes', responseTimes');
+    feedbackTimes   = feedbackTimes(useFbTimes);
+    feedback        = feedback(useFbTimes);
+elseif length(feedbackTimes) < length(responseTimes),
+    feedbackTimes = [feedbackTimes NaN];
+end
+assert(~any(responseTimes > feedbackTimes), 'feedback cannot precede response');
+%%
+
+try
+    writeNPY(feedback(:), fullfile(expPath, 'cwFeedback.type.npy'));
+    movefile(fullfile(expPath, 'cwFeedback.type.npy'), newpath, 'f');
+    
+    alf.writeEventseries(expPath, 'cwFeedback', feedbackTimes, [], []);
+    movefile(fullfile(expPath, 'cwFeedback.times.npy'), newpath, 'f');
+catch
+    warning('No ''feedback'' events recorded, cannot register to Alyx')
+end
+
+%% Write reward volume: cwFeedback.rewardVolume
+
+reward = feedback;
+reward(reward == -1) = 0;
+rewardTimes = block.outputs.rewardTimes-block.events.expStartTimes;
+
+% find times that were both feedback and reward
+sharedTimeStamps_fb  = ismember(round(feedbackTimes), round(rewardTimes));
+sharedTimeStamps_rew = ismember(round(rewardTimes), round(feedbackTimes));
+
+% horrible hack for Arthur's session on 14 may
+if length(feedbackTimes(sharedTimeStamps_fb)) < length(rewardTimes(sharedTimeStamps_rew)),
+    feedbackTimes2          = feedbackTimes(sharedTimeStamps_fb) / 3000;
+    rewardTimes2            = rewardTimes(sharedTimeStamps_rew)/ 3000;
+    rewardTimes_idx2        = dsearchn(feedbackTimes2', rewardTimes2');
+
+    % find the feedback time that has 2 reward times
+    duplicateVal = find(hist(rewardTimes_idx2, unique(rewardTimes_idx2)) > 1);
+    for d = 1:length(duplicateVal),
+        duplicateRewardIdx = find(rewardTimes_idx2 == duplicateVal(d));
+        timestampIdx = find(sharedTimeStamps_rew == 1, duplicateRewardIdx(2));
+        % which one is closer in time to the feedback?
+        sharedTimeStamps_rew(timestampIdx(end)) = 0;
+    end
+end
+
+assert(isequal(round(feedbackTimes(sharedTimeStamps_fb)), ...
+    round(rewardTimes(sharedTimeStamps_rew))), 'reward times do not line up');
+assert(all(reward(sharedTimeStamps_fb) == 1));
+
+reward(sharedTimeStamps_fb) = block.outputs.rewardValues(sharedTimeStamps_rew);
+writeNPY(reward(:), fullfile(expPath, 'cwFeedback.rewardVolume.npy'));
+movefile(fullfile(expPath, 'cwFeedback.rewardVolume.npy'), newpath, 'f');
+
+% remove the older file, avoid clutter
+if exist(fullfile(expPath, 'cwReward.type.npy'), 'file'),
+    delete(fullfile(expPath, 'cwReward.type.npy'));
+end
+if exist(fullfile(expPath, 'cwReward.times.npy'), 'file'),
+    delete(fullfile(expPath, 'cwReward.times.npy'));
+end
+
+%% basicChoiceWorld2: highRewardSide
+try 
+    % do some checks
+    highRewardSide = block.events.highRewardSideValues(1:length(response));
+    signedContrast = contR - contL;
+    signedContrast = signedContrast(1:length(response));
+    correct = (sign(signedContrast) == sign(response - 1.5));
+
+    assert(all(reward(correct == 1 & abs(signedContrast) > 0) > 0), 'error encoding reward delivery');
+    assert(all(reward(correct == 0 & abs(signedContrast) > 0) == 0), 'error encoding reward delivery')
+
+    checkHighReward = reward(correct == 1 & (sign(response - 1.5) == highRewardSide) & abs(signedContrast) > 0);
+    assert(mean(checkHighReward == max(reward)) > 0.95, 'highRewardSide does not make sense');
+  
+    writeNPY(highRewardSide, fullfile(expPath, 'cwFeedback.highRewardSide.npy'));
+    movefile(fullfile(expPath, 'cwFeedback.highRewardSide.npy'), newpath, 'f');
+catch
+    warning('Did not find asymmetric reward')
 end
 
 %% Write trial intervals
@@ -245,14 +311,6 @@ try
     movefile(fullfile(expPath, 'Wheel.position.npy'), newpath, 'f');
     writeNPY(wheelValues./wheelTimes, fullfile(expPath, 'Wheel.velocity.npy'));
     movefile(fullfile(expPath, 'Wheel.velocity.npy'), newpath, 'f');
-catch
-    warning('Failed to write wheel values')
-end
-
-%% basicChoiceWorld2: highRewardSide
-try
-writeNPY(block.events.highRewardSideValues, fullfile(expPath, 'cwFeedback.highRewardSide.npy'));
-movefile(fullfile(expPath, 'cwFeedback.highRewardSide.npy'), newpath, 'f');
 catch
     warning('Failed to write wheel values')
 end

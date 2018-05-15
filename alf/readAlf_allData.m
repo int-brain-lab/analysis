@@ -39,10 +39,10 @@ for l = 1:length(labs),
                 
                 
                 %% READ DATA FOR THIS ANIMAL, DAY AND SESSION
-               % try
+                %try
                     data = readAlf(sprintf('%s/%s', sessions(sessionidx).folder, sessions(sessionidx).name));
-               % catch
-                    % warning('Failed to read %s/%s \n', sessions(sessionidx).folder, sessions(sessionidx).name)
+                %catch
+                   % warning('Failed to read %s/%s \n', sessions(sessionidx).folder, sessions(sessionidx).name)
                 %    continue;
                % end
                 
@@ -63,9 +63,6 @@ for l = 1:length(labs),
         end
     end
 end
-
-% if not all of the data share the same variables, append with nans
-
 
 % put all the data in one large table
 alldata = cat(1, alldata{:});

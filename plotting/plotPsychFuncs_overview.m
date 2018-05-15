@@ -9,7 +9,6 @@ data = readAlf_allData();
 addpath('~/Desktop/code/gramm/');
 
 %% use gramm for easy dataviz
-% bestAnimals = {'Kornberg', '4619', 'Mouse2'};
 bestAnimals = unique(data.animal);
 close all;
 g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.dayidx, ...
@@ -25,7 +24,7 @@ g.draw();
 
 % overlay the summary psychometric in black for the later sessions
 g.update('x', data.signedContrast, 'y', (data.response > 0), ...
-   'color', ones(size(data.dayidx)), 'subset', (data.dayidx > 7 & ismember(data.animal, bestAnimals)));
+   'color', ones(size(data.dayidx)), 'subset', (data.dayidx > 0 & ismember(data.animal, bestAnimals)));
 g.stat_summary('type', 'bootci', 'geom', 'errorbar');
 g.stat_summary('type', 'std', 'geom', 'line'); % hack to get a connected errorbar
 g.set_color_options('map', zeros(max(data.dayidx), 3)); % black
@@ -139,4 +138,7 @@ g.draw();
 print(gcf, '-dpdf', '/Users/anne/Google Drive/Rig building WG/Data/psychfuncs_perlab.pdf');
 print(gcf, '-dpng', '/Users/anne/Google Drive/Rig building WG/Data/psychfuncs_perlab.png');
 
+
+% UCL mice that have been trained manually 
+% 'ALK068', 'ALK070', 'ALK071', 'ALK074' and 'ALK075' 
 % ends
