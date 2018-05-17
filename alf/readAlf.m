@@ -44,6 +44,9 @@ try
     outp.correct            = readNPY(sprintf('%s/cwFeedback.type.npy', foldername));
     outp.correct            = (outp.correct > 0);
     
+    % only include trials that were not a repeat
+    outp.inclTrials         = readNPY(sprintf('%s/cwTrials.inclTrials.npy', foldername));
+
 catch
     % if for some reason not all the files are readable, return empty
     outp = [];
@@ -58,7 +61,10 @@ elseif exist(sprintf('%s/cwReward.type.npy', foldername), 'file'),
     % also read in the older way - at some point correct these filenames
     outp.rewardVolume       = readNPY(sprintf('%s/cwReward.type.npy', foldername));
 else
-    outp.rewardVolume = nan(size(outp.correct));
+    outp.rewardVolume = nan(size(outp.response));
+end
+if ~isequal(size(outp.rewardVolume), size(outp.response)),
+    outp.rewardVolume = nan(size(outp.response));
 end
 
 % in basicChoiceWorld2, also code for highRewardSide
@@ -67,14 +73,6 @@ if exist(sprintf('%s/cwFeedback.highRewardSide.npy', foldername), 'file'),
     if ~iscolumn(outp.highRewardSide),
         outp.highRewardSide = outp.highRewardSide';
     end
-    
-    %% code manually for highrewardside
-% elseif numel(unique(outp.rewardVolume(outp.rewardVolume > 0))) > 1,
-%     if numel(find(histcounts(outp.rewardVolume, unique(outp.rewardVolume(outp.rewardVolume > 0)), ...
-%             'normalization', 'pdf') > 0.4)) > 1, % if the reward size distribution has more than 1 peak
-%         outp.highRewardSize = 1;
-%         assert(1==0);
-%     end
 end
 if isfield(outp, 'highRewardSide'),
     % if there is a highRewardSize file present, confirm that it makes sense
@@ -126,8 +124,15 @@ end
 % ADD SOME MORE USEFUL INFO
 outp.rt                 = outp.responseOnTime - outp.goCueTime; % RT from stimulus offset = go cue
 outp.trialNum           = transpose(1:length(outp.stimOnTime));
-if max(abs(outp.signedContrast)) == 1,
+if max(abs(outp.signedContrast)) <= 1,
     outp.signedContrast = outp.signedContrast * 100; % in %
+end
+
+% if there was no reward switch within the session, ignore
+if ~all(isnan(outp.highRewardSide)),
+    if numel(unique(outp.highRewardSide)) == 1,
+        outp.highRewardSide = nan(size(outp.highRewardSide));
+    end
 end
 
 % output a table in Matlab >= 2013b

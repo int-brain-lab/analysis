@@ -39,12 +39,12 @@ for l = 1:length(labs),
                 
                 
                 %% READ DATA FOR THIS ANIMAL, DAY AND SESSION
-                %try
+                try
                     data = readAlf(sprintf('%s/%s', sessions(sessionidx).folder, sessions(sessionidx).name));
-                %catch
-                   % warning('Failed to read %s/%s \n', sessions(sessionidx).folder, sessions(sessionidx).name)
-                %    continue;
-               % end
+                catch
+                    warning('Failed to read %s/%s \n', sessions(sessionidx).folder, sessions(sessionidx).name)
+                    continue;
+                end
                 
                 % add some info for the full table
                 if ~isempty(data),
@@ -54,6 +54,7 @@ for l = 1:length(labs),
                     data{:, 'name'}     = {cat(2, data.Properties.UserData.lab, ' ', data.Properties.UserData.animal)};
                     data.date           = repmat(datetime(data.Properties.UserData.date), height(data), 1);
                     data.dayidx         = repmat(dayidx, height(data), 1);
+                    data.dayidx_rev     = repmat(dayidx-length(days), height(data), 1);
                     data.session        = repmat(data.Properties.UserData.session, height(data), 1);
                     
                     % keep for appending
@@ -66,6 +67,11 @@ end
 
 % put all the data in one large table
 alldata = cat(1, alldata{:});
+% remove those trials that are marked in signals as 'not to be included'
+alldata = alldata(alldata.inclTrials == 1, :);
+
+% add a string for dates, easier to plot as title
+data.datestr = arrayfun(@(x) datestr(x, 'yyyy-mm-dd'), data.date, 'un', 0);
 
 end
 

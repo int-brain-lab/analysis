@@ -5,22 +5,70 @@ function rewardShiftedPsychometricFunction
 addpath('~/Desktop/code/npy-matlab//');
 data = readAlf_allData();
 addpath('~/Desktop/code/gramm/');
-
-% select only those animals where there is a highrewardside indicated
 data(isnan(data.highRewardSide), :) = [];
 
-%% use gramm for easy dataviz
+%% FIRST, REPLICATE LAUREN'S FIGURES
+
+% 1. LEW006, SEPARATELY FOR EACH DATE
 close all;
-g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.highRewardSide);
-g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)', 'color', 'High reward');
-g.set_continuous_color('active', false);  
-g.stat_summary('type', 'std', 'geom', 'line'); % no errorbars within a session
-g.stat_summary('type', 'bootci', 'geom', 'errorbar'); % no errorbars within a session
+g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.highRewardSide, ...
+    'subset', ismember(data.animal, {'LEW006'}));
+g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)', 'color', 'RewardSide');
+g.set_color_options('map', linspecer(2));
+g.stat_summary('type', 'bootci', 'geom', 'errorbar');
+g.stat_summary('type', 'sem', 'geom', 'point');
+custom_psychometric(g);
+g.facet_wrap(data.datestr, 'ncols', 8);
+g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 9);
+g.no_legend();
+g.set_title('LEW006');
+g.draw();
+print(gcf, '-dpng', '~/Downloads/rewardShifted_1.png');
+
+% 1. LEW006, across the good days
+close all;
+g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.highRewardSide, ...
+    'subset', ismember(data.animal, {'LEW006'}) & data.date > datetime('2018-04-27') & data.date < datetime('2018-05-10'));
+g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)', 'color', 'RewardSide');
+g.set_color_options('map', linspecer(2));
+g.stat_summary('type', 'bootci', 'geom', 'errorbar');
+g.stat_summary('type', 'sem', 'geom', 'point');
+custom_psychometric(g);
+g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 9);
+g.no_legend();
+g.set_title('LEW006');
+g.draw();
+print(gcf, '-dpng', '~/Downloads/rewardShifted_2.png');
+
+% 1. TRY FOR A CSHL MOUSE
+close all;
+g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.highRewardSide, ...
+    'subset', ismember(data.animal, {'Arthur'}));
+g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)', 'color', 'RewardSide');
+g.set_color_options('map', linspecer(2));
+g.stat_summary('type', 'bootci', 'geom', 'errorbar');
+g.stat_summary('type', 'sem', 'geom', 'point');
+custom_psychometric(g);
+g.facet_wrap(data.datestr, 'ncols', 8);
+g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 9);
+g.no_legend();
+g.set_title('Arthur');
+g.draw();
+print(gcf, '-dpng', '~/Downloads/rewardShifted_3.png');
+
+
+%% NOW THE SUMMARY
+close all;
+g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.highRewardSide, ...
+    'subset', ~isnan(data.highRewardSide));
+g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)', 'color', 'High reward side');
+g.set_color_options('map', linspecer(2));
+g.stat_summary('type', 'bootci', 'geom', 'errorbar');
+g.stat_summary('type', 'sem', 'geom', 'point');
+custom_psychometric(g);
+g.facet_wrap(data.name);
 g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 9);
 g.draw();
+print(gcf, '-dpng', '~/Downloads/rewardShifted_all.png');
 
-print(gcf, '-dpdf', '/Users/anne/Google Drive/Rig building WG/Data/psychfuncs_rewardshifted.pdf');
-print(gcf, '-dpng', '/Users/anne/Google Drive/Rig building WG/Data/psychfuncs_rewardshifted.png');
-
-
-% g.facet_wrap(data.name, 'ncols', 3);
+end
