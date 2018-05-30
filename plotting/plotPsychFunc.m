@@ -9,7 +9,6 @@ if ~exist('foldername', 'var') || (exist('foldername', 'var') & isempty(folderna
     foldername = uigetdir('', 'Choose a session folder with Alf files');
 end
 
-if 
 data             = readAlf(foldername);
 
 if all(isnan(data.highRewardSide)),

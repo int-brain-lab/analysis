@@ -46,12 +46,27 @@ for l = 1:length(labs),
                     continue;
                 end
                 
+                if ismember(subjects{sjidx}, {'4577', '4579'}),
+                   % assert(1==0);
+                end
+                
                 % add some info for the full table
                 if ~isempty(data),
                     
+                    % comment Zach on 18 May: cities more salient than institutions
+                    switch data.Properties.UserData.lab
+                        case 'CSHL'
+                            place = ' NY (CSHL)';
+                        case 'CCU'
+                            place = 'Lisbon (CCU)';
+                        case 'UCL'
+                            place = 'London (UCL)';
+                    end
+                    
                     data{:, 'animal'}   = {data.Properties.UserData.animal};
-                    data{:, 'lab'}      = {data.Properties.UserData.lab};
-                    data{:, 'name'}     = {cat(2, data.Properties.UserData.lab, ' ', data.Properties.UserData.animal)};
+                    data{:, 'lab'}      = {place};
+                    
+                    data{:, 'name'}     = {cat(2, place, ' ', data.Properties.UserData.animal)};
                     data.date           = repmat(datetime(data.Properties.UserData.date), height(data), 1);
                     data.dayidx         = repmat(dayidx, height(data), 1);
                     data.dayidx_rev     = repmat(dayidx-length(days), height(data), 1);
