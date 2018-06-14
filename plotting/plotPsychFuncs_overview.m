@@ -76,7 +76,7 @@ print(gcf, '-depsc', '/Users/anne/Google Drive/Rig building WG/Data/psychfuncs_m
 %% COMPARE STABLE BEHAVIOR ACROSS LABS - automated training
 close all;
 g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.name,...
-    'subset', (data.dayidx > 10 & ismember(data.animal, mice_automatedtraining)));
+    'subset', (data.dayidx > 10 & data.dayidx < 30 & ismember(data.animal, mice_automatedtraining)));
 g.set_names('x', 'Signed contrast (%)', 'y', 'P(rightwards)');
 g.stat_summary('type', 'bootci', 'geom', 'errorbar');
 g.stat_summary('type', 'sem', 'geom', 'point');

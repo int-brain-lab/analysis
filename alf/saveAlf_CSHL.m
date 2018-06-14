@@ -25,6 +25,7 @@ if ~isdir(pythonPath), mkdir(pythonPath); disp('Creating a new directory for ALF
 if ~exist('subjects', 'var'),
     sjfolders = nohiddendir(matlabPath);
     subjects  = {sjfolders.name};
+    subjects(ismember(subjects, {'exampleSubject', 'default'})) = [];
 end
 
 %% LOOP OVER SUBJECTS, DAYS AND SESSIONS
@@ -49,8 +50,8 @@ newpath = fullfile(pythonPath, filename);
 if ~exist(newpath, 'dir'),
     mkdir(newpath); fprintf('Created directory %s \n', newpath);
 else
-   fprintf('Directory %s already exists, skipping \n', newpath);
-     return
+    fprintf('Directory %s already exists, skipping \n', newpath);
+      return
 end
 
 % GET THE DATA FROM THE MATLAB FOLDER
@@ -97,7 +98,7 @@ try
     alf.writeEventseries(expPath, 'cwResponse', [block.events.responseTimes]-block.events.expStartTimes, [], []);
     movefile(fullfile(expPath, 'cwResponse.times.npy'), newpath, 'f');
 catch
-    warning('No ''response'' events recorded, cannot register to Alyx')
+    warning('No ''feedback'' events recorded, cannot register to Alyx')
 end
 
 %% Write stim on times - only those which had a response
@@ -202,32 +203,33 @@ end
 reward = feedback;
 reward(reward == -1) = 0;
 rewardTimes = block.outputs.rewardTimes-block.events.expStartTimes;
-
-% find times that were both feedback and reward
-sharedTimeStamps_fb  = ismember(round(feedbackTimes), round(rewardTimes));
-sharedTimeStamps_rew = ismember(round(rewardTimes), round(feedbackTimes));
-
-% horrible hack for Arthur's session on 14 may
-if length(feedbackTimes(sharedTimeStamps_fb)) < length(rewardTimes(sharedTimeStamps_rew)),
-    feedbackTimes2          = feedbackTimes(sharedTimeStamps_fb) / 3000;
-    rewardTimes2            = rewardTimes(sharedTimeStamps_rew)/ 3000;
-    rewardTimes_idx2        = dsearchn(feedbackTimes2', rewardTimes2');
-
-    % find the feedback time that has 2 reward times
-    duplicateVal = find(hist(rewardTimes_idx2, unique(rewardTimes_idx2)) > 1);
-    for d = 1:length(duplicateVal),
-        duplicateRewardIdx = find(rewardTimes_idx2 == duplicateVal(d));
-        timestampIdx = find(sharedTimeStamps_rew == 1, duplicateRewardIdx(2));
-        % which one is closer in time to the feedback?
-        sharedTimeStamps_rew(timestampIdx(end)) = 0;
+if length(rewardTimes) == length(feedbackTimes(feedback == 1)),
+    reward(reward == 1) = block.outputs.rewardValues();
+elseif  length(rewardTimes) > length(feedbackTimes(feedback == 1)),
+    % in basicChoiceWorld2, there are rewards given as motivation (not as feedback)
+    
+    rewardTimingOffset = abs(feedbackTimes(find(feedback == 1, 1)) - rewardTimes(1));
+    % for each feedbackTime with a positive feedback, find a rewardTime that is closest
+    % get a feeling for the range of the data
+    foundRightRewards = 0; timingRange = 4;
+    while ~foundRightRewards,
+        try
+            findClosest = cell2mat(arrayfun(@(a) find(abs(rewardTimes - a) < timingRange * rewardTimingOffset), ...
+                feedbackTimes(feedback==1), 'uni', 0));
+            reward(reward == 1) = block.outputs.rewardValues(findClosest);
+            foundRightRewards = 1;
+        catch
+            timingRange = timingRange - 0.01;
+            try
+                assert(timingRange > 0, 'could not match rewards');
+            catch
+                findClosest = unique(dsearchn(feedbackTimes(feedback == 1)', rewardTimes'));
+                reward(reward == 1) = block.outputs.rewardValues(findClosest);
+            end
+        end
     end
 end
 
-assert(isequal(round(feedbackTimes(sharedTimeStamps_fb)), ...
-    round(rewardTimes(sharedTimeStamps_rew))), 'reward times do not line up');
-assert(all(reward(sharedTimeStamps_fb) == 1));
-
-reward(sharedTimeStamps_fb) = block.outputs.rewardValues(sharedTimeStamps_rew);
 writeNPY(reward(:), fullfile(expPath, 'cwFeedback.rewardVolume.npy'));
 movefile(fullfile(expPath, 'cwFeedback.rewardVolume.npy'), newpath, 'f');
 
@@ -239,24 +241,22 @@ if exist(fullfile(expPath, 'cwReward.times.npy'), 'file'),
     delete(fullfile(expPath, 'cwReward.times.npy'));
 end
 
+signedContrast = contR - contL;
+signedContrast = signedContrast(1:length(response));
+correct = (sign(signedContrast) == sign(response - 1.5));
+
+assert(all(reward(correct == 1 & abs(signedContrast) > 0) > 0), 'error encoding reward delivery');
+assert(all(reward(correct == 0 & abs(signedContrast) > 0) == 0), 'error encoding reward delivery')
+
 %% basicChoiceWorld2: highRewardSide
-try 
+if isfield(block.events, 'highRewardSideValues'),
     % do some checks
     highRewardSide = block.events.highRewardSideValues(1:length(response));
-    signedContrast = contR - contL;
-    signedContrast = signedContrast(1:length(response));
-    correct = (sign(signedContrast) == sign(response - 1.5));
-
-    assert(all(reward(correct == 1 & abs(signedContrast) > 0) > 0), 'error encoding reward delivery');
-    assert(all(reward(correct == 0 & abs(signedContrast) > 0) == 0), 'error encoding reward delivery')
-
     checkHighReward = reward(correct == 1 & (sign(response - 1.5) == highRewardSide) & abs(signedContrast) > 0);
     assert(mean(checkHighReward == max(reward)) > 0.95, 'highRewardSide does not make sense');
-  
+    
     writeNPY(highRewardSide, fullfile(expPath, 'cwFeedback.highRewardSide.npy'));
     movefile(fullfile(expPath, 'cwFeedback.highRewardSide.npy'), newpath, 'f');
-catch
-    warning('Did not find asymmetric reward')
 end
 
 %% Write trial intervals
@@ -290,33 +290,35 @@ catch
     warning('Saving repeatNums failed')
 end
 
-%% Write wheel times, position and velocity
-wheelValues = block.inputs.wheelValues(:)-block.inputs.wheelValues(1);
-switch lower(block.rigName)
-    case {'zrig1', 'zrig2', 'zrig3', 'zrig4',...
-            'zredone', 'zredtwo', 'zredthree', 'zgreyfour'} % spesh
-        encRes = 1024;
-    case {'zym1', 'zym2', 'zym3'}
-        encRes = 360;
-    otherwise
-        encRes = 1024;
-end
-wheelValues = wheelValues*(3.1*2*pi/(4*encRes));
-try
-    wheelTimes = block.inputs.wheelTimes(:);
-    wheelTimes = wheelTimes-block.events.expStartTimes;
-    alf.writeTimeseries(expPath, 'Wheel', wheelTimes, [], []);
-    movefile(fullfile(expPath, 'Wheel.timestamps.npy'), newpath, 'f');
-    writeNPY(wheelValues, fullfile(expPath, 'Wheel.position.npy'));
-    movefile(fullfile(expPath, 'Wheel.position.npy'), newpath, 'f');
-    writeNPY(wheelValues./wheelTimes, fullfile(expPath, 'Wheel.velocity.npy'));
-    movefile(fullfile(expPath, 'Wheel.velocity.npy'), newpath, 'f');
-catch
-    warning('Failed to write wheel values')
-end
+%% skip writing full wheel traces for now - takes too much space
+% %% Write wheel times, position and velocity
+% wheelValues = block.inputs.wheelValues(:)-block.inputs.wheelValues(1);
+% switch lower(block.rigName)
+%     case {'zrig1', 'zrig2', 'zrig3', 'zrig4',...
+%             'zredone', 'zredtwo', 'zredthree', 'zgreyfour'} % spesh
+%         encRes = 1024;
+%     case {'zym1', 'zym2', 'zym3'}
+%         encRes = 360;
+%     otherwise
+%         encRes = 1024;
+% end
+% wheelValues = wheelValues*(3.1*2*pi/(4*encRes));
+% try
+%     wheelTimes = block.inputs.wheelTimes(:);
+%     wheelTimes = wheelTimes-block.events.expStartTimes;
+%     alf.writeTimeseries(expPath, 'Wheel', wheelTimes, [], []);
+%     movefile(fullfile(expPath, 'Wheel.timestamps.npy'), newpath, 'f');
+%     writeNPY(wheelValues, fullfile(expPath, 'Wheel.position.npy'));
+%     movefile(fullfile(expPath, 'Wheel.position.npy'), newpath, 'f');
+%     writeNPY(wheelValues./wheelTimes, fullfile(expPath, 'Wheel.velocity.npy'));
+%     movefile(fullfile(expPath, 'Wheel.velocity.npy'), newpath, 'f');
+% catch
+%     warning('Failed to write wheel values')
+% end
 
 %% end of writing to numpy
-disp('Writing to ALF format completed, now trying to register to Alyx');
+% disp('Writing to ALF format completed, now trying to register to Alyx');
+return; 
 
 %% Registration
 try

@@ -1,4 +1,4 @@
-function alldata = readAlf_allData()
+function alldata = readAlf_allData(useSubjects)
 % READ ALL ALF DATA INTO ONE MASSIVE DATAFRAME
 
 if ~exist('datapath', 'var'),
@@ -25,6 +25,11 @@ for l = 1:length(labs),
     subjects(ismember(subjects, {'exampleSubject'})) = [];
     subjects(ismember(subjects, {'180409'})) = [];
     
+    % only select a subset if this input arg was given
+    if exist('useSubjects', 'var'),
+        subjects = subjects(ismember(subjects, useSubjects));
+    end
+    
     %% LOOP OVER SUBJECTS, DAYS AND SESSIONS
     for sjidx = 1:length(subjects),
         if ~isdir(fullfile(mypath, subjects{sjidx})), continue; end
@@ -46,12 +51,11 @@ for l = 1:length(labs),
                     continue;
                 end
                 
-                if ismember(subjects{sjidx}, {'4577', '4579'}),
-                   % assert(1==0);
-                end
-                
                 % add some info for the full table
                 if ~isempty(data),
+                    
+                    % ADD SOME BLANKS FOR EASIER VISUALISATION OF SESSION BOUNDARIES
+                    data = [data; array2table(nan(20, width(data)), 'variablenames', data.Properties.VariableNames)];
                     
                     % comment Zach on 18 May: cities more salient than institutions
                     switch data.Properties.UserData.lab
@@ -72,6 +76,9 @@ for l = 1:length(labs),
                     data.dayidx_rev     = repmat(dayidx-length(days), height(data), 1);
                     data.session        = repmat(data.Properties.UserData.session, height(data), 1);
                     
+                    % add a string for dates, easier to plot as title
+                    data.datestr = arrayfun(@(x) datestr(x, 'yyyy-mm-dd'), data.date, 'un', 0);
+                    
                     % keep for appending
                     alldata{end+1}      = data;
                 end
@@ -83,10 +90,7 @@ end
 % put all the data in one large table
 alldata = cat(1, alldata{:});
 % remove those trials that are marked in signals as 'not to be included'
-alldata = alldata(alldata.inclTrials == 1, :);
-
-% add a string for dates, easier to plot as title
-data.datestr = arrayfun(@(x) datestr(x, 'yyyy-mm-dd'), data.date, 'un', 0);
+alldata(alldata.inclTrials == 0, :) = [];
 
 end
 
