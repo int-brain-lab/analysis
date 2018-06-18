@@ -1,4 +1,4 @@
-function alldata = readAlf_allData(useSubjects)
+function alldata = readAlf_allData(datapath, useSubjects)
 % READ ALL ALF DATA INTO ONE MASSIVE DATAFRAME
 
 if ~exist('datapath', 'var'),
@@ -7,9 +7,9 @@ if ~exist('datapath', 'var'),
     switch usr
         case 'anne'
             datapath = '/Users/anne/Google Drive/IBL_DATA_SHARE';
+        otherwise
+            datapath = uigetdir('', 'Where is the Google Drive (IBL_DATA_SHARE) folder?');
     end
-else % ask the user for input
-    datapath = uigetdir('', 'Where is the IBL_DATA_SHARE folder?');
 end
 
 % iterate over the different labs
@@ -77,7 +77,7 @@ for l = 1:length(labs),
                     data.session        = repmat(data.Properties.UserData.session, height(data), 1);
                     
                     % add a string for dates, easier to plot as title
-                    data.datestr = arrayfun(@(x) datestr(x, 'yyyy-mm-dd'), data.date, 'un', 0);
+                    data.datestr        = arrayfun(@(x) datestr(x, 'yyyy-mm-dd'), data.date, 'un', 0);
                     
                     % keep for appending
                     alldata{end+1}      = data;
