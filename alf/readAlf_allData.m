@@ -1,7 +1,7 @@
 function alldata = readAlf_allData(datapath, useSubjects)
 % READ ALL ALF DATA INTO ONE MASSIVE DATAFRAME
 
-if ~exist('datapath', 'var'),
+if ~exist('datapath', 'var') || isempty(datapath),
     % without inputs, make some informed guesses about the most likely user
     usr = getenv('USER');
     switch usr
