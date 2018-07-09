@@ -82,6 +82,16 @@ else
     outp.highRewardSide = nan(size(outp.response));
 end
 
+% in shaping, code for block type
+if exist(sprintf('%s/stimOn.blockType.npy', foldername), 'file'),
+    outp.blocktype       = readNPY(sprintf('%s/stimOn.blockType.npy', foldername));
+    if ~iscolumn(outp.blocktype),
+        outp.blocktype = outp.blocktype';
+    end
+else
+    outp.blocktype = nan(size(outp.response));
+end
+
 % if this doesn't look like a proper session, return empty
 if all(isnan(outp.response)) || length(outp.response) < 10,
     outp = [];

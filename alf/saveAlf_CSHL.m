@@ -11,13 +11,34 @@ function saveAlf_CSHL(subjects)
 % 13 April: save contrast in %
 % 13 Apri: temporary, remove wheel timestamps to save space
 
+if ~exist('subjects', 'var'),
+    subjects = {'CK_1', 'CK_2', 'CK_4', 'IBL_1','IBL_2','IBL_3', 'IBL_4', ...
+        'IBL_5','IBL_6','IBL_7','IBL_8','IBL_9','IBL_10', 'IBL_11', 'IBL_12'};
+end
+
 addpath('\\NEW-9SE8HAULSQE\Users\IBL_Master\Documents\IBLData_Shared\code\alyx-matlab-master');
 addpath('\\NEW-9SE8HAULSQE\Users\IBL_Master\Documents\IBLData_Shared\code\npy-matlab-master');
 
 %% TODO: MAKE SURE THE PYTHON PATH IS THE ONE THAT'S LINKED TO GOOGLE DRIVE ON THE RIG PC
 global matlabPath pythonPath
-matlabPath = '\\NEW-9SE8HAULSQE\Users\IBL_Master\Documents\IBLData_Shared\data\subjects';
-pythonPath = '\\NEW-9SE8HAULSQE\Users\IBL_Master\Google Drive\CSHL\Subjects';
+if ispc,
+    usr = getenv('USERNAME');
+    homedir = getenv('USERPROFILE');
+elseif ismac,
+    usr = getenv('USER');
+    homedir = getenv('HOME');
+end
+
+switch usr
+    case 'Tony' % Chris' rig
+        matlabPath = '\\STIMULUS1\LocalExpData\subjects'; % not under home dir
+        pythonPath = fullfile(homedir, 'Google Drive\CSHL\Subjects');
+    case 'IBL_Master' % Val's rig
+        matlabPath = fullfile(homedir, 'Documents\IBLData_Shared\data\subjects');
+        pythonPath = fullfile(homedir, 'Google Drive\CSHL\Subjects');
+    case 'anne' % Anne's laptop
+        pythonPath = fullfile(homedir, 'Google Drive', 'IBL_DATA_SHARE', 'CSHL', 'Subjects');
+end
 
 if ~isdir(pythonPath), mkdir(pythonPath); disp('Creating a new directory for ALF files'); end
 
@@ -51,7 +72,7 @@ if ~exist(newpath, 'dir'),
     mkdir(newpath); fprintf('Created directory %s \n', newpath);
 else
     fprintf('Directory %s already exists, skipping \n', newpath);
-      return
+    return
 end
 
 % GET THE DATA FROM THE MATLAB FOLDER
@@ -68,9 +89,11 @@ end
 expDef = getOr(block, 'expDef', []);
 if isempty(expDef); return; end
 [~, expDef] = fileparts(expDef);
-if ~contains(lower(expDef), 'choiceworld') || ~isfield(block, 'events') || length(block.events.newTrialValues) < 10 || isempty(block.outputs.rewardValues)
+%if ~contains(lower(expDef), 'choiceworld') || ~isfield(block, 'events') || length(block.events.newTrialValues) < 10 || isempty(block.outputs.rewardValues)
+if ~isfield(block, 'events') || length(block.events.newTrialValues) < 10 || isempty(block.outputs.rewardValues)
     return
 end
+disp(expDef);
 
 %% Write response
 response = getOr(block.events, 'responseValues', NaN);
@@ -82,7 +105,9 @@ if contains(lower(block.expDef), {'basic' 'vanilla'})
     response((side==-1&hits==1)|(side==1&hits==0)) = 1;
     response((side==1&hits==1)|(side==-1&hits==0)) = 2;
 end
-if min(response) == -1
+
+% recode
+if min(response) == -1 || max(response) == 1,
     response(response == 0) = 3;
     response(response == 1) = 2;
     response(response == -1) = 1;
@@ -128,12 +153,44 @@ if all(isnan(contL)&isnan(contR))
         contL(side==1) = 0;
         contR(side==1) = contrasts(side==1);
         contR(side==-1) = 0;
+        
+    elseif contains(lower(block.expDef), {'ramp', 'blockflickerworld', ...
+            lower('centerStimWorldBlockSwitch'), 'pilot', lower('automaticBlockWorld')})
+        if isfield(block.events, 'targetValues'),
+            if length(block.events.targetValues) > 1.5*length(block.events.responseValues),
+                if ((length(block.events.targetValues) == 2*length(block.events.responseValues) + 1) ...
+                        || (length(block.events.targetValues) == 2*length(block.events.responseValues)))
+                    target1 = block.events.targetValues(1:2:end);
+                    target2 = block.events.targetValues(2:2:end);
+                    contR = target1;
+                else
+                    % for centerStimWorldBlockSwitch, ignore targetValues and
+                    % reconstruct from response + feedback instead
+                    
+                    warning('reconstructing stimulus from response and feedback');
+                    contR = block.events.responseValues;
+                    contR(block.events.feedbackValues == 0) = -contR(block.events.feedbackValues == 0);
+                end
+            else
+                contR = block.events.targetValues;
+            end
+        elseif isfield(block.events, 'stimoriValues'),
+            contR = - block.events.stimoriValues;
+        else
+            % if the orientation was consistent within a session (first 2
+            % days of thresholdRamp training), reconstruct the correct side
+            contrast = parameters.stimulusOrientation;
+            if all(contrast > 0), contrast = contrast - 90; end
+            contR = -sign(contrast) * ones(size(block.events.stimulusOnTimes));
+        end
+        contL = zeros(size(contR));
     else
         contrasts = [block.paramsValues.stimulusContrast];
         contL = contrasts(1,:);
         contR = contrasts(2,:);
     end
 end
+signedContrast = contR - contL; % for comparison of what was correct later
 
 try
     writeNPY(contL(1:length(responseTimes))*100, fullfile(expPath, 'cwStimOn.contrastLeft.npy'));
@@ -144,10 +201,16 @@ catch
     warning('No ''contrastLeft'' and/or ''contrastRight'' events recorded, cannot register to Alyx')
 end
 
+%% write block type
+if contains(lower(block.expDef), {'random'})
+    writeNPY(block.events.stimoriValues, fullfile(expPath, 'cwStimOn.blockType.npy'));
+    movefile(fullfile(expPath, 'cwStimOn.blockType.npy'), newpath, 'f');
+end
+ 
 %% Write go cue
 interactiveOn = getOr(block.events, 'interactiveOnTimes', NaN);
 if isnan(interactiveOn)
-    interactiveOn = [block.events.stimulusOnTimes]+[block.paramsValues.interactiveDelay];
+    interactiveOn = [block.events.stimulusOnTimes]+unique([block.paramsValues(:).interactiveDelay]);
 end
 
 if length(interactiveOn) > length(responseTimes),
@@ -178,6 +241,7 @@ end
 feedbackTimes = feedbackTimes-block.events.expStartTimes;
 
 if length(feedbackTimes) > length(responseTimes),
+    disp('taking only some of the feedback values');
     % find only those feedback events that occur briefly after a response
     useFbTimes      = dsearchn(feedbackTimes', responseTimes');
     feedbackTimes   = feedbackTimes(useFbTimes);
@@ -186,7 +250,26 @@ elseif length(feedbackTimes) < length(responseTimes),
     feedbackTimes = [feedbackTimes NaN];
 end
 assert(~any(responseTimes > feedbackTimes), 'feedback cannot precede response');
-%%
+
+%% important: check if everything that was encoded makes sense...
+if length(response) > length(signedContrast) 
+    response = response(1:end-1);
+end
+signedContrast = signedContrast(1:length(response));
+correct = (sign(signedContrast) == sign(response - 1.5));
+% for all stimuli with a visible contrast, make sure correct matches the
+% feedback that was delivered
+if ~all(correct(signedContrast > 0) == (feedback (signedContrast > 0) > 0))
+    if crosstab(correct(signedContrast > 0), feedback(signedContrast > 0)) == 1,
+        warning('flipped stimulus-response mapping');
+    elseif nanmean(correct(signedContrast > 0) == (feedback (signedContrast > 0) > 0)) >= 0.8,
+        warning('correct and feedback match %.2f%%', 100*nanmean(correct(signedContrast > 0) == (feedback (signedContrast > 0) > 0)));
+    elseif ismember(expDef, {'pilot2'}),
+    else
+        wrongIdx = find(correct(signedContrast > 0) ~= (feedback (signedContrast > 0) > 0))
+       % error('correct and feedback do not match');
+    end
+end
 
 try
     writeNPY(feedback(:), fullfile(expPath, 'cwFeedback.type.npy'));
@@ -240,13 +323,6 @@ end
 if exist(fullfile(expPath, 'cwReward.times.npy'), 'file'),
     delete(fullfile(expPath, 'cwReward.times.npy'));
 end
-
-signedContrast = contR - contL;
-signedContrast = signedContrast(1:length(response));
-correct = (sign(signedContrast) == sign(response - 1.5));
-
-assert(all(reward(correct == 1 & abs(signedContrast) > 0) > 0), 'error encoding reward delivery');
-assert(all(reward(correct == 0 & abs(signedContrast) > 0) == 0), 'error encoding reward delivery')
 
 %% basicChoiceWorld2: highRewardSide
 if isfield(block.events, 'highRewardSideValues'),
@@ -318,7 +394,7 @@ end
 
 %% end of writing to numpy
 % disp('Writing to ALF format completed, now trying to register to Alyx');
-return; 
+return;
 
 %% Registration
 try

@@ -43,7 +43,7 @@ for l = 1:length(labs),
             for sessionidx = 1:length(sessions),
                 
                 
-                %% READ DATA FOR THIS ANIMAL, DAY AND SESSION
+                % READ DATA FOR THIS ANIMAL, DAY AND SESSION
                 try
                     data = readAlf(sprintf('%s/%s', sessions(sessionidx).folder, sessions(sessionidx).name));
                 catch
