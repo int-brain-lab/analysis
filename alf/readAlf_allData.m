@@ -3,22 +3,24 @@ function alldata = readAlf_allData(datapath, useSubjects)
 
 if ~exist('datapath', 'var') || isempty(datapath),
     % without inputs, make some informed guesses about the most likely user
-    usr = getenv('USER');
-    switch usr
-        case 'anne'
-            datapath = '/Users/anne/Google Drive/IBL_DATA_SHARE';
-        otherwise
-            datapath = uigetdir('', 'Where is the Google Drive (IBL_DATA_SHARE) folder?');
+    if ispc,
+        usr = getenv('USERNAME');
+        homedir = getenv('USERPROFILE');
+        datapath = fullfile(homedir, 'Google Drive');
+    elseif ismac,
+        usr = getenv('USER');
+        homedir = getenv('HOME');
+        datapath = fullfile(homedir, 'Google Drive', 'IBL_DATA_SHARE');
     end
 end
 
 % iterate over the different labs
-labs            = {'CSHL/Subjects', 'CCU/Subjects', 'UCL/Subjects'};
+labs            = {'CSHL', 'CCU', 'UCL'};
 alldata         = {};
 
 for l = 1:length(labs),
     
-    mypath    = sprintf('%s/%s/', datapath, labs{l});
+    mypath    = fullfile(datapath, labs{l}, 'Subjects');
     subjects  = nohiddendir(mypath);
     subjects  = {subjects.name};
     subjects(ismember(subjects, {'default'})) = [];
@@ -42,10 +44,9 @@ for l = 1:length(labs),
             sessions = nohiddendir(fullfile(days(dayidx).folder, days(dayidx).name)); % make sure that date folders start with year
             for sessionidx = 1:length(sessions),
                 
-                
                 % READ DATA FOR THIS ANIMAL, DAY AND SESSION
                 try
-                    data = readAlf(sprintf('%s/%s', sessions(sessionidx).folder, sessions(sessionidx).name));
+                    data = readAlf(fullfile(sessions(sessionidx).folder, sessions(sessionidx).name));
                 catch
                     warning('Failed to read %s/%s \n', sessions(sessionidx).folder, sessions(sessionidx).name)
                     continue;

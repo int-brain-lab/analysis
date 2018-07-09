@@ -28,24 +28,24 @@ fprintf('Reading Alf folder %s \n', foldername);
 
 try
     % READ IN ALL THE RELEVANT FILES
-    outp.stimOnTime         = readNPY(sprintf('%s/cwStimOn.times.npy', foldername));
-    outp.contrastLeft       = readNPY(sprintf('%s/cwStimOn.contrastLeft.npy', foldername));
-    outp.contrastRight      = readNPY(sprintf('%s/cwStimOn.contrastRight.npy', foldername));
+    outp.stimOnTime         = readNPY(fullfile(foldername, 'cwStimOn.times.npy'));
+    outp.contrastLeft       = readNPY(fullfile(foldername, 'cwStimOn.contrastLeft.npy'));
+    outp.contrastRight      = readNPY(fullfile(foldername, 'cwStimOn.contrastRight.npy'));
     outp.signedContrast     = -outp.contrastLeft + outp.contrastRight;
     
-    outp.goCueTime          = readNPY(sprintf('%s/cwGoCue.times.npy', foldername)); % what's the go cue? auditory?
+    outp.goCueTime          = readNPY(fullfile(foldername, 'cwGoCue.times.npy')); % what's the go cue? auditory?
     
-    outp.responseOnTime     = readNPY(sprintf('%s/cwResponse.times.npy', foldername));
-    outp.response           = readNPY(sprintf('%s/cwResponse.choice.npy', foldername));
+    outp.responseOnTime     = readNPY(fullfile(foldername, 'cwResponse.times.npy'));
+    outp.response           = readNPY(fullfile(foldername, 'cwResponse.choice.npy'));
     outp.response(outp.response == 1)  = -1;
     outp.response(outp.response == 2)  = 1;
     
-    outp.feedbackOnTime     = readNPY(sprintf('%s/cwFeedback.times.npy', foldername));
-    outp.correct            = readNPY(sprintf('%s/cwFeedback.type.npy', foldername));
+    outp.feedbackOnTime     = readNPY(fullfile(foldername, 'cwFeedback.times.npy'));
+    outp.correct            = readNPY(fullfile(foldername, 'cwFeedback.type.npy'));
     outp.correct            = (outp.correct > 0);
     
     % only include trials that were not a repeat
-    outp.inclTrials         = readNPY(sprintf('%s/cwTrials.inclTrials.npy', foldername));
+    outp.inclTrials         = readNPY(fullfile(foldername, 'cwTrials.inclTrials.npy'));
 
 catch
     % if for some reason not all the files are readable, return empty
@@ -55,11 +55,11 @@ catch
 end
 
 % rewardVolume is written in different ways...
-if exist(sprintf('%s/cwFeedback.rewardVolume.npy', foldername), 'file'),
-    outp.rewardVolume       = readNPY(sprintf('%s/cwFeedback.rewardVolume.npy', foldername));
+if exist(fullfile(foldername, 'cwFeedback.rewardVolume.npy'), 'file'),
+    outp.rewardVolume       = readNPY(fullfile(foldername, 'cwFeedback.rewardVolume.npy'));
 elseif exist(sprintf('%s/cwReward.type.npy', foldername), 'file'),
     % also read in the older way - at some point correct these filenames
-    outp.rewardVolume       = readNPY(sprintf('%s/cwReward.type.npy', foldername));
+    outp.rewardVolume       = readNPY(fullfile(foldername, 'cwReward.type.npy'));
 else
     outp.rewardVolume = nan(size(outp.response));
 end
@@ -83,8 +83,8 @@ else
 end
 
 % in shaping, code for block type
-if exist(sprintf('%s/stimOn.blockType.npy', foldername), 'file'),
-    outp.blocktype       = readNPY(sprintf('%s/stimOn.blockType.npy', foldername));
+if exist(fullfile(foldername, 'stimOn.blockType.npy'), 'file'),
+    outp.blocktype       = readNPY(fullfile(foldername, 'stimOn.blockType.npy'));
     if ~iscolumn(outp.blocktype),
         outp.blocktype = outp.blocktype';
     end
