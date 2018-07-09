@@ -84,12 +84,12 @@ end
 
 % in shaping, code for block type
 if exist(fullfile(foldername, 'stimOn.blockType.npy'), 'file'),
-    outp.blocktype       = readNPY(fullfile(foldername, 'stimOn.blockType.npy'));
-    if ~iscolumn(outp.blocktype),
-        outp.blocktype = outp.blocktype';
+    outp.blockType       = readNPY(fullfile(foldername, 'stimOn.blockType.npy'));
+    if ~iscolumn(outp.blockType),
+        outp.blockType = outp.blockType';
     end
 else
-    outp.blocktype = nan(size(outp.response));
+    outp.blockType = nan(size(outp.response));
 end
 
 % if this doesn't look like a proper session, return empty
