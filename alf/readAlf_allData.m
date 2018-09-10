@@ -15,12 +15,12 @@ if ~exist('datapath', 'var') || isempty(datapath),
 end
 
 % iterate over the different labs
-labs            = {'CSHL', 'CCU', 'UCL'};
+labs            = {'CSHL/Subjects', 'CCU/Subjects', 'UCL/Subjects'};
 alldata         = {};
 
 for l = 1:length(labs),
     
-    mypath    = fullfile(datapath, labs{l}, 'Subjects');
+    mypath    = fullfile(datapath, labs{l});
     subjects  = nohiddendir(mypath);
     subjects  = {subjects.name};
     subjects(ismember(subjects, {'default'})) = [];
@@ -57,21 +57,23 @@ for l = 1:length(labs),
                     
                     % ADD SOME BLANKS FOR EASIER VISUALISATION OF SESSION BOUNDARIES
                     data = [data; array2table(nan(20, width(data)), 'variablenames', data.Properties.VariableNames)];
+                    data{:, 'animal'}   = {data.Properties.UserData.animal};
                     
-                    % comment Zach on 18 May: cities more salient than institutions
-                    switch data.Properties.UserData.lab
-                        case 'CSHL'
-                            place = ' NY (CSHL)';
-                        case 'CCU'
-                            place = 'Lisbon (CCU)';
-                        case 'UCL'
-                            place = 'London (UCL)';
+                    try
+                        % comment Zach on 18 May: cities more salient than institutions
+                        switch data.Properties.UserData.lab
+                            case 'CSHL'
+                                place = ' NY (CSHL)';
+                            case 'CCU'
+                                place = 'Lisbon (CCU)';
+                            case 'UCL'
+                                place = 'London (UCL)';
+                        end
+                        data{:, 'lab'}      = {place};
+                        data{:, 'name'}     = {cat(2, place, ' ', data.Properties.UserData.animal)};
+                        
                     end
                     
-                    data{:, 'animal'}   = {data.Properties.UserData.animal};
-                    data{:, 'lab'}      = {place};
-                    
-                    data{:, 'name'}     = {cat(2, place, ' ', data.Properties.UserData.animal)};
                     data.date           = repmat(datetime(data.Properties.UserData.date), height(data), 1);
                     data.dayidx         = repmat(dayidx, height(data), 1);
                     data.dayidx_rev     = repmat(dayidx-length(days), height(data), 1);
@@ -90,8 +92,11 @@ end
 
 % put all the data in one large table
 alldata = cat(1, alldata{:});
-% remove those trials that are marked in signals as 'not to be included'
-alldata(alldata.inclTrials == 0, :) = [];
+
+if ~isempty(alldata),
+    % remove those trials that are marked in signals as 'not to be included'
+    % alldata(alldata.inclTrials == 0, :) = [];
+end
 
 end
 

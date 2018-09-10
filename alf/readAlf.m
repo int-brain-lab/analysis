@@ -13,7 +13,7 @@ if ~exist('foldername', 'var') || (exist('foldername', 'var') && isempty(foldern
 end
 
 % skip the 'default' subjects
-if strfind(foldername, 'default') | strfind(foldername, 'exampleSubject'),
+if ismember(foldername, {'default', 'exampleSubject'}), % strfind(foldername, 'default') || strfind(foldername, 'exampleSubject'),
     outp = [];
     warning('skipping %s \n', foldername);
     return;
@@ -39,6 +39,7 @@ try
     outp.response           = readNPY(fullfile(foldername, 'cwResponse.choice.npy'));
     outp.response(outp.response == 1)  = -1;
     outp.response(outp.response == 2)  = 1;
+    outp.response(outp.response == 3)  = 0;
     
     outp.feedbackOnTime     = readNPY(fullfile(foldername, 'cwFeedback.times.npy'));
     outp.correct            = readNPY(fullfile(foldername, 'cwFeedback.type.npy'));
@@ -46,12 +47,33 @@ try
     
     % only include trials that were not a repeat
     outp.inclTrials         = readNPY(fullfile(foldername, 'cwTrials.inclTrials.npy'));
-
+    
 catch
-    % if for some reason not all the files are readable, return empty
-    outp = [];
-    warning('Failed to read %s \n', foldername);
-    return;
+    
+    try
+        % NEW ALF FORMAT
+        outp.stimOnTime         = readNPY(fullfile(foldername, '_misc_trials.stimOn_times.times.npy'));
+        outp.contrastLeft       = readNPY(fullfile(foldername, '_misc_trials.contrastLeft.npy'));
+        outp.contrastRight      = readNPY(fullfile(foldername, '_misc_trials.contrastRight.npy'));
+        outp.signedContrast     = outp.contrastLeft - outp.contrastRight;
+        
+        outp.goCueTime          = readNPY(fullfile(foldername, '_misc_trials.goCue_times.times.npy')); % what's the go cue? auditory?
+        
+        outp.responseOnTime     = readNPY(fullfile(foldername, '_misc_trials.response_times.times.npy'));
+        outp.response           = readNPY(fullfile(foldername, '_misc_trials.choice.npy'));
+        
+        outp.feedbackOnTime     = readNPY(fullfile(foldername, '_misc_trials.feedback_times.times.npy'));
+        outp.correct            = readNPY(fullfile(foldername, '_misc_trials.feedbackType.npy'));
+        outp.correct            = (outp.correct > 0);
+        
+        % only include trials that were not a repeat
+        outp.inclTrials         = readNPY(fullfile(foldername, '_misc_trials.included.npy'));
+    catch
+        % if for some reason not all the files are readable, return empty
+        outp = [];
+        warning('Failed to read %s \n', foldername);
+        return;
+    end
 end
 
 % rewardVolume is written in different ways...
@@ -70,9 +92,6 @@ end
 % in basicChoiceWorld2, also code for highRewardSide
 if exist(sprintf('%s/cwFeedback.highRewardSide.npy', foldername), 'file'),
     outp.highRewardSide       = readNPY(sprintf('%s/cwFeedback.highRewardSide.npy', foldername));
-    if ~iscolumn(outp.highRewardSide),
-        outp.highRewardSide = outp.highRewardSide';
-    end
 end
 if isfield(outp, 'highRewardSide'),
     % if there is a highRewardSize file present, confirm that it makes sense
@@ -83,11 +102,8 @@ else
 end
 
 % in shaping, code for block type
-if exist(fullfile(foldername, 'stimOn.blockType.npy'), 'file'),
-    outp.blockType       = readNPY(fullfile(foldername, 'stimOn.blockType.npy'));
-    if ~iscolumn(outp.blockType),
-        outp.blockType = outp.blockType';
-    end
+if exist(fullfile(foldername, 'cwStimOn.blockType.npy'), 'file'),
+    outp.blockType = readNPY(fullfile(foldername, 'cwStimOn.blockType.npy'));
 else
     outp.blockType = nan(size(outp.response));
 end
