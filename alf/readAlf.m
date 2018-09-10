@@ -69,10 +69,52 @@ catch
         % only include trials that were not a repeat
         outp.inclTrials         = readNPY(fullfile(foldername, '_misc_trials.included.npy'));
     catch
-        % if for some reason not all the files are readable, return empty
-        outp = [];
-        warning('Failed to read %s \n', foldername);
-        return;
+        try
+            outp.stimOnTime         = readNPY(fullfile(foldername, '_ibl_trials.stimOn_times.npy'));
+            outp.contrastLeft       = readNPY(fullfile(foldername, '_ibl_trials.contrastLeft.npy'));
+            outp.contrastRight      = readNPY(fullfile(foldername, '_ibl_trials.contrastRight.npy'));
+            outp.signedContrast     = outp.contrastLeft - outp.contrastRight;
+            
+            outp.goCueTime          = readNPY(fullfile(foldername, '_ibl_trials.goCue_times.npy')); % what's the go cue? auditory?
+            
+            outp.responseOnTime     = readNPY(fullfile(foldername, '_ibl_trials.response_times.npy'));
+            outp.response           = readNPY(fullfile(foldername, '_ibl_trials.choice.npy'));
+            
+            outp.feedbackOnTime     = readNPY(fullfile(foldername, '_ibl_trials.feedback_times.npy'));
+            outp.correct            = readNPY(fullfile(foldername, '_ibl_trials.feedbackType.npy'));
+            outp.correct            = (outp.correct > 0);
+            
+            % only include trials that were not a repeat
+            outp.inclTrials         = readNPY(fullfile(foldername, '_ibl_trials.included.npy'));
+            
+        catch
+            
+            try
+                
+                outp.stimOnTime         = readNPY(fullfile(foldername, '_ibl_trials.stimOn_times.times.npy'));
+                outp.contrastLeft       = readNPY(fullfile(foldername, '_ibl_trials.contrastLeft.npy'));
+                outp.contrastRight      = readNPY(fullfile(foldername, '_ibl_trials.contrastRight.npy'));
+                outp.signedContrast     = outp.contrastLeft - outp.contrastRight;
+                
+                outp.goCueTime          = readNPY(fullfile(foldername, '_ibl_trials.goCue_times.times.npy')); % what's the go cue? auditory?
+                
+                outp.responseOnTime     = readNPY(fullfile(foldername, '_ibl_trials.response_times.times.npy'));
+                outp.response           = readNPY(fullfile(foldername, '_ibl_trials.choice.npy'));
+                
+                outp.feedbackOnTime     = readNPY(fullfile(foldername, '_ibl_trials.feedback_times.times.npy'));
+                outp.correct            = readNPY(fullfile(foldername, '_ibl_trials.feedbackType.npy'));
+                outp.correct            = (outp.correct > 0);
+                
+                % only include trials that were not a repeat
+                outp.inclTrials         = readNPY(fullfile(foldername, '_ibl_trials.included.npy'));
+                
+            catch
+                % if for some reason not all the files are readable, return empty
+                outp = [];
+                warning('Failed to read %s \n', foldername);
+                return;
+            end
+        end
     end
 end
 

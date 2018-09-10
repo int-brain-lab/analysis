@@ -24,24 +24,20 @@ batches(1).mice = {'IBL_28', 'IBL_29', 'IBL_30', 'IBL_31', 'IBL_32'};
 
 batches(end+1).name = {'choiceWorld'};
 batches(end).mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
-    'IBL_2b', 'IBL_4b', 'IBL_5b', 'IBL_7b',  'IBL_9b'};
+    'IBL_2b', 'IBL_4b', 'IBL_5b', 'IBL_7b',  'IBL_9b', ...
+    '6722', '6723', '6724', '6725', '6726', 'ALK081', 'LEW008'};
 
 batches(end+1).name = {'choiceWorld_orientation'};
 batches(end).mice = {'IBL_38', 'IBL_39', 'IBL_40', 'IBL_41', 'IBL_42'};
 
 batches(end+1).name = {'choiceWorld_1screen'};
-batches(end).mice = {'IBL_1b', 'IBL_3b', 'IBL_6b', 'IBL_8b',  'IBL_10b'};
+batches(end).mice = {'IBL_1b', 'IBL_3b', 'IBL_6b', 'IBL_8b',  'IBL_10b', ...
+    'LEW009', 'LEW010'};
 
 batches(end+1).name = {'choiceWorld_bigstim'};
 batches(end).mice = {'IBL_11b', 'IBL_12b'};
 
-batches(end+1).name = {'choiceWorld'};
-batches(end).mice = {'6722', '6723', '6724', '6725', '6726'};
-
-batches(end+1).name = {'choiceWorld'};
-batches(end).mice = {'ALK081', 'LEW008', 'LEW009', 'LEW010'};
-
-for bidx = length(batches):-1:length(batches)-1,
+for bidx = length(batches):-1:1,
     for m = 1:length(batches(bidx).mice),
         
         close all;
@@ -134,23 +130,25 @@ for bidx = length(batches):-1:length(batches)-1,
             splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
             splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
             'capsize', 0, 'color', 'k');
-        hline(50);
         xlabel('Days'); ylabel({'Performance (%)' 'on >50% contrast' 'repeat trials excluded'});
-        set(gca, 'xtick', unique(data_all.dayidx), 'xticklabel', datestr(unique(data_all.date)), 'xticklabelrotation', -30);
+        set(gca, 'xtick', unique(data_all.dayidx)); xlabel('Days');
         % try offsetAxes; end
-        box off; ylim([0 100]); xlim([0 max(data_all.dayidx)]);
+        box off; ylim([0 100]); xlim([0 max(data_all.dayidx)+1]);
+        hline(50); hline(75);
         
         subplot(4,4,[15 16]);
         plot(unique(data_all.dayidx), splitapply(@(x,y) (dpr(x,y, 'dprime')), ...
             sign(data_all.signedContrast(useTrls)), data_all.response(useTrls), findgroups(data_all.dayidx(useTrls))));
-        set(gca, 'xtick', unique(data_all.dayidx), 'xticklabel', datestr(unique(data_all.date)), 'xticklabelrotation', -30);
+        set(gca, 'xtick', unique(data_all.dayidx));
         xlim([0 max(data_all.dayidx)+1]); ylabel('D''');
+        ylim([min([0 min(get(gca, 'ylim'))]) max([2 max(get(gca, 'ylim'))])]); hline(1);
         
         yyaxis right;
         plot(unique(data_all.dayidx), splitapply(@(x,y) (dpr(x,y, 'criterion')), ...
             sign(data_all.signedContrast(useTrls)), data_all.response(useTrls), findgroups(data_all.dayidx(useTrls))));
-          set(gca, 'xtick', unique(data_all.dayidx), 'xticklabel', datestr(unique(data_all.date)), 'xticklabelrotation', -30);
-        xlim([0 max(data_all.dayidx)+1]); ylabel('Criterion');
+          set(gca, 'xtick', unique(data_all.dayidx));
+        xlim([0 max(data_all.dayidx)+1]); ylabel('Criterion'); xlabel('Days');
+        ylim([-1 1]);
         
         %% save
         titlestr = sprintf('Lab %s, task %s, mouse %s', data.Properties.UserData.lab, ...
@@ -160,7 +158,7 @@ for bidx = length(batches):-1:length(batches)-1,
         foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-11');
         if ~exist(foldername, 'dir'), mkdir(foldername); end
         print(gcf, '-dpdf', fullfile(foldername, sprintf('%s_%s_%s_%s.pdf', datestr(now, 'yyyy-mm-dd'), ...
-            batches(bidx).name{1}, data.Properties.UserData.lab, batches(bidx).mice{m})));
+            data.Properties.UserData.lab, batches(bidx).name{1}, batches(bidx).mice{m})));
         
     end
 end
