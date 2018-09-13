@@ -143,6 +143,13 @@ else
     outp.highRewardSide = nan(size(outp.response));
 end
 
+% IN BIASED CHOICEWORLD, CODE FOR THE PROBABILITY THAT THE STIMULUS APPEARS LEFT
+if exist(sprintf('%s/cwStimOn.probabilityLeft.npy', foldername), 'file'),
+    outp.probabilityLeft = readNPY(fullfile(foldername, 'cwStimOn.probabilityLeft.npy'));
+else
+    outp.probabilityLeft = nan(size(outp.response));
+end
+
 % in shaping, code for block type
 if exist(fullfile(foldername, 'cwStimOn.blockType.npy'), 'file'),
     outp.blockType = readNPY(fullfile(foldername, 'cwStimOn.blockType.npy'));

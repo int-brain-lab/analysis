@@ -23,7 +23,7 @@ batches(1).name = {'centralOrientation_Glickfeld'};
 batches(1).mice = {'IBL_28', 'IBL_29', 'IBL_30', 'IBL_31', 'IBL_32'};
 
 batches(end+1).name = {'choiceWorld'};
-batches(end).mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+batches(end).mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ... 
     'IBL_2b', 'IBL_4b', 'IBL_5b', 'IBL_7b',  'IBL_9b', ...
     '6722', '6723', '6724', '6725', '6726', 'ALK081', 'LEW008'};
 
@@ -41,7 +41,6 @@ for bidx = length(batches):-1:1,
     for m = 1:length(batches(bidx).mice),
         
         close all;
-        set(gcf,'defaultAxesColorOrder',[0 0 0; 0.7 0.7 0.7]);
         data_all = readAlf_allData(datapath, batches(bidx).mice{m});
         data_clean_all = data_all(data_all.inclTrials ~= 0, :);
         
@@ -56,29 +55,63 @@ for bidx = length(batches):-1:1,
             
             %% top: psychometric function
             subplot(4,4,didx);
-            try
-            errorbar(unique(data_clean.signedContrast(~isnan(data_clean.signedContrast))), ...
-                splitapply(@nanmean, data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
-                splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
-                splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
-                'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 3);
-            catch
-               assert(1==0);
-            end
-            xlabel('Contrast (%)'); if didx == 1, ylabel('P(right)'); end
-            box off;
-            xlim([-105 105]); ylim([0 1]); % offsetAxes;
+            set(gca,'ColorOrder', [0.7 0.7 0.7; 0 0 0]); hold on;
             
             % right y-axis: chronometric function
-            yyaxis right;
-            errorbar(unique(data_clean.signedContrast(~isnan(data_clean.signedContrast))), ...
-                splitapply(@nanmedian, data_clean.rt, findgroups(data_clean.signedContrast)), ...
-                splitapply(@(x) (bootstrappedCI(x, 'median', 'low')), data_clean.rt, findgroups(data_clean.signedContrast)), ...
-                splitapply(@(x) (bootstrappedCI(x, 'median', 'high')), data_clean.rt, findgroups(data_clean.signedContrast)), ...
-                'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2);
-            if didx == 3, ylabel('RT (s)'); end
+            yyaxis left;
+                errorbar(unique(data_clean.signedContrast(~isnan(data_clean.signedContrast))), ...
+                    splitapply(@nanmedian, data_clean.rt, findgroups(data_clean.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'median', 'low')), data_clean.rt, findgroups(data_clean.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'median', 'high')), data_clean.rt, findgroups(data_clean.signedContrast)), ...
+                    'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2);
+            if didx == 1, ylabel('RT (s)'); end
             xlim([-105 105]);
-            title(datestr(unique(data_clean.date))); % show date
+            
+            % add psychometric function
+            yyaxis right;
+            [mu, sigma, gamma, lambda] = fitErf(data_clean.signedContrast, data_clean.response > 0);
+            %psychFuncPred = @(x, mu, sigma, gamma, lambda) gamma+(1-gamma-lambda) * (1./(1+exp(- ( mu + sigma.*x ))));
+            psychFuncPred = @(x, mu, sigma, gamma, lambda) gamma + (1 - gamma - lambda) * (erf( (x-mu)/sigma ) + 1 )/2;
+            
+            y = psychFuncPred(linspace(min(data_clean.signedContrast), max(data_clean.signedContrast), 100), ...
+                mu, sigma, gamma, lambda);
+            plot(linspace(min(data_clean.signedContrast), max(data_clean.signedContrast), 100), y, 'k');
+            
+            % add bootstrapped datapoints
+            if ~all(isnan(data_clean.proportionLeft)),
+                leftProbs = unique(data_clean.proportionLeft);
+                colors = linspecer(numel(leftProbs));
+                for lp = 1:length(leftProbs),
+                    tmpdata = data_clean(data_clean.proportionLeft == leftProbs(lp), :);
+                    errorbar(unique(tmpdata.signedContrast(~isnan(tmpdata.signedContrast))), ...
+                        splitapply(@nanmean, tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                        splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                        splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                        'color', colors(lp, :), 'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2);
+                end
+            else
+                errorbar(unique(data_clean.signedContrast(~isnan(data_clean.signedContrast))), ...
+                    splitapply(@nanmean, data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
+                    'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 3, 'linestyle', 'none');
+            end
+            xlabel('Contrast (%)'); if didx == 3, ylabel('P(right)'); end
+            box off;
+            xlim([-105 105]); ylim([0 1]); % offsetAxes;
+            set(gca, 'yminortick', 'on');
+            
+            % add date and psychometric function parameters
+            if abs(mu)<15 && sigma>15 && gamma<0.2 && lambda<0.2,
+                try titlecol = cbrewer('seq', 'Greens', 6); titlecol = titlecol(end, :);
+                catch; titlecol = [0 1 0]; end
+                fontweigth = 'bold';
+            else
+                titlecol = [0 0 0];
+                fontweigth = 'normal';
+            end
+            title({sprintf('%s, %d trials', datestr(unique(data_clean.date)), numel(data_clean.rt(~isnan(data_clean.rt)))), ...
+                sprintf('\\mu %.2f \\sigma %.2f \\gamma %.2f \\lambda %.2f', mu, sigma, gamma, lambda)}, 'fontweight', fontweigth, 'color', titlecol); % show date
             
             %% middle: RTs over time
             subplot(4,4,didx+4); hold on; colormap(linspecer(2));
@@ -153,7 +186,7 @@ for bidx = length(batches):-1:1,
         %% save
         titlestr = sprintf('Lab %s, task %s, mouse %s', data.Properties.UserData.lab, ...
             batches(bidx).name{1}, batches(bidx).mice{m});
-        try suplabel(titlestr, 't'); end
+        try suplabel(titlestr, 'x'); end
         
         foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-11');
         if ~exist(foldername, 'dir'), mkdir(foldername); end
@@ -188,6 +221,3 @@ switch what
         y = crit;
 end
 end
-
-
-
