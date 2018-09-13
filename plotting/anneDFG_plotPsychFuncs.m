@@ -10,7 +10,13 @@ addpath('~/Google Drive/IBL_DATA_SHARE/CSHL/code');
 
 clear all; close all; clc;
 %eval(gramm_helperfuncs);
-data = readAlf_allData([], {'Myelin', 'Mouse2', 'Axon', 'Arthur', 'M5', 'M6', 'M7'});
+set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
+
+data = readAlf_allData([], {'Myelin', 'Mouse2', 'Axon', 'Arthur', 'M5', 'M6', 'M7', ...
+    'IBL_34', 'IBL_1b'});
+
+% data = readAlf_allData([], {'Myelin', 'Mouse2', 'Axon', 'Arthur', 'M5', 'M6', 'M7'});
+data(data.inclTrials ~= 1, :) = [];
 
 % define a number of handy gramm commands
 custom_psychometric = @(gramm_obj) gramm_obj.stat_fit('fun', @(a,b,g,l,x) g+(1-g-l) * (1./(1+exp(- ( a + b.*x )))),...
