@@ -19,23 +19,23 @@ end
 set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 
 %% overview
-batches(1).name = {'centralOrientation_Glickfeld'};
-batches(1).mice = {'IBL_28', 'IBL_29', 'IBL_30', 'IBL_31', 'IBL_32'};
-
-batches(end+1).name = {'choiceWorld'};
-batches(end).mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ... 
+batches(1).name = {'choiceWorld'};
+batches(1).mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ... 
     'IBL_2b', 'IBL_4b', 'IBL_5b', 'IBL_7b',  'IBL_9b', ...
-    '6722', '6723', '6724', '6725', '6726', 'ALK081', 'LEW008'};
-
-batches(end+1).name = {'choiceWorld_orientation'};
-batches(end).mice = {'IBL_38', 'IBL_39', 'IBL_40', 'IBL_41', 'IBL_42'};
+    '6722', '6723', '6724', '6725', '6726', 'ALK081', 'LEW008', ...
+    'IBL_13', 'IBL_14', 'IBL_15', 'IBL_16', 'IBL_17'};
 
 batches(end+1).name = {'choiceWorld_1screen'};
 batches(end).mice = {'IBL_1b', 'IBL_3b', 'IBL_6b', 'IBL_8b',  'IBL_10b', ...
-    'LEW009', 'LEW010'};
+    'LEW009', 'LEW010', ...
+    '6812', '6814', '437', '438'};
 
 batches(end+1).name = {'choiceWorld_bigstim'};
 batches(end).mice = {'IBL_11b', 'IBL_12b'};
+
+% clear batches;
+% batches(1).name = {'choiceWorld'}; 
+% batches(1).mice = {'ALK081', 'LEW008',  'LEW009', 'LEW010'};
 
 for bidx = length(batches):-1:1,
     for m = 1:length(batches(bidx).mice),
@@ -69,39 +69,36 @@ for bidx = length(batches):-1:1,
             
             % add psychometric function
             yyaxis right;
-            [mu, sigma, gamma, lambda] = fitErf(data_clean.signedContrast, data_clean.response > 0);
+            % add bootstrapped datapoints
             %psychFuncPred = @(x, mu, sigma, gamma, lambda) gamma+(1-gamma-lambda) * (1./(1+exp(- ( mu + sigma.*x ))));
             psychFuncPred = @(x, mu, sigma, gamma, lambda) gamma + (1 - gamma - lambda) * (erf( (x-mu)/sigma ) + 1 )/2;
             
-            y = psychFuncPred(linspace(min(data_clean.signedContrast), max(data_clean.signedContrast), 100), ...
-                mu, sigma, gamma, lambda);
-            plot(linspace(min(data_clean.signedContrast), max(data_clean.signedContrast), 100), y, 'k');
-            
-            % add bootstrapped datapoints
-            if ~all(isnan(data_clean.proportionLeft)),
-                leftProbs = unique(data_clean.proportionLeft);
-                colors = linspecer(numel(leftProbs));
-                for lp = 1:length(leftProbs),
-                    tmpdata = data_clean(data_clean.proportionLeft == leftProbs(lp), :);
-                    errorbar(unique(tmpdata.signedContrast(~isnan(tmpdata.signedContrast))), ...
-                        splitapply(@nanmean, tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                        splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                        splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                        'color', colors(lp, :), 'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2);
-                end
-            else
-                errorbar(unique(data_clean.signedContrast(~isnan(data_clean.signedContrast))), ...
-                    splitapply(@nanmean, data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
-                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
-                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), data_clean.response > 0, findgroups(data_clean.signedContrast)), ...
-                    'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 3, 'linestyle', 'none');
+            data_clean.probabilityLeft = roundn(data_clean.probabilityLeft, -2);
+            leftProbs = unique(data_clean.probabilityLeft(~isnan(data_clean.probabilityLeft)));
+            if isempty(leftProbs), data_clean.probabilityLeft(:) = 0.5; leftProbs = 0.5; end
+            colors = linspecer(numel(leftProbs));
+            for lp = 1:length(leftProbs),
+                tmpdata = data_clean(data_clean.probabilityLeft == leftProbs(lp), :);
+                errorbar(unique(tmpdata.signedContrast(~isnan(tmpdata.signedContrast))), ...
+                    splitapply(@nanmean, tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                    'color', colors(lp, :), 'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2, 'linestyle', 'none');
+
+                [mu, sigma, gamma, lambda] = fitErf(tmpdata.signedContrast, tmpdata.response > 0);
+                
+                y = psychFuncPred(linspace(min(tmpdata.signedContrast), max(tmpdata.signedContrast), 100), ...
+                    mu, sigma, gamma, lambda);
+                plot(linspace(min(tmpdata.signedContrast), max(tmpdata.signedContrast), 100), y, '-', 'color', colors(lp, :));
             end
+            
             xlabel('Contrast (%)'); if didx == 3, ylabel('P(right)'); end
             box off;
             xlim([-105 105]); ylim([0 1]); % offsetAxes;
             set(gca, 'yminortick', 'on');
             
             % add date and psychometric function parameters
+            [mu, sigma, gamma, lambda] = fitErf(data_clean.signedContrast, data_clean.response > 0);
             if abs(mu)<15 && sigma>15 && gamma<0.2 && lambda<0.2,
                 try titlecol = cbrewer('seq', 'Greens', 6); titlecol = titlecol(end, :);
                 catch; titlecol = [0 1 0]; end
@@ -110,7 +107,7 @@ for bidx = length(batches):-1:1,
                 titlecol = [0 0 0];
                 fontweigth = 'normal';
             end
-            title({sprintf('%s, %d trials', datestr(unique(data_clean.date)), numel(data_clean.rt(~isnan(data_clean.rt)))), ...
+            title({sprintf('%s, %d trials total', datestr(unique(data_clean.date)), numel(data.rt(~isnan(data.rt)))), ...
                 sprintf('\\mu %.2f \\sigma %.2f \\gamma %.2f \\lambda %.2f', mu, sigma, gamma, lambda)}, 'fontweight', fontweigth, 'color', titlecol); % show date
             
             %% middle: RTs over time
@@ -188,7 +185,7 @@ for bidx = length(batches):-1:1,
             batches(bidx).name{1}, batches(bidx).mice{m});
         try suplabel(titlestr, 'x'); end
         
-        foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-11');
+        foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-17');
         if ~exist(foldername, 'dir'), mkdir(foldername); end
         print(gcf, '-dpdf', fullfile(foldername, sprintf('%s_%s_%s_%s.pdf', datestr(now, 'yyyy-mm-dd'), ...
             data.Properties.UserData.lab, batches(bidx).name{1}, batches(bidx).mice{m})));
