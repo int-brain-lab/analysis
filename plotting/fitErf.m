@@ -25,6 +25,10 @@ catch
     lapseHigh = NaN;
 end
 
+if nargout == 1,
+    bias = pBest;
+end
+
 end
 
 function err = logistic_erf(p, intensity, responses)
