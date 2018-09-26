@@ -5,6 +5,8 @@ function data = lapserates_100prct_contrast()
 
 % grab all the data that's on Drive
 addpath('~/Documents/code/npy-matlab//');
+addpath(genpath('/Users/urai/Documents/code/analysis_IBL'));
+clear all; 
 
 if ispc,
     usr = getenv('USERNAME');
@@ -16,6 +18,7 @@ elseif ismac,
     datapath = fullfile(homedir, 'Google Drive', 'IBL_DATA_SHARE');
 end
 
+close all;
 set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 
 %% overview - all the choiceWorld mice
@@ -33,10 +36,12 @@ mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
 data_all       = readAlf_allData(datapath, mice);
 
 % proposal: as soon as the 12.5% is introduced, remove 100% contrast
-has12prct  = @(x) any(ismember(abs(x), 0));
+has12prct  = @(x) (numel(unique(abs(x(~isnan(x))))) == 6);
 [gr, days, subjects] = findgroups(data_all.dayidx, data_all.animal);
 remove100  = splitapply(has12prct, data_all.signedContrast, gr);
-data       = data_all(ismember(data_all.dayidx, days(remove100)) & contains(data_all.animal, subjects(remove100)), :);
+gridx = unique(gr);
+data       = data_all(ismember(gr, gridx(remove100)), :);
+data_all   = data;
 
 % fit one psychometric function per day
 [gr, days, subjects] = findgroups(data.dayidx, data.animal);
@@ -59,10 +64,9 @@ for p = 1:4,
     % plot(params(:, p), params_no100(:, p), '.');
     scatter(params(:, p), params_no100(:, p), 5, findgroups(subjects), 'filled');
 
-    axis tight; 
+    axis tight; axis square; axisEqual; 
     l = refline(1,0); l.Color = 'k'; l.LineWidth = 0.5;
     l2 = lsline; l2.Color = [0.5 0.5 0.5];
-    axis square; axisEqual; 
     offsetAxes;
     set(gca, 'xtick', get(gca, 'ytick'));
 
@@ -80,10 +84,37 @@ for p = 1:4,
 end
 suplabel('All contrast levels used', 'x');
 suplabel('100% contrast removed', 'y');
-suplabel('100% contrast removed for all sessions including 0% contrast', 't')
+suplabel('100% contrast removed for all sessions with 6 absolute contrast levels', 't')
 
-foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-25');
+foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-25', 'Test_remove100prctContrast');
 if ~exist(foldername, 'dir'), mkdir(foldername); end
-print(gcf, '-dpdf', fullfile(foldername, 'test_remove100prct_contrast_0prct.pdf'));
+print(gcf, '-dpdf', fullfile(foldername, 'test_remove100prct_contrast_6levels.pdf'));
+
+%% ========================== %
+% ADD SOME EXAMPLES
+% ========================== %
+
+[gr, days, subjects] = findgroups(data_all.dayidx, data_all.animal);
+erfFunc = @(x,p) p(3) + (1 - p(3) - p(4)) * (erf( (x-p(1))/p(2) ) + 1 )/2;
+xval1 = -100:0.1:100;
+xval2 = -50:0.1:50;
+
+close all;
+for g = unique(gr)',
+   
+    subplot(ceil(sqrt(length(unique(gr)))),ceil(sqrt(length(unique(gr)))),g); hold on;
+    tmpdata = data_all(gr == g, :);
+    errorbar(unique(tmpdata.signedContrast(~isnan(tmpdata.signedContrast))), ...
+        splitapply(@nanmean, tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+        splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+        splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+        'color', 'k', 'capsize', 0, 'marker', '.', 'markerfacecolor', 'w', 'markersize', 2, 'linestyle', 'none');
+    
+    plot(xval1, erfFunc(xval1, params(g, :)), 'color', 'r');
+    plot(xval2, erfFunc(xval2, params_no100(g, :)), 'color', 'b');
+    axis off; xlim([-100 100]); ylim([0 1]); axis square;
+end
+print(gcf, '-dpdf', fullfile(foldername, 'test_remove100prct_contrast_levels_psychfuncs.pdf'));
+
 
 end
