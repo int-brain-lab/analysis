@@ -62,10 +62,15 @@ for bidx = length(batches):-1:1,
         % fit psychometric function over days
         fitPsych = @(x,y) {fitErf(x, y>0)};
         psychfuncparams = nan(max(data_clean_all.dayidx), 4);
-        for d = 3:max(data_clean_all.dayidx)
+        usedays = unique(data_clean_all.dayidx);
+        usedays(usedays < 3) = [];
+
+        for d = usedays',
             ThreeSessionTrls = (data_clean_all.dayidx >= d-2 & data_clean_all.dayidx <= d);
             psychfuncparams(d, :) = fitErf(data_clean_all.signedContrast(ThreeSessionTrls), (data_clean_all.response(ThreeSessionTrls)>0) );
         end
+        psychfuncparams(1:2, :) = 0;
+        psychfuncparams(isnan(sum(psychfuncparams, 2)), :) = [];
         
         % test if the criteria are true
         psychfunc_crit = (abs(psychfuncparams(:, 1)) < 16 & psychfuncparams(:, 2) > 19 ...
@@ -107,7 +112,10 @@ for bidx = length(batches):-1:1,
         % TODO: INDICATE MONDAYS FOR TRIAL COUNT
         [gr, day] = findgroups(data_all.dayidx);
         daysofweek = splitapply(@unique, weekday(data_all.date), gr);
-        plot(day(daysofweek == 2), ntrials(daysofweek == 2), 'ok', 'markeredgecolor', 'k', 'markerfacecolor', 'w', 'markersize', msz);
+        p2 = plot(day(daysofweek == 2), ntrials(daysofweek == 2), 'ok', 'markeredgecolor', 'k', 'markerfacecolor', 'w', 'markersize', msz);
+        %  annotation('textarrow', [day(find(daysofweek == 2, 1)) day(find(daysofweek == 2, 1))], ...
+        %      [ntrials(find(daysofweek == 2, 1)) ntrials(find(daysofweek == 2, 1))-10],'String','Mondays');
+        legend(p2, 'Mondays', 'Location', 'SouthEast'); legend boxoff;
         
         % =============================================== %
         % PSYCHOMETRIC FUNCTION OVER DAYS
@@ -158,10 +166,11 @@ for bidx = length(batches):-1:1,
         % SHOW THE PARAMETERS SEPARATELY FOR EACH BLOCK TYPE
         % ====================================================== %
         
-        if numel(unique(data_clean_all.probabilityLeft(~isnan(data_clean_all.probabilityLeft))) > 1),
-            % fit the psychometric function separately for 2 biased conditions
-            data_clean_all.probabilityLeft2 = sign(data_clean_all.probabilityLeft - 0.5);                       
+        if numel(unique(data_clean_all.probabilityLeft(~isnan(data_clean_all.probabilityLeft)))) > 1,
+            data_clean_all.probabilityLeft2 = sign(data_clean_all.probabilityLeft - 0.5);
             [gr, bias, dayidx] = findgroups(data_clean_all.probabilityLeft2, data_clean_all.dayidx);
+            
+            % fit the psychometric function separately for 2 biased conditions
             params = splitapply(fitPsych, data_clean_all.signedContrast, data_clean_all.response, gr);
             params = cat(1, params{:});
             
@@ -173,7 +182,6 @@ for bidx = length(batches):-1:1,
                         params(bias == b, p), '-o', 'markeredgecolor', ...
                         'w', 'markerfacecolor', colors((b > 0) + 1, :), 'color', colors((b > 0) + 1, :), 'markersize', msz-1);
                 end
-                
             end
         end
             
