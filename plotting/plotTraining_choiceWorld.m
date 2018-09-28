@@ -59,6 +59,10 @@ for bidx = length(batches):-1:1,
         ntrials = splitapply(@numel, data_all.rt, findgroups(data_all.dayidx));
         ntrials_crit = (ntrials > 200);
         
+        % additional criterion: all contrasts must be present
+        allcontrasts = @(x) (numel(unique(abs(x(~isnan(x))))) == 6);
+        contrasts_crit = splitapply(allcontrasts, data_all.signedContrast, findgroups(data_all.dayidx));
+        
         % fit psychometric function over days
         fitPsych = @(x,y) {fitErf(x, y>0)};
         psychfuncparams = nan(max(data_clean_all.dayidx), 4);
@@ -75,7 +79,7 @@ for bidx = length(batches):-1:1,
         % test if the criteria are true
         psychfunc_crit = (abs(psychfuncparams(:, 1)) < 16 & psychfuncparams(:, 2) > 19 ...
             & psychfuncparams(:, 3) < 0.2 & psychfuncparams(:, 4) < 0.2);
-        has_learned = (accuracy_crit & ntrials_crit & psychfunc_crit);
+        has_learned = (accuracy_crit & ntrials_crit & contrasts_crit & psychfunc_crit);
         if any(has_learned),
             istrained = true;
             day_trained = find(has_learned == 1, 1, 'first');
@@ -115,7 +119,7 @@ for bidx = length(batches):-1:1,
         p2 = plot(day(daysofweek == 2), ntrials(daysofweek == 2), 'ok', 'markeredgecolor', 'k', 'markerfacecolor', 'w', 'markersize', msz);
         %  annotation('textarrow', [day(find(daysofweek == 2, 1)) day(find(daysofweek == 2, 1))], ...
         %      [ntrials(find(daysofweek == 2, 1)) ntrials(find(daysofweek == 2, 1))-10],'String','Mondays');
-        legend(p2, 'Mondays', 'Location', 'SouthEast'); legend boxoff;
+        legend(p2, 'Mondays', 'Location', 'NorthWest'); legend boxoff;
         
         % =============================================== %
         % PSYCHOMETRIC FUNCTION OVER DAYS
