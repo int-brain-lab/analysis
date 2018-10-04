@@ -93,11 +93,6 @@ end
 % put all the data in one large table
 alldata = cat(1, alldata{:});
 
-if ~isempty(alldata),
-    % remove those trials that are marked in signals as 'not to be included'
-    % alldata(alldata.inclTrials == 0, :) = [];
-end
-
 end
 
 

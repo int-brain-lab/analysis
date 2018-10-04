@@ -27,134 +27,31 @@ end
 fprintf('Reading Alf folder %s \n', foldername);
 
 try
-    % READ IN ALL THE RELEVANT FILES
-    outp.stimOnTime         = readNPY(fullfile(foldername, 'cwStimOn.times.npy'));
-    outp.contrastLeft       = readNPY(fullfile(foldername, 'cwStimOn.contrastLeft.npy'));
-    outp.contrastRight      = readNPY(fullfile(foldername, 'cwStimOn.contrastRight.npy'));
-    outp.signedContrast     = -outp.contrastLeft + outp.contrastRight;
+    outp.stimOnTime         = readNPY(fullfile(foldername, '_ibl_trials.stimOn_times.npy'));
+    outp.contrastLeft       = readNPY(fullfile(foldername, '_ibl_trials.contrastLeft.npy'));
+    outp.contrastRight      = readNPY(fullfile(foldername, '_ibl_trials.contrastRight.npy'));
+    outp.signedContrast     = outp.contrastLeft - outp.contrastRight;
     
-    outp.goCueTime          = readNPY(fullfile(foldername, 'cwGoCue.times.npy')); % what's the go cue? auditory?
+    outp.goCueTime          = readNPY(fullfile(foldername, '_ibl_trials.goCue_times.npy')); % what's the go cue? auditory?
     
-    outp.responseOnTime     = readNPY(fullfile(foldername, 'cwResponse.times.npy'));
-    outp.response           = readNPY(fullfile(foldername, 'cwResponse.choice.npy'));
-    outp.response(outp.response == 1)  = -1;
-    outp.response(outp.response == 2)  = 1;
-    outp.response(outp.response == 3)  = 0;
+    outp.responseOnTime     = readNPY(fullfile(foldername, '_ibl_trials.response_times.npy'));
+    outp.response           = readNPY(fullfile(foldername, '_ibl_trials.choice.npy'));
     
-    outp.feedbackOnTime     = readNPY(fullfile(foldername, 'cwFeedback.times.npy'));
-    outp.correct            = readNPY(fullfile(foldername, 'cwFeedback.type.npy'));
+    outp.feedbackOnTime     = readNPY(fullfile(foldername, '_ibl_trials.feedback_times.npy'));
+    outp.correct            = readNPY(fullfile(foldername, '_ibl_trials.feedbackType.npy'));
     outp.correct            = (outp.correct > 0);
+    outp.rewardVolume       = readNPY(fullfile(foldername, '_ibl_trials.rewardVolume.npy'));
     
+    outp.probabilityLeft    = readNPY(fullfile(foldername, '_ibl_trials.probabilityLeft.npy'));
+
     % only include trials that were not a repeat
-    outp.inclTrials         = readNPY(fullfile(foldername, 'cwTrials.inclTrials.npy'));
-    
+    outp.inclTrials         = readNPY(fullfile(foldername, '_ibl_trials.included.npy'));
+
 catch
-    
-    try
-        % NEW ALF FORMAT
-        outp.stimOnTime         = readNPY(fullfile(foldername, '_misc_trials.stimOn_times.times.npy'));
-        outp.contrastLeft       = readNPY(fullfile(foldername, '_misc_trials.contrastLeft.npy'));
-        outp.contrastRight      = readNPY(fullfile(foldername, '_misc_trials.contrastRight.npy'));
-        outp.signedContrast     = outp.contrastLeft - outp.contrastRight;
-        
-        outp.goCueTime          = readNPY(fullfile(foldername, '_misc_trials.goCue_times.times.npy')); % what's the go cue? auditory?
-        
-        outp.responseOnTime     = readNPY(fullfile(foldername, '_misc_trials.response_times.times.npy'));
-        outp.response           = readNPY(fullfile(foldername, '_misc_trials.choice.npy'));
-        
-        outp.feedbackOnTime     = readNPY(fullfile(foldername, '_misc_trials.feedback_times.times.npy'));
-        outp.correct            = readNPY(fullfile(foldername, '_misc_trials.feedbackType.npy'));
-        outp.correct            = (outp.correct > 0);
-        
-        % only include trials that were not a repeat
-        outp.inclTrials         = readNPY(fullfile(foldername, '_misc_trials.included.npy'));
-    catch
-        try
-            outp.stimOnTime         = readNPY(fullfile(foldername, '_ibl_trials.stimOn_times.npy'));
-            outp.contrastLeft       = readNPY(fullfile(foldername, '_ibl_trials.contrastLeft.npy'));
-            outp.contrastRight      = readNPY(fullfile(foldername, '_ibl_trials.contrastRight.npy'));
-            outp.signedContrast     = outp.contrastLeft - outp.contrastRight;
-            
-            outp.goCueTime          = readNPY(fullfile(foldername, '_ibl_trials.goCue_times.npy')); % what's the go cue? auditory?
-            
-            outp.responseOnTime     = readNPY(fullfile(foldername, '_ibl_trials.response_times.npy'));
-            outp.response           = readNPY(fullfile(foldername, '_ibl_trials.choice.npy'));
-            
-            outp.feedbackOnTime     = readNPY(fullfile(foldername, '_ibl_trials.feedback_times.npy'));
-            outp.correct            = readNPY(fullfile(foldername, '_ibl_trials.feedbackType.npy'));
-            outp.correct            = (outp.correct > 0);
-            
-            % only include trials that were not a repeat
-            outp.inclTrials         = readNPY(fullfile(foldername, '_ibl_trials.included.npy'));
-            
-        catch
-            
-            try
-                
-                outp.stimOnTime         = readNPY(fullfile(foldername, '_ibl_trials.stimOn_times.times.npy'));
-                outp.contrastLeft       = readNPY(fullfile(foldername, '_ibl_trials.contrastLeft.npy'));
-                outp.contrastRight      = readNPY(fullfile(foldername, '_ibl_trials.contrastRight.npy'));
-                outp.signedContrast     = outp.contrastLeft - outp.contrastRight;
-                
-                outp.goCueTime          = readNPY(fullfile(foldername, '_ibl_trials.goCue_times.times.npy')); % what's the go cue? auditory?
-                
-                outp.responseOnTime     = readNPY(fullfile(foldername, '_ibl_trials.response_times.times.npy'));
-                outp.response           = readNPY(fullfile(foldername, '_ibl_trials.choice.npy'));
-                
-                outp.feedbackOnTime     = readNPY(fullfile(foldername, '_ibl_trials.feedback_times.times.npy'));
-                outp.correct            = readNPY(fullfile(foldername, '_ibl_trials.feedbackType.npy'));
-                outp.correct            = (outp.correct > 0);
-                
-                % only include trials that were not a repeat
-                outp.inclTrials         = readNPY(fullfile(foldername, '_ibl_trials.included.npy'));
-                
-            catch
-                % if for some reason not all the files are readable, return empty
-                outp = [];
-                warning('Failed to read %s \n', foldername);
-                return;
-            end
-        end
-    end
-end
-
-% rewardVolume is written in different ways...
-if exist(fullfile(foldername, 'cwFeedback.rewardVolume.npy'), 'file'),
-    outp.rewardVolume       = readNPY(fullfile(foldername, 'cwFeedback.rewardVolume.npy'));
-elseif exist(sprintf('%s/cwReward.type.npy', foldername), 'file'),
-    % also read in the older way - at some point correct these filenames
-    outp.rewardVolume       = readNPY(fullfile(foldername, 'cwReward.type.npy'));
-else
-    outp.rewardVolume = nan(size(outp.response));
-end
-if ~isequal(size(outp.rewardVolume), size(outp.response)),
-    outp.rewardVolume = nan(size(outp.response));
-end
-
-% in basicChoiceWorld2, also code for highRewardSide
-if exist(sprintf('%s/cwFeedback.highRewardSide.npy', foldername), 'file'),
-    outp.highRewardSide       = readNPY(sprintf('%s/cwFeedback.highRewardSide.npy', foldername));
-end
-if isfield(outp, 'highRewardSide'),
-    % if there is a highRewardSize file present, confirm that it makes sense
-    checkHighReward = outp.rewardVolume( outp.correct(:) == 1 & (outp.response(:) == outp.highRewardSide(:)) & abs(outp.signedContrast(:)) > 0);
-    assert(mean(checkHighReward == max(outp.rewardVolume)) > 0.95, 'highRewardSide does not make sense');
-else
-    outp.highRewardSide = nan(size(outp.response));
-end
-
-% IN BIASED CHOICEWORLD, CODE FOR THE PROBABILITY THAT THE STIMULUS APPEARS LEFT
-if exist(sprintf('%s/cwStimOn.probabilityLeft.npy', foldername), 'file'),
-    outp.probabilityLeft = readNPY(fullfile(foldername, 'cwStimOn.probabilityLeft.npy'));
-else
-    outp.probabilityLeft = nan(size(outp.response));
-end
-
-% in shaping, code for block type
-if exist(fullfile(foldername, 'cwStimOn.blockType.npy'), 'file'),
-    outp.blockType = readNPY(fullfile(foldername, 'cwStimOn.blockType.npy'));
-else
-    outp.blockType = nan(size(outp.response));
+    % if for some reason not all the files are readable, return empty
+    outp = [];
+    warning('Failed to read %s \n', foldername);
+    return;
 end
 
 % if this doesn't look like a proper session, return empty
@@ -201,13 +98,6 @@ outp.rt                 = outp.responseOnTime - outp.goCueTime; % RT from stimul
 outp.trialNum           = transpose(1:length(outp.stimOnTime));
 if max(abs(outp.signedContrast)) <= 1,
     outp.signedContrast = outp.signedContrast * 100; % in %
-end
-
-% if there was no reward switch within the session, ignore
-if ~all(isnan(outp.highRewardSide)),
-    if numel(unique(outp.highRewardSide)) == 1,
-        outp.highRewardSide = nan(size(outp.highRewardSide));
-    end
 end
 
 % output a table in Matlab >= 2013b

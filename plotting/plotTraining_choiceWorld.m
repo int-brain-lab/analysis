@@ -22,25 +22,32 @@ msz = 4;
 
 %% overview
 batches(1).name = {'choiceWorld'};
-batches(1).mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
-    'IBL_2b', 'IBL_4b', 'IBL_5b', 'IBL_7b',  'IBL_9b', ...
-    '6722', '6723', '6724', '6725', '6726', 'ALK081', 'LEW008', ...
-    'IBL_13', 'IBL_14', 'IBL_15', 'IBL_16', 'IBL_17'};
+% batches(1).mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+%     'IBL_2b', 'IBL_4b', 'IBL_5b', 'IBL_7b',  'IBL_9b', ...
+%     '6722', '6723', '6724', '6725', '6726', 'ALK081', 'LEW008', ...
+%     'IBL_13', 'IBL_14', 'IBL_15', 'IBL_16', 'IBL_17', ...
+%     'IBL_1b', 'IBL_3b', 'IBL_6b', 'IBL_8b',  'IBL_10b', ...
+%     'LEW009', 'LEW010', ...
+%     '6812', '6814', '437', '438'};
 
-batches(end+1).name = {'choiceWorld_1screen'};
-batches(end).mice = {'IBL_1b', 'IBL_3b', 'IBL_6b', 'IBL_8b',  'IBL_10b', ...
-    'LEW009', 'LEW010', ...
-    '6812', '6814', '437', '438'};
+batches(1).mice = {'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+    'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
+    'IBL_11',  'IBL_12',  'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17'};
 
-% batches(end+1).name = {'choiceWorld_bigstim'};
-% batches(end).mice = {'IBL_11b', 'IBL_12b'};
+batches(1).mice  = {'IBL_3','IBL_1',  'IBL_6', 'IBL_8', 'IBL_10', ...
+    'IBL_11',  'IBL_12',  'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17'};
+% batches(2).name = {'choiceWorld'};
+% batches(2).mice = {'LEW009', 'LEW010', 'ALK081', 'LEW008'};
 
+% batches(3).name = {'choiceWorld'};
+% batches(3).mice = {'6812', '6814', '437', '438'};
 
 for bidx = length(batches):-1:1,
     for m = 1:length(batches(bidx).mice),
         
         close all;
         data_all = readAlf_allData(datapath, batches(bidx).mice{m});
+        if isempty(data_all), continue; end
         data_clean_all = data_all(data_all.inclTrials ~= 0, :);
         
         % =============================================== %
@@ -65,16 +72,17 @@ for bidx = length(batches):-1:1,
         
         % fit psychometric function over days
         fitPsych = @(x,y) {fitErf(x, y>0)};
-        psychfuncparams = nan(max(data_clean_all.dayidx), 4);
-        usedays = unique(data_clean_all.dayidx);
-        usedays(usedays < 3) = [];
-
+        usedays = unique(data_all.dayidx);
+        % usedays(usedays < 3) = [];
+        psychfuncparams = nan(numel(usedays), 4);
+        
         for d = usedays',
-            ThreeSessionTrls = (data_clean_all.dayidx >= d-2 & data_clean_all.dayidx <= d);
-            psychfuncparams(d, :) = fitErf(data_clean_all.signedContrast(ThreeSessionTrls), (data_clean_all.response(ThreeSessionTrls)>0) );
+            if d >= 3,
+                ThreeSessionTrls = (data_clean_all.dayidx >= d-2 & data_clean_all.dayidx <= d);
+                psychfuncparams(find(d==usedays), :) = fitErf(data_clean_all.signedContrast(ThreeSessionTrls), (data_clean_all.response(ThreeSessionTrls)>0) );
+            end
         end
-        psychfuncparams(1:2, :) = 0;
-        psychfuncparams(isnan(sum(psychfuncparams, 2)), :) = [];
+        psychfuncparams(isnan(sum(psychfuncparams, 2)), :) = 0;
         
         % test if the criteria are true
         psychfunc_crit = (abs(psychfuncparams(:, 1)) < 16 & psychfuncparams(:, 2) > 19 ...
@@ -108,7 +116,7 @@ for bidx = length(batches):-1:1,
         ylabel({'# Trials'});
         set(gca, 'xtick', unique(data_all.dayidx));
         box off;  xlim([0 max(data_all.dayidx)]);
-        hline(200);         
+        hline(200);
         if istrained, vline(day_trained); end
         
         xlabel('Days');
@@ -119,7 +127,8 @@ for bidx = length(batches):-1:1,
         p2 = plot(day(daysofweek == 2), ntrials(daysofweek == 2), 'ok', 'markeredgecolor', 'k', 'markerfacecolor', 'w', 'markersize', msz);
         %  annotation('textarrow', [day(find(daysofweek == 2, 1)) day(find(daysofweek == 2, 1))], ...
         %      [ntrials(find(daysofweek == 2, 1)) ntrials(find(daysofweek == 2, 1))-10],'String','Mondays');
-        legend(p2, 'Mondays', 'Location', 'NorthWest'); legend boxoff;
+        % legend(p2, 'Mondays', 'Location', 'NorthWest'); legend boxoff;
+        ylim([0 max(get(gca, 'ylim'))]);
         
         % =============================================== %
         % PSYCHOMETRIC FUNCTION OVER DAYS
@@ -152,14 +161,14 @@ for bidx = length(batches):-1:1,
         set(gca, 'xtick', unique(data_all.dayidx));
         ylabel({'Lapse' '(low)'}); ylim([0 1]);
         hline(0.2);
-        box off;  xlim([0 max(data_all.dayidx)]);
+        box off;  xlim([-0.05 max(data_all.dayidx)]);
         set(gca, 'xcolor', 'w');
         if istrained, vline(day_trained); end
         
         subplot(9, 4,[15 16]); hold on;
         plot(unique(data_all.dayidx), params(:, 4), '-ko', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
         set(gca, 'xtick', unique(data_all.dayidx));
-        ylabel({'Lapse' '(high)'}); ylim([0 1]);
+        ylabel({'Lapse' '(high)'}); ylim([-0.05 1]);
         hline(0.2);
         box off;  xlim([0 max(data_all.dayidx)]);
         xlabel('Days');
@@ -188,12 +197,15 @@ for bidx = length(batches):-1:1,
                 end
             end
         end
-            
+        
         % =============================================== %
         % OVERVIEW OF LAST 3 DAYS
         % =============================================== %
         
         days = sort(unique(data_all.dayidx_rev));
+        if length(days) <= 2,
+            continue;
+        end
         days = days(end-2:end);
         for didx = 1:length(days),
             
@@ -212,6 +224,7 @@ for bidx = length(batches):-1:1,
                 splitapply(@(x) (bootstrappedCI(x, 'median', 'low')), data_clean.rt, findgroups(data_clean.signedContrast)), ...
                 splitapply(@(x) (bootstrappedCI(x, 'median', 'high')), data_clean.rt, findgroups(data_clean.signedContrast)), ...
                 'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2);
+            
             if didx == 1, ylabel('RT (s)'); end
             xlim([-105 105]);
             
@@ -225,13 +238,12 @@ for bidx = length(batches):-1:1,
             colors = linspecer(numel(leftProbs));
             for lp = 1:length(leftProbs),
                 tmpdata = data_clean(data_clean.probabilityLeft == leftProbs(lp), :);
-                try
-                    errorbar(unique(tmpdata.signedContrast(~isnan(tmpdata.signedContrast))), ...
-                        splitapply(@nanmean, tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                        splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                        splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                        'color', colors(lp, :), 'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2, 'linestyle', 'none');
-                end
+                errorbar(unique(tmpdata.signedContrast(~isnan(tmpdata.signedContrast))), ...
+                    splitapply(@nanmean, tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                    splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                    'color', colors(lp, :), 'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2, 'linestyle', 'none');
+                
                 [mu, sigma, gamma, lambda] = fitErf(tmpdata.signedContrast, tmpdata.response > 0);
                 y = psychFuncPred(linspace(min(tmpdata.signedContrast), max(tmpdata.signedContrast), 100), ...
                     mu, sigma, gamma, lambda);
@@ -266,7 +278,7 @@ for bidx = length(batches):-1:1,
             if didx == length(days),
                 lh = legend([s1 s2 s3], {'correct', 'error', 'repeat'});
                 lh.Box = 'off';
-                lh.Position(1) = lh.Position(1) + 0.1;
+                lh.Position(1) = lh.Position(1) + 0.15;
             end
         end
         
@@ -284,11 +296,11 @@ for bidx = length(batches):-1:1,
             regexprep(batches(bidx).name{1}, '_', ' '), regexprep(batches(bidx).mice{m}, '_', ''), trainedStr);
         try suptitle(titlestr); end
         
-        foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-25');
+        foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-10-02');
         if ~exist(foldername, 'dir'), mkdir(foldername); end
         print(gcf, '-dpdf', fullfile(foldername, sprintf('%s_%s_%s_%s.pdf', datestr(now, 'yyyy-mm-dd'), ...
             data.Properties.UserData.lab, batches(bidx).name{1}, batches(bidx).mice{m})));
-                
+        
     end
 end
 end
