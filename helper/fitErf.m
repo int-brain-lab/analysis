@@ -10,10 +10,9 @@ y(nanIdx) = [];
 % b = glmfit(x,y, 'binomial', 'link', 'probit');
 
 % make gamma and lambda symmetrical
+[pBest,~,exitflag,~] = fminsearchbnd(@(p) logistic_erf(p, ...
+    x, y), [0, 20, 0.05 0.05], [min(x) 0 0 0], [max(x) 100 1 1]);
 try
-    [pBest,~,exitflag,~] = fminsearchbnd(@(p) logistic_erf(p, ...
-        x, y), [0, 20, 0.05 0.05], [min(x) 0 0 0], [max(x) 100 1 1]);
-    
     assert(exitflag == 1); % check that this worked
     bias        = pBest(1);
     slope       = pBest(2);
@@ -24,7 +23,6 @@ catch
     slope = NaN;
     lapseLow = NaN;
     lapseHigh = NaN;
-    pBest = [bias slope lapseLow lapseHigh];
 end
 
 if nargout == 1,
