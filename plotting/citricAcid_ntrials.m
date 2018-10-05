@@ -8,7 +8,7 @@ data = readAlf_allData(fullfile(getenv('HOME'), 'Google Drive', 'IBL_DATA_SHARE'
 % grab only those dates that are immediately before and after citric acid
 % or normal water intervention
 
-data = data(ismember(datenum(data.date), datenum({'2018-09-21', '2018-09-24', '2018-09-28', '2018-10-01'})), :); 
+data = data(ismember(datenum(data.date), datenum({'2018-09-21', '2018-09-24', '2018-09-28', '2018-10-01'})), :);
 [~, data.weekday] = weekday(datenum(data.date));
 data.weekday = cellstr(data.weekday);
 
@@ -22,13 +22,19 @@ data2 = unstack(data, {'trialNum'}, 'weekday', 'AggregationFunction', @max);
 
 % plot
 close all;
-g = gramm('x', data2.Fri, 'y', data2.Mon, 'group', data2.animal, 'color', data2.water);
+g = gramm('x', data2.Fri, 'y', data2.Mon, 'color', data2.water);
 g.geom_point()
 g.geom_abline('slope', 1, 'intercept', 0, 'style', 'k-')
-%g.stat_cornerhist('edges',-500:100:500,'aspect',0.6);
 g.set_names('x', '# Trials on Friday', 'y', '# Trials on Monday', 'color', 'Regime');
 g.axe_property('xlim', [150 1000], 'ylim', [150 1000]);
+
+%g.stat_summary('type', 'ci', 'geom', 'black_errorbar');
+g.stat_glm()
 g.draw()
+
+foldername = fullfile(getenv('HOME'), 'Google Drive', 'Rig building WG', ...
+    'DataFigures', 'BehaviourData_Weekly', '2018-10-09');
+print(gcf, '-dpdf', fullfile(foldername, 'citricAcid_CSHL.pdf'));
 
 
 end
