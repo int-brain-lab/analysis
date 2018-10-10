@@ -34,7 +34,7 @@ mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
 
 data_all       = readAlf_allData(datapath, mice);
 
-% proposal: as soon as the 12.5% is introduced, remove 100% contrast
+% % proposal: as soon as the 12.5% is introduced, remove 100% contrast
 isbiased   = @(x) (numel(unique(x(~isnan(x)))) > 1);
 [gr, days, subjects] = findgroups(data_all.dayidx, data_all.animal);
 biased     = splitapply(isbiased, data_all.probabilityLeft, gr);
@@ -91,25 +91,41 @@ end
 suplabel('P(left) = 0.2', 'x');
 suplabel('P(left) = 0.8', 'y');
 
-foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-09-25');
+foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', 'DataFigures', 'BehaviourData_Weekly', '2018-10-09');
 if ~exist(foldername, 'dir'), mkdir(foldername); end
 print(gcf, '-dpdf', fullfile(foldername, 'psychfuncparams_biased.pdf'));
 
+%% ================= %
+% propose some criterion
 % ================= %
 
-[gr, days, subjects] = findgroups(data_all.dayidx, data_all.animal);
-erfFunc = @(x,p) p(3) + (1 - p(3) - p(4)) * (erf( (x-p(1))/p(2) ) + 1 )/2;
-xval1 = -100:0.1:100;
+close;
+subplot(221);
+plotBetasSwarm([params_low(:, 1), params_high(:, 1)]);
+ylabel('Bias');
+set(gca, 'xticklabel', {'0.2', '0.8'});
 
-close all;
-for g = unique(gr)',
-    subplot(5,5,g); hold on;
-    plot(xval1, erfFunc(xval1, params_low(g, :)), 'color', 'b');
-    plot(xval1, erfFunc(xval1, params_high(g, :)), 'color', 'r');
-   xlim([-100 100]); ylim([0 1]); axis square;
-   set(gca, 'xticklabel', [], 'yticklabel', []);
-end
-print(gcf, '-dpdf', fullfile(foldername, 'psychfuncparams_biased_psychfuncs.pdf'));
+subplot(222);
+histogram([params_low(:, 1), params_high(:, 1)], 100, 'edgecolor', 'none');
+xlabel('\DeltaBias');
+box off; 
+
+print(gcf, '-dpdf', fullfile(foldername, 'psychfuncparams_biased_criterion.pdf'));
+
+% 
+% [gr, days, subjects] = findgroups(data_all.dayidx, data_all.animal);
+% erfFunc = @(x,p) p(3) + (1 - p(3) - p(4)) * (erf( (x-p(1))/p(2) ) + 1 )/2;
+% xval1 = -100:0.1:100;
+% 
+% close all;
+% for g = unique(gr)',
+%     subplot(5,5,g); hold on;
+%     plot(xval1, erfFunc(xval1, params_low(g, :)), 'color', 'b');
+%     plot(xval1, erfFunc(xval1, params_high(g, :)), 'color', 'r');
+%    xlim([-100 100]); ylim([0 1]); axis square;
+%    set(gca, 'xticklabel', [], 'yticklabel', []);
+% end
+% print(gcf, '-dpdf', fullfile(foldername, 'psychfuncparams_biased_psychfuncs.pdf'));
 
 
 end
