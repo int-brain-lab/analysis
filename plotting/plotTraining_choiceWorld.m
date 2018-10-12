@@ -21,14 +21,16 @@ set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 msz = 4;
 
 %% overview
-batches(1).name = {'choiceWorld'};
-batches(1).mice =   ({'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
-    'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
-    'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17'});
+% batches(1).name = {'choiceWorld'};
+% batches(1).mice =   ({'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+%     'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
+%     'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
+%     'LEW009', 'LEW010', 'ALK081', 'LEW008'});
+% batches(1).mice =   ({'IBL_1'});
 
-batches(2).name = {'choiceWorld'};
-batches(2).mice = {'LEW009', 'LEW010', 'ALK081', 'LEW008'}; %, '6812', '6814', '437', '438'};
-
+ batches(2).name = {'choiceWorld'};
+batches(2).mice = {'6812', '6814', '437', '438'};
+% 'LEW009', 'LEW010', 'ALK081', 'LEW008', 
 for bidx = length(batches):-1:2,
     for m = 1:length(batches(bidx).mice),
         
@@ -85,6 +87,21 @@ for bidx = length(batches):-1:2,
         end
         
         % =============================================== %
+%         % MAKE A FILE FOR NICK
+%         % =============================================== %
+%     
+%         [gr, date] = findgroups(data_all.date);
+%         date = datestr(date, 'yyyy-mm-dd');
+%         
+%         % fit the psychometric function separately for 2 biased conditions
+%         params = splitapply(fitPsych, data_all.signedContrast, data_all.response, gr);
+%         params = cat(1, params{:});
+%         
+%         tab = array2table(params, 'variablenames', {'bias', 'slope', 'lapse_low', 'lapse_high'});
+%         tab.date = datestr(date, 'yyyy-mm-dd');
+%         writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_1_psychfuncfits.csv');
+%         
+%         % =============================================== %
         % LEARNING CURVES
         % =============================================== %
         
@@ -286,7 +303,7 @@ for bidx = length(batches):-1:2,
         try suptitle(titlestr); end
         
         foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', ...
-            'DataFigures', 'BehaviourData_Weekly', '2018-10-09');
+            'DataFigures', 'BehaviourData_Weekly', '2018-10-15');
         if ~exist(foldername, 'dir'), mkdir(foldername); end
         print(gcf, '-dpdf', fullfile(foldername, sprintf('%s_%s_%s_%s.pdf', datestr(now, 'yyyy-mm-dd'), ...
             data.Properties.UserData.lab, batches(bidx).name{1}, batches(bidx).mice{m})));

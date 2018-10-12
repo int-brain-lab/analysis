@@ -21,16 +21,10 @@ close all;
 set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 
 %% overview - all the choiceWorld mice
-mice = {'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
-    'IBL_2b', 'IBL_4b', 'IBL_5b', 'IBL_7b',  'IBL_9b', ...
-    '6722', '6723', '6724', '6725', '6726', 'ALK081', 'LEW008', ...
-    'IBL_13', 'IBL_14', 'IBL_15', 'IBL_16', 'IBL_17', ...
-    'IBL_1b', 'IBL_3b', 'IBL_6b', 'IBL_8b',  'IBL_10b', ...
-    'LEW009', 'LEW010', ...
-    '6812', '6814', '437', '438', ...
-    'IBL_1b', 'IBL_3b', 'IBL_6b', 'IBL_8b',  'IBL_10b', ...
-    'LEW009', 'LEW010', ...
-    '6812', '6814', '437', '438'};
+mice = {'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+    'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
+    'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
+    'LEW009', 'LEW010', 'ALK081', 'LEW008'}
 
 data_all       = readAlf_allData(datapath, mice);
 
@@ -42,7 +36,7 @@ gridx = unique(gr);
 data       = data_all(ismember(gr, gridx(biased)), :);
 data_all = data;
 
-% correct
+%% correct
 data_low = data(data.probabilityLeft < 0.5, :);
 data_high = data(data.probabilityLeft > 0.5, :);
 
@@ -126,6 +120,77 @@ print(gcf, '-dpdf', fullfile(foldername, 'psychfuncparams_biased_criterion.pdf')
 %    set(gca, 'xticklabel', [], 'yticklabel', []);
 % end
 % print(gcf, '-dpdf', fullfile(foldername, 'psychfuncparams_biased_psychfuncs.pdf'));
+
+%% ================================== % 
+% PLOT FOR SFN
+% ================================== % 
+
+addpath('~/Documents/code/gramm/');
+
+data        = data_all;
+data.probabilityLeft(data.probabilityLeft < 0.5) = 0.2;
+data.probabilityLeft(data.probabilityLeft > 0.5) = 0.8;
+
+% fit psychometric
+custom_psychometric = @(gramm_obj) gramm_obj.stat_fit('fun', @(a,b,g,l,x) (g + (1 - g - l) * (erf( (x-a)/b ) + 1 )/2),...
+'StartPoint', [0 20 0.1 0.1], 'geom', 'line', 'disp_fit', false, 'fullrange', false);
+axis_square =  @(gramm_obj) gramm_obj.axe_property('PlotBoxAspectRatio', [1 1 1]);
+
+% plot
+close all; clear g;
+g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'color', data.probabilityLeft);
+g.set_names('x', 'Stimulus contrast (%)', 'y', 'Rightwards choices (%)');
+g.facet_wrap(data.animal, 'ncols', 3);
+g.stat_summary('type', 'bootci', 'geom', 'errorbar');
+g.stat_summary('type', 'sem', 'geom', 'point');
+rdBu = cbrewer('qual', 'Set1', 3);
+g.set_color_options('map', rdBu([2 1], :)); % red and blue as schematic
+g.no_legend();
+g.geom_vline('extent', 20, 'style', '--k');
+custom_psychometric(g);
+
+% general layout
+g.axe_property('ylim', [0 1], 'xlim', [-110 100], 'ytick', [0 0.5 1],  'yticklabel', [0 50 100], 'xtick', [-100 -50 -20 0 20 50 100]);
+g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 10);
+%axis_square(g);
+g.draw();
+g.export('file_name', '~/Google Drive/Rig building WG/Posters/SfN2018/biasedPsychometrics.pdf', 'file_type', 'pdf');
+g.export('file_name', '~/Google Drive/Rig building WG/Results/DataFigures/biasedPsychometrics.pdf', 'file_type', 'pdf');
+
+
+%% ================================== % 
+% PLOT FOR ALEX POUGET: PSYCHOMETRIC FUNCTIONS 3 DAYS BEFORE BIAS WAS
+% INTRODUCED (CHAT 12 OCT 2018)
+% ================================== % 
+
+mice = {'IBL_1', 'IBL_10', 'IBL_3', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'LEW009', 'LEW010'};
+data       = readAlf_allData(datapath, mice);
+
+% TAKE THE LAST 3 DAYS BEFORE BIASED BLOCKS ARE INTRODUCED
+data = data(data.probabilityLeft == 0.5, :);
+data.dayidx_rev2 = data.dayidx_rev;
+for m = unique(data.animal)',
+    data.dayidx_rev2(contains(data.animal, m)) = data.dayidx_rev(contains(data.animal, m)) ...
+        - max(data.dayidx_rev(contains(data.animal, m)));
+end
+    
+% plot
+close all; clear g;
+g = gramm('x', data.signedContrast, 'y', (data.response > 0), 'subset', (data.dayidx_rev2 > -3));
+g.set_names('x', 'Stimulus contrast (%)', 'y', 'Rightwards choices (%)');
+g.facet_wrap(data.animal, 'ncols', 3);
+g.stat_summary('type', 'bootci', 'geom', {'errorbar', 'point'});
+g.set_color_options('map', [0 0 0]); % red and blue as schematic
+g.no_legend();
+%g.geom_vline('extent', 20, 'style', ':k');
+custom_psychometric(g);
+
+% general layout
+g.axe_property('ylim', [0 1], 'xlim', [-110 101], 'ytick', [0 0.5 1],  'yticklabel', [0 50 100], 'xtick', [-100 -50 -20 0 20 50 100]);
+g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 10);
+%axis_square(g);
+g.draw();
+g.export('file_name', '~/Google Drive/Rig building WG/Results/DataFigures/psychometrics_3daysbeforePrior.pdf', 'file_type', 'pdf');
 
 
 end

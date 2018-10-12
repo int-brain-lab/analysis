@@ -63,11 +63,11 @@ for l = 1:length(labs),
                         % comment Zach on 18 May: cities more salient than institutions
                         switch data.Properties.UserData.lab
                             case 'CSHL'
-                                place = ' NY (CSHL)';
+                                place = ' NY (CSHL):';
                             case 'CCU'
-                                place = 'Lisbon (CCU)';
+                                place = 'Lisbon (CCU):';
                             case 'UCL'
-                                place = 'London (UCL)';
+                                place = 'London (UCL):';
                         end
                         data{:, 'lab'}      = {place};
                         data{:, 'name'}     = {cat(2, place, ' ', data.Properties.UserData.animal)};
