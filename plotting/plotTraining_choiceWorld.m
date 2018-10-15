@@ -21,17 +21,17 @@ set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 msz = 4;
 
 %% overview
-% batches(1).name = {'choiceWorld'};
-% batches(1).mice =   ({'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
-%     'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
-%     'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
-%     'LEW009', 'LEW010', 'ALK081', 'LEW008'});
-% batches(1).mice =   ({'IBL_1'});
+batches(1).name = {'choiceWorld'};
+batches(1).mice =   ({'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+    'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
+    'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
+    'LEW009', 'LEW010', 'ALK081', 'LEW008'});
 
- batches(2).name = {'choiceWorld'};
-batches(2).mice = {'6812', '6814', '437', '438'};
+%  batches(2).name = {'choiceWorld'};
+% batches(2).mice = {'6812', '6814', '437', '438'};
 % 'LEW009', 'LEW010', 'ALK081', 'LEW008', 
-for bidx = length(batches):-1:2,
+
+for bidx = length(batches):-1:1,
     for m = 1:length(batches(bidx).mice),
         
         close all;
