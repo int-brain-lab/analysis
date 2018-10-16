@@ -90,7 +90,7 @@ g.export('file_name', '~/Google Drive/Rig building WG/Posters/SfN2018/psychometr
 mice = {'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
      'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
      'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
-     'LEW009', 'LEW010', 'ALK081', 'LEW008', '6812', '6814', '437', '438', 'LEW009', 'LEW010', 'ALK081', 'LEW008'};
+     'LEW009', 'LEW010', 'ALK081', 'LEW008', '6812', '6814', '437', '438'};
 data_all   = readAlf_allData(datapath, mice);
 data_all.dayidx = data_all.dayidx - min(data_all.dayidx) + 1; % make sure the 1st day where there is data (not an empty folder) is dayidx 1
 
@@ -109,22 +109,22 @@ tab.animal = sj;
 tab.performance = splitapply(@nanmean, data_all.correct, gr);
 tab.lab = splitapply(@unique, data_all.lab, gr);
 
-
-%% plot
+% plot
 close all; clear g;
-g = gramm('x', tab.days, 'y', 100 * tab.performance, 'color', tab.animal);
+g = gramm('x', tab.days, 'y', 100 * tab.performance, 'group', tab.animal, 'color', tab.lab);
 g.set_names('x', 'Training days', 'y', {'Performance'  'on easy trials (%)'});
 %g.facet_wrap(data.name, 'ncols', 3);
 g.geom_line()
 g.geom_point()
-g.set_color_options('map', 0.7*ones(100, 3));
-g.no_legend();
+cols = cbrewer('qual', 'Set2', 8);
+g.set_color_options('map', cols([1 3 5], :));
+%g.no_legend();
 g.set_text_options('facet_scaling', 1, 'title_scaling', 1, 'base_size', 16);
 g.geom_hline('yintercept', 50, 'style', '-k');
 g.axe_property('ylim', [0 100], 'ytick', [0 50 100],  'yticklabel', [0 50 100], 'xlim', [0 roundn(max(data_all.dayidx), 1)]);
 g.draw();
 
-g.update('color', ones(size(tab.animal)));
+g.update('group', ones(size(tab.animal)), 'color', ones(size(tab.animal)));
 g.stat_summary('type', 'ci', 'geom', 'line');
 g.set_color_options('map', [ 0 0 0]); % black
 g.draw()

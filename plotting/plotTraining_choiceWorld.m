@@ -1,4 +1,4 @@
-function data = plotTraining_choiceWorld()
+function plotTraining_choiceWorld()
 % make overview plots across labs
 % uses the gramm toolbox: https://github.com/piermorel/gramm
 % Anne Urai, 2018
@@ -27,9 +27,8 @@ batches(1).mice =   ({'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'I
     'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
     'LEW009', 'LEW010', 'ALK081', 'LEW008'});
 
-%  batches(2).name = {'choiceWorld'};
-% batches(2).mice = {'6812', '6814', '437', '438'};
-% 'LEW009', 'LEW010', 'ALK081', 'LEW008', 
+batches(2).name = {'choiceWorld'};
+batches(2).mice = fliplr({'6812', '6814', '437', '438', 'LEW009', 'LEW010', 'LEW008', 'IBL_34'});
 
 for bidx = length(batches):-1:1,
     for m = 1:length(batches(bidx).mice),
@@ -87,21 +86,34 @@ for bidx = length(batches):-1:1,
         end
         
         % =============================================== %
-%         % MAKE A FILE FOR NICK
-%         % =============================================== %
-%     
-%         [gr, date] = findgroups(data_all.date);
-%         date = datestr(date, 'yyyy-mm-dd');
-%         
-%         % fit the psychometric function separately for 2 biased conditions
-%         params = splitapply(fitPsych, data_all.signedContrast, data_all.response, gr);
-%         params = cat(1, params{:});
-%         
-%         tab = array2table(params, 'variablenames', {'bias', 'slope', 'lapse_low', 'lapse_high'});
-%         tab.date = datestr(date, 'yyyy-mm-dd');
-%         writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_1_psychfuncfits.csv');
-%         
-%         % =============================================== %
+        % MAKE A FILE FOR NICK
+        % =============================================== %
+    
+        [gr, date] = findgroups(data_all.date);
+        date = datestr(date, 'yyyy-mm-dd');
+        
+        % fit the psychometric function separately for 2 biased conditions
+        params = splitapply(fitPsych, data_all.signedContrast, data_all.response, gr);
+        params = cat(1, params{:});
+        
+        tab = array2table(params, 'variablenames', {'bias', 'slope', 'lapse_low', 'lapse_high'});
+        tab.date = datestr(date, 'yyyy-mm-dd');
+        writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_34_psychfuncfits.csv');
+        
+        fitHistory = @(x,y) {glmfit(x, (y > 0), 'binomial')};
+        resp = double(data_all.response); resp(resp == 0) = NaN;
+        designM = [(data_all.signedContrast ./ 100), ...
+            circshift(sign(data_all.signedContrast), 1), ...
+            circshift(resp, 1), ...
+            circshift(sign(data_all.correct-0.2), 1)];
+        params = splitapply(fitHistory, designM, resp, gr);
+        params = cat(2, params{:})';
+        
+        tab = array2table(params, 'variablenames', {'bias', 'stimulus', 'answer_hist', 'choice_hist', 'reward_hist'});
+        tab.date = datestr(date, 'yyyy-mm-dd');
+        writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_34_psychfuncfits_trialhistory.csv');
+
+        % =============================================== %
         % LEARNING CURVES
         % =============================================== %
         
@@ -187,11 +199,16 @@ for bidx = length(batches):-1:1,
         
         if numel(unique(data_clean_all.probabilityLeft(~isnan(data_clean_all.probabilityLeft)))) > 1,
             data_clean_all.probabilityLeft2 = sign(data_clean_all.probabilityLeft - 0.5);
+            data_clean_all.probabilityLeft2(data_clean_all.probabilityLeft2 == 0) = NaN;
             [gr, bias, dayidx] = findgroups(data_clean_all.probabilityLeft2, data_clean_all.dayidx);
             
+            try
             % fit the psychometric function separately for 2 biased conditions
             params = splitapply(fitPsych, data_clean_all.signedContrast, data_clean_all.response, gr);
             params = cat(1, params{:});
+            catch
+                assert(1==0);
+            end
             
             colors = linspecer(numel(unique(bias)));
             for b = [-1 1],
