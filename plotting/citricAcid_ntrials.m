@@ -30,6 +30,7 @@ data_tmp = data(:, {'trialNum', 'animal', 'date'});
 data_tmp(isnan(data_tmp.trialNum), :) = [];
 data_mat = unstack(data_tmp, {'trialNum'}, 'date', 'AggregationFunction', @numel);
 
+
 % separate out the mice that got sucrose on the 9th of October in the rig
 sucrosetrials = data_mat{ismember(data_mat.animal, {'IBL_33', 'IBL_13'}), 3};
 data_mat{ismember(data_mat.animal, {'IBL_33', 'IBL_13'}), 3} = NaN;
@@ -53,12 +54,14 @@ for i = 1:3,
 end
 xlim([0.5 3.5]);
 
-set(gca, 'xtick', 1:3, 'xticklabel', unique(data.water, 'stable'), ...
+water = unique(data.water);
+water = water([1 3 2]);
+set(gca, 'xtick', 1:3, 'xticklabel', water, ...
     'xticklabelrotation', -20, 'TickLabelInterpreter', 'tex');
 title('Water restriction regimes');
 
 ylabel({'Number of trials' 'on Monday (CSHL)'});
-offsetAxes;
+%offsetAxes;
 %subplot(333); axis off;
 % 
 % % add the pairs
@@ -72,7 +75,7 @@ offsetAxes;
 tightfig;
 print(gcf, '-dpdf', fullfile(foldername, 'citricAcid_trialCounts_CSHL.pdf'));
 print(gcf, '-dpdf', '/Users/urai/Google Drive/2018 Postdoc CSHL/CitricAcid/citricAcid_trialCounts_CSHL_alltrials.pdf');
-print(gcf, '-dpdf', '/Users/urai/Google Drive/Posters/SfN2018/citricAcid_trialCounts_CSHL_alltrials.pdf');
+print(gcf, '-dpdf', '~/Google Drive/Rig building WG/Posters/SfN2018/Panels/citricAcid_trialCounts_CSHL_alltrials.pdf');
 
 % 
 % %% pivot the table

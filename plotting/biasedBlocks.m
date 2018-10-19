@@ -1,4 +1,4 @@
-function data = biasedBlocks()
+function biasedBlocks()
 % make overview plots across labs
 % uses the gramm toolbox: https://github.com/piermorel/gramm
 % Anne Urai, 2018

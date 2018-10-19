@@ -22,13 +22,13 @@ msz = 4;
 
 %% overview
 batches(1).name = {'choiceWorld'};
-batches(1).mice =   ({'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+batches(1).mice =   sort({'IBL_34','IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33',  'IBL_35', 'IBL_36', 'IBL_37', ...
     'IBL_1', 'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
     'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
-    'LEW009', 'LEW010', 'ALK081', 'LEW008'});
+    'LEW009', 'LEW010', 'LEW008'});
 
-batches(2).name = {'choiceWorld'};
-batches(2).mice = fliplr({'6812', '6814', '437', '438', 'LEW009', 'LEW010', 'LEW008', 'IBL_34'});
+% batches(2).name = {'choiceWorld'};
+% batches(2).mice = fliplr({'6812', '6814', '437', '438', 'LEW009', 'LEW010', 'LEW008', 'IBL_34'});
 
 for bidx = length(batches):-1:1,
     for m = 1:length(batches(bidx).mice),
@@ -49,9 +49,9 @@ for bidx = length(batches):-1:1,
         % On fitted data (over 3 session): |bias| < 16%, threshold > 19%, lapse < 0.2.
         
         % for each day, test the 2 top criteria
-        useTrls = (abs(data_all.signedContrast) > 50 & data_all.inclTrials == 1);
+        useTrls = (abs(data_all.signedContrast) > 25 & data_all.inclTrials == 1);
         accuracy_crit = splitapply(@nanmean, 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls)));
-        accuracy_crit = (accuracy_crit > 0.8);
+        accuracy_crit = (accuracy_crit > 80);
         
         ntrials = splitapply(@numel, data_all.rt, findgroups(data_all.dayidx));
         ntrials_crit = (ntrials > 200);
@@ -85,34 +85,34 @@ for bidx = length(batches):-1:1,
             istrained = false;
         end
         
-        % =============================================== %
-        % MAKE A FILE FOR NICK
-        % =============================================== %
-    
-        [gr, date] = findgroups(data_all.date);
-        date = datestr(date, 'yyyy-mm-dd');
+        %         % =============================================== %
+        %         % MAKE A FILE FOR NICK
+        %         % =============================================== %
+        %
+        %         [gr, date] = findgroups(data_all.date);
+        %         date = datestr(date, 'yyyy-mm-dd');
+        %
+        %         % fit the psychometric function separately for 2 biased conditions
+        %         params = splitapply(fitPsych, data_all.signedContrast, data_all.response, gr);
+        %         params = cat(1, params{:});
+        %
+        %         tab = array2table(params, 'variablenames', {'bias', 'slope', 'lapse_low', 'lapse_high'});
+        %         tab.date = datestr(date, 'yyyy-mm-dd');
+        %         writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_34_psychfuncfits.csv');
+        %
+        %         fitHistory = @(x,y) {glmfit(x, (y > 0), 'binomial')};
+        %         resp = double(data_all.response); resp(resp == 0) = NaN;
+        %         designM = [(data_all.signedContrast ./ 100), ...
+        %             circshift(sign(data_all.signedContrast), 1), ...
+        %             circshift(resp, 1), ...
+        %             circshift(sign(data_all.correct-0.2), 1)];
+        %         params = splitapply(fitHistory, designM, resp, gr);
+        %         params = cat(2, params{:})';
+        %
+        %         tab = array2table(params, 'variablenames', {'bias', 'stimulus', 'answer_hist', 'choice_hist', 'reward_hist'});
+        %         tab.date = datestr(date, 'yyyy-mm-dd');
+        %         writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_34_psychfuncfits_trialhistory.csv');
         
-        % fit the psychometric function separately for 2 biased conditions
-        params = splitapply(fitPsych, data_all.signedContrast, data_all.response, gr);
-        params = cat(1, params{:});
-        
-        tab = array2table(params, 'variablenames', {'bias', 'slope', 'lapse_low', 'lapse_high'});
-        tab.date = datestr(date, 'yyyy-mm-dd');
-        writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_34_psychfuncfits.csv');
-        
-        fitHistory = @(x,y) {glmfit(x, (y > 0), 'binomial')};
-        resp = double(data_all.response); resp(resp == 0) = NaN;
-        designM = [(data_all.signedContrast ./ 100), ...
-            circshift(sign(data_all.signedContrast), 1), ...
-            circshift(resp, 1), ...
-            circshift(sign(data_all.correct-0.2), 1)];
-        params = splitapply(fitHistory, designM, resp, gr);
-        params = cat(2, params{:})';
-        
-        tab = array2table(params, 'variablenames', {'bias', 'stimulus', 'answer_hist', 'choice_hist', 'reward_hist'});
-        tab.date = datestr(date, 'yyyy-mm-dd');
-        writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_34_psychfuncfits_trialhistory.csv');
-
         % =============================================== %
         % LEARNING CURVES
         % =============================================== %
@@ -125,6 +125,10 @@ for bidx = length(batches):-1:1,
             'capsize', 0, 'color', 'k', 'marker', 'o', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
         ylabel({'Performance (%)' 'on >50% contrast' 'repeat trials excluded'});
         set(gca, 'xtick', unique(data_all.dayidx));
+        if numel(unique(data_all.dayidx)) > 20,
+            xticks = unique([min(data_all.dayidx):5:max(data_all.dayidx) max(data_all.dayidx)]);
+            set(gca, 'xtick', xticks');
+        end
         box off; ylim([0 100]); xlim([0 max(data_all.dayidx)]);
         hline(50); hline(80);
         if istrained, vline(day_trained); end
@@ -133,6 +137,10 @@ for bidx = length(batches):-1:1,
         plot(unique(data_all.dayidx), ntrials, 'k', 'marker', 'o', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
         ylabel({'# Trials'});
         set(gca, 'xtick', unique(data_all.dayidx));
+        if numel(unique(data_all.dayidx)) > 20,
+            xticks = unique([min(data_all.dayidx):5:max(data_all.dayidx) max(data_all.dayidx)]);
+            set(gca, 'xtick', xticks');
+        end
         box off;  xlim([0 max(data_all.dayidx)]);
         hline(200);
         if istrained, vline(day_trained); end
@@ -185,7 +193,12 @@ for bidx = length(batches):-1:1,
         
         subplot(9, 4,[15 16]); hold on;
         plot(unique(data_all.dayidx), params(:, 4), '-ko', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
+    
         set(gca, 'xtick', unique(data_all.dayidx));
+        if numel(unique(data_all.dayidx)) > 20,
+            xticks = unique([min(data_all.dayidx):5:max(data_all.dayidx) max(data_all.dayidx)]);
+            set(gca, 'xtick', xticks');
+        end
         ylabel({'Lapse' '(high)'}); ylim([-0.05 1]);
         hline(0.2);
         box off;  xlim([0 max(data_all.dayidx)]);
@@ -202,13 +215,9 @@ for bidx = length(batches):-1:1,
             data_clean_all.probabilityLeft2(data_clean_all.probabilityLeft2 == 0) = NaN;
             [gr, bias, dayidx] = findgroups(data_clean_all.probabilityLeft2, data_clean_all.dayidx);
             
-            try
             % fit the psychometric function separately for 2 biased conditions
-            params = splitapply(fitPsych, data_clean_all.signedContrast, data_clean_all.response, gr);
+            params = splitapply(fitPsych, data_clean_all.signedContrast, (data_clean_all.response > 0), gr);
             params = cat(1, params{:});
-            catch
-                assert(1==0);
-            end
             
             colors = linspecer(numel(unique(bias)));
             for b = [-1 1],
@@ -320,7 +329,7 @@ for bidx = length(batches):-1:1,
         try suptitle(titlestr); end
         
         foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', ...
-            'DataFigures', 'BehaviourData_Weekly', '2018-10-15');
+            'DataFigures', 'BehaviourData_Weekly', '2018-10-22');
         if ~exist(foldername, 'dir'), mkdir(foldername); end
         print(gcf, '-dpdf', fullfile(foldername, sprintf('%s_%s_%s_%s.pdf', datestr(now, 'yyyy-mm-dd'), ...
             data.Properties.UserData.lab, batches(bidx).name{1}, batches(bidx).mice{m})));

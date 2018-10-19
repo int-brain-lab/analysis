@@ -21,18 +21,28 @@ set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 msz = 4;
 
 %% overview
-mice = ({'IBL_1', 'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
-    'IBL_3', 'IBL_6', 'IBL_8', 'IBL_10', ...
-    'IBL_13',  'IBL_14',  'IBL_15',  'IBL_16',  'IBL_17', ...
+mice = ({'IBL_16', 'LEW008', 'IBL_1', 'IBL_2', 'IBL_4', 'IBL_5', 'IBL_7', 'IBL_33', 'IBL_34', 'IBL_35', 'IBL_36', 'IBL_37', ...
+    'IBL_3', 'IBL_6', 'IBL_8',  ...
+    'IBL_13',  'IBL_14',  'IBL_15',  'IBL_10',  'IBL_17', ...
     'LEW009', 'LEW010', 'ALK081', 'LEW008', '6812', '6814', '437', '438',});
 
-for m = 1:length(mice),
+for m = 1; %:length(mice),
     
     close all;
     data_all = readAlf_allData(datapath, mice{m});
     data_all.dayidx = data_all.dayidx - min(data_all.dayidx) + 1; % make sure the 1st day where there is data (not an empty folder) is dayidx 1
     if isempty(data_all), continue; end
     data_clean_all = data_all(data_all.inclTrials ~= 0, :);
+    
+    % was the asymmetric reward introduced?
+    hasbiasedblocks = @(x) (numel(unique(x(~isnan(x)))) > 1);
+    islearned_miles = splitapply(hasbiasedblocks, data_all.probabilityLeft, findgroups(data_all.dayidx));
+    if any(islearned_miles),
+        day_learned_miles = find(islearned_miles == 1, 1, 'first');
+        islearned_miles = 1;
+    else
+        islearned_miles = 0;
+    end
     
     % =============================================== %
     % DETERMINE WHETHER (AND WHEN) THIS MOUSE IS TRAINED
@@ -43,17 +53,23 @@ for m = 1:length(mice),
     % On fitted data (over 3 session): |bias| < 16%, threshold > 19%, lapse < 0.2.
     
     % for each day, test the 2 top criteria
-    useTrls = (abs(data_all.signedContrast) > 50 & data_all.inclTrials == 1);
+    useTrls = (abs(data_all.signedContrast) > 25); % test this on all trials
     accuracy_crit = splitapply(@nanmean, 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls)));
-    accuracy_crit = (accuracy_crit > 0.8);
+    accuracy_crit = (accuracy_crit > 80);
     
     ntrials = splitapply(@numel, data_all.rt, findgroups(data_all.dayidx));
     ntrials_crit = (ntrials > 200);
     
     % additional criterion: all contrasts must be present
-    allcontrasts = @(x) (numel(unique(abs(x(~isnan(x))))) == 6);
+    % allcontrasts = @(x) (numel(unique(abs(x(~isnan(x))))) == 6);
+    allcontrasts = @(x) any(ismember(x, 0));
     contrasts_crit = splitapply(allcontrasts, data_all.signedContrast, findgroups(data_all.dayidx));
     
+    % FOR THESE 3 CRITERIA, CONFIRM THEY ARE TRUE OVER EACH OF THE LAST 3 DAYS!
+    accuracy_crit   = (accuracy_crit & circshift(accuracy_crit, 1) & circshift(accuracy_crit, 2));
+    ntrials_crit    = (ntrials_crit & circshift(ntrials_crit, 1) & circshift(ntrials_crit, 2));
+    contrasts_crit  = (contrasts_crit & circshift(contrasts_crit, 1) & circshift(contrasts_crit, 2));
+
     % fit psychometric function over days
     fitPsych = @(x,y) {fitErf(x, y>0)};
     fitPsych_singleLapse = @(x,y) {fitErf_singleLapse(x, y>0)};
@@ -115,6 +131,7 @@ for m = 1:length(mice),
     box off;  xlim([0 max(data_all.dayidx)]);
     set(gca, 'xcolor', 'w');
     if istrained, vline(day_trained); end
+    if islearned_miles, vline(day_learned_miles, 'color', 'r'); end
     
     switch istrained
         case 1
@@ -134,6 +151,7 @@ for m = 1:length(mice),
     box off;  xlim([0 max(data_all.dayidx)]);
     set(gca, 'xcolor', 'w');
     if istrained, vline(day_trained); end
+    if islearned_miles, vline(day_learned_miles, 'color', 'r'); end
     
     subplot(9, 4,[9 10]); hold on;
     plot(unique(data_all.dayidx), params(:, 3), '-ko', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
@@ -143,6 +161,7 @@ for m = 1:length(mice),
     box off;  xlim([-0.05 max(data_all.dayidx)]);
     set(gca, 'xcolor', 'w');
     if istrained, vline(day_trained); end
+    if islearned_miles, vline(day_learned_miles, 'color', 'r'); end
     
     subplot(9, 4,[13 14]); hold on;
     plot(unique(data_all.dayidx), params(:, 4), '-ko', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
@@ -152,6 +171,7 @@ for m = 1:length(mice),
     box off;  xlim([0 max(data_all.dayidx)]);
     xlabel('Days');
     if istrained, vline(day_trained); end
+    if islearned_miles, vline(day_learned_miles, 'color', 'r'); end
     
     % =============================================== %
     % PSYCHOMETRIC FUNCTION OVER DAYS
@@ -170,6 +190,7 @@ for m = 1:length(mice),
     box off;  xlim([0 max(data_all.dayidx)]);
     set(gca, 'xcolor', 'w');
     if istrained, vline(day_trained_singlelapse); end
+    if islearned_miles, vline(day_learned_miles, 'color', 'r'); end
     
     switch istrained_singlelapse
         case 1
@@ -189,6 +210,7 @@ for m = 1:length(mice),
     box off;  xlim([0 max(data_all.dayidx)]);
     set(gca, 'xcolor', 'w');
     if istrained, vline(day_trained_singlelapse); end
+    if islearned_miles, vline(day_learned_miles, 'color', 'r'); end
     
     subplot(9, 4,[11 12]); hold on;
     plot(unique(data_all.dayidx), params(:, 3), '-ko', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
@@ -197,6 +219,8 @@ for m = 1:length(mice),
     hline(0.2);
     box off;  xlim([-0.05 max(data_all.dayidx)]);
     if istrained, vline(day_trained_singlelapse); end
+    if islearned_miles, vline(day_learned_miles, 'color', 'r'); end
+    
     xlabel('Days');
     
     % =============================================== %

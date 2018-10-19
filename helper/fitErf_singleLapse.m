@@ -11,7 +11,7 @@ y(nanIdx) = [];
 
 % make gamma and lambda symmetrical
 [pBest,~,exitflag,~] = fminsearchbnd(@(p) logistic_erf(p, ...
-    x, y), [0, 20, 0.05], [min(x) 0 0], [max(x) 100 1]);
+    x, y), [mean(x), 20, 0.05], [min(x) 10 0], [max(x) 100 0.4]);
 try
     assert(exitflag == 1); % check that this worked
     bias        = pBest(1);
