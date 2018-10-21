@@ -12,33 +12,38 @@ foldername = fullfile(getenv('HOME'), 'Google Drive', 'Rig building WG', ...
 %% grab only those dates that are immediately before and after citric acid
 % or normal water intervention
 data = data_full;
-data = data(ismember(datenum(data.date), datenum({'2018-09-24', '2018-10-09', '2018-10-15'})), :);
-[~, data.weekday] = weekday(datenum(data.date));
-data.weekday = cellstr(data.weekday);
+data = data(ismember(datenum(data.date), datenum({'2018-09-24', '2018-10-01', '2018-10-09', '2018-10-15'})), :);
+[~, data.weekday] = weekday(datenum(data.date)); 
 
+%data.weekday = cellstr(data.weekday);
 data.water = data.animal;
+data.rigwater = data.animal;
 data.trialNum(abs(data.response) ~= 1) = NaN;
 %data.trialNum(data.correct == 0) = NaN; % whether or not to remove error trials from count?
 
-data.water(datenum(data.date) == datenum('2018-09-24')) = {'weekend 1ml/day, tap water in rig'};
-%data.water(datenum(data.date) == datenum('2018-10-01')) = {'CA 5% in hydrogel'};
-data.water(datenum(data.date) == datenum('2018-10-09')) = {'weekend adlib 2% CA water, tap water in rig'};
-data.water(datenum(data.date) == datenum('2018-10-15')) = {'weekend adlib 2% CA water, sucrose 15% water in rig'};
+data.water(datenum(data.date) == datenum('2018-09-24'))     = {'1ml/day'};
+data.water(datenum(data.date) == datenum('2018-10-01'))     = {'adlib CA 5% in hydrogel'};
+data.water(datenum(data.date) == datenum('2018-10-09'))     = {'adlib 2% CA water'};
+data.water(datenum(data.date) == datenum('2018-10-15'))     = {'adlib 2% CA water'};
+data.rigwater(datenum(data.date) < datenum('2018-10-15'))   = {'tap water in rig'};
+data.rigwater(datenum(data.date) == datenum('2018-10-15'))  = {'15% sucrose water in rig'};
+data.rigwater(datenum(data.date) == datenum('2018-10-09') & ismember(data.animal, {'IBL_33', 'IBL_13'})) ...
+    = {'15% sucrose water in rig'};
+data = data(:, {'water', 'trialNum', 'animal', 'date', 'rigwater'});
 
-data = data(:, {'water', 'trialNum', 'animal', 'weekday', 'date'});
-data_tmp = data(:, {'trialNum', 'animal', 'date'});
+data2 = varfun(@numel,data,'InputVariables','trialNum',...
+       'GroupingVariables',{'date', 'animal', 'water', 'rigwater'})
+writetable(data2, '~/Google Drive/2018 Postdoc CSHL/CitricAcid/trialcounts.csv');
+
+%data_tmp = data(:, {'trialNum', 'animal', 'date'});
+
+%% BARGRAPH WITH SCATTER
+
 data_tmp(isnan(data_tmp.trialNum), :) = [];
 data_mat = unstack(data_tmp, {'trialNum'}, 'date', 'AggregationFunction', @numel);
 
-
-% separate out the mice that got sucrose on the 9th of October in the rig
-sucrosetrials = data_mat{ismember(data_mat.animal, {'IBL_33', 'IBL_13'}), 3};
-data_mat{ismember(data_mat.animal, {'IBL_33', 'IBL_13'}), 3} = NaN;
-
 data_mat = data_mat{:, 2:end};
 xvars = repmat([1 2 3], [size(data_mat, 1) 1]);
-
-%% BARGRAPH WITH SCATTER
 set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 
 close all; 
