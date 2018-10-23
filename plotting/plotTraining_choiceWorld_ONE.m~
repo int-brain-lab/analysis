@@ -1,21 +1,16 @@
-function plotTraining_choiceWorld()
+function plotTraining_choiceWorld)ONE()
 % make overview plots across labs
 % uses the gramm toolbox: https://github.com/piermorel/gramm
 % Anne Urai, 2018
 
 % grab all the data that's on Drive
-addpath('~/Documents/code/npy-matlab//');
+% addpath('~/Documents/code/npy-matlab//');
 addpath(genpath('/Users/urai/Documents/code/analysis_IBL'));
 
-if ispc,
-    usr = getenv('USERNAME');
-    homedir = getenv('USERPROFILE');
-    datapath = fullfile(homedir, 'Google Drive');
-elseif ismac,
-    usr = getenv('USER');
-    homedir = getenv('HOME');
-    datapath = fullfile(homedir, 'Google Drive', 'IBL_DATA_SHARE');
-end
+% connect to ONE
+one = One(); 
+
+[eid, ses] = one.search('users', {'valeria'}, 'date_range', datenum([2018 8 24 ; 2018 8 24])) ;
 
 set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 msz = 4;
