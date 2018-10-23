@@ -26,9 +26,11 @@ for m = 1:length(mice),
     [eid, ses]  = one.search('subjects', mice{m}) ;
     ses = struct2table(ses);
     for eidx = 1:length(eid),
-        D                 = one.load(eid{eidx}, 'data', datatypes, 'dclass_output', true);
-        data_all{eidx}    = dataset2table(D, ses(eidx, :));
-        data_all{eidx}.dayidx = repmat(eidx, length(data_all{eidx}.choice), 1);
+        try
+            D                 = one.load(eid{eidx}, 'data', datatypes, 'dclass_output', true);
+            data_all{eidx}    = dataset2table(D, ses(eidx, :));
+            data_all{eidx}.dayidx = repmat(eidx, length(data_all{eidx}.choice), 1);
+        end
     end
     data_all = cat(1, data_all{:});
     
