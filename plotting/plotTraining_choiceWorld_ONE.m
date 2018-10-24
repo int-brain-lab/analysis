@@ -24,32 +24,30 @@ for m = 1:length(mice),
     
     tic;
     % LOAD DATA FOR THIS MOUSE
-    [eid, ses]  = one.search('subjects', mice{m}) ;
+    [eid, ses]  = one.search('subjects', mice{m});
     ses = struct2table(ses);
     
     % make sure to grab these in chronological order
     [~, idx] = sort(ses.start_time);
-    eid = eid(idx);
-    ses = ses(idx, :);
+    eid      = eid(idx);
+    ses      = ses(idx, :);
     
     %  disp(dates);
     % check if these are sorted by date?
     clear data_all
-    
-    didx = 1;
     for eidx = 1:length(eid),
-        
         try
             D                   = one.load(eid{eidx}, 'data', datatypes, 'dclass_output', true);
-            data_all{eidx}      = dataset2table(D, ses(eidx, :));
-            
-            % add idx of all the days this subject did
-            data_all{eidx}.dayidx = repmat(eidx, length(data_all{eidx}.choice), 1);
-            data_all{eidx}.dayidx_rev = repmat(max(idx) - eidx, length(data_all{eidx}.choice), 1);
+            % disp(size(D.data{1}, 1));
+            if size(D.data{1}, 1) > 10,
+                data_all{eidx}      = dataset2table(D, ses(eidx, :));
+            end
         end
-        didx = didx + 1;
     end
     data_all = cat(1, data_all{:});
+
+    % ADD IDX FOR TRAINING DAY
+    data_all.dayidx     = findgroups(dateshift(data_all.start_time, 'start', 'day'));
     
     if isempty(data_all), continue; end
     %data_clean_all = data_all(data_all.included ~= 0, :);
@@ -135,12 +133,12 @@ for m = 1:length(mice),
     close all;
     
     subplot(5,5,[1 2]);
-    useTrls = (abs(data_all.signedContrast) > 50);
+    useTrls = (abs(data_all.signedContrast) > 25);
     errorbar(unique(data_all.dayidx(useTrls)), splitapply(@nanmean, 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
         splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
         splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
         'capsize', 0, 'color', 'k', 'marker', 'o', 'markeredgecolor', 'w', 'markerfacecolor', 'k', 'markersize', msz);
-    ylabel({'Performance (%)' 'on >50% contrast' 'repeat trials excluded'});
+    ylabel({'Performance (%)' 'on >=50% contrast' 'repeat trials excluded'});
     set(gca, 'xtick', unique(data_all.dayidx));
     if numel(unique(data_all.dayidx)) > 20,
         xticks = unique([min(data_all.dayidx):5:max(data_all.dayidx) max(data_all.dayidx)]);
@@ -305,6 +303,7 @@ for m = 1:length(mice),
         %                 sprintf('\\mu %.2f \\sigma %.2f \\gamma %.2f \\lambda %.2f', mu, sigma, gamma, lambda)}, ...
         %                 'fontweight', fontweigth, 'color', titlecol); % show date
         %
+        
         title(sprintf('%s', datestr(unique(data_clean.start_time))), ...
             'fontweight', 'normal'); % show date
         
