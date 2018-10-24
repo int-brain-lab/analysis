@@ -9,11 +9,18 @@ s.signedContrast = (s.contrastLeft - s.contrastRight) * 100;
 s.rt             = s.response_times - s.stimOn_times;
 s.correct        = double(sign(s.signedContrast) == s.choice);
 s.contrastRight(s.signedContrast == 0) = NaN;
+s.trial         = transpose(1:length(s.choice));
 
 % metadata from 'ses'
 sesflds = {'subject', 'location', 'lab', 'start_time', 'end_time'};
 for sidx = 1:length(sesflds),
-    s.(sesflds{sidx}) = repmat(ses.(sesflds{sidx}) , length(s.choice), 1);
+    if contains(sesflds{sidx}, 'time'),
+        % log start_time and end_time as datetimes in Matlab
+        s.(sesflds{sidx}) = repmat(datetime(ses.(sesflds{sidx}){1}, ...
+            'inputformat', 'yyyy-MM-dd''T''HH:mm:SS'), length(s.choice), 1);
+    else
+        s.(sesflds{sidx}) = repmat(ses.(sesflds{sidx}), length(s.choice), 1);
+    end
 end
 
 % if possible, convert

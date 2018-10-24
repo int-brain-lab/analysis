@@ -13,7 +13,7 @@ msz = 4;
 one = One();
 
 % GRAB ALL THE MICE THAT ARE CURRENTLY TRAINING
-[eid, ses] = one.search('date_range', datenum({'2018-10-22', '2018-10-22'})) ;
+[eid, ses] = one.search('lab', 'zadorlab', 'date_range', datenum({'2018-10-22', '2018-10-22'})) ;
 mice = ses.subject;
 
 % get only behavior
@@ -22,20 +22,37 @@ datatypes = datatypes(contains(datatypes, '_ibl_trials'));
 
 for m = 1:length(mice),
     
+    tic;
     % LOAD DATA FOR THIS MOUSE
     [eid, ses]  = one.search('subjects', mice{m}) ;
     ses = struct2table(ses);
+    
+    % make sure to grab these in chronological order
+    [~, idx] = sort(ses.start_time);
+    eid = eid(idx);
+    ses = ses(idx, :);
+    
+    %  disp(dates);
+    % check if these are sorted by date?
+    clear data_all
+    
+    didx = 1;
     for eidx = 1:length(eid),
+        
         try
-            D                 = one.load(eid{eidx}, 'data', datatypes, 'dclass_output', true);
-            data_all{eidx}    = dataset2table(D, ses(eidx, :));
+            D                   = one.load(eid{eidx}, 'data', datatypes, 'dclass_output', true);
+            data_all{eidx}      = dataset2table(D, ses(eidx, :));
+            
+            % add idx of all the days this subject did
             data_all{eidx}.dayidx = repmat(eidx, length(data_all{eidx}.choice), 1);
+            data_all{eidx}.dayidx_rev = repmat(max(idx) - eidx, length(data_all{eidx}.choice), 1);
         end
+        didx = didx + 1;
     end
     data_all = cat(1, data_all{:});
     
     if isempty(data_all), continue; end
-    %data_clean_all = data_all(data_all.inclTrials ~= 0, :);
+    %data_clean_all = data_all(data_all.included ~= 0, :);
     data_clean_all = data_all;
     
     % =============================================== %
@@ -47,8 +64,9 @@ for m = 1:length(mice),
     % On fitted data (over 3 session): |bias| < 16%, threshold > 19%, lapse < 0.2.
     
     % for each day, test the 2 top criteria
-    useTrls = (abs(data_all.signedContrast) > 25);
-    accuracy_crit = splitapply(@nanmean, 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls)));
+    correct = 100 * data_all.correct;
+    correct(abs(data_all.signedContrast) > 25) = NaN;
+    accuracy_crit = splitapply(@nanmean, correct, findgroups(data_all.dayidx));
     accuracy_crit = (accuracy_crit > 80);
     
     ntrials = splitapply(@numel, data_all.rt, findgroups(data_all.dayidx));
@@ -67,7 +85,7 @@ for m = 1:length(mice),
     for d = usedays',
         if d >= 3,
             ThreeSessionTrls = (data_clean_all.dayidx >= d-2 & data_clean_all.dayidx <= d);
-            psychfuncparams(find(d==usedays), :) = fitErf(data_clean_all.signedContrast(ThreeSessionTrls), (data_clean_all.response(ThreeSessionTrls)>0) );
+            psychfuncparams(find(d==usedays), :) = fitErf(data_clean_all.signedContrast(ThreeSessionTrls), (data_clean_all.choice(ThreeSessionTrls)>0) );
         end
     end
     psychfuncparams(isnan(sum(psychfuncparams, 2)), :) = 0;
@@ -91,7 +109,7 @@ for m = 1:length(mice),
     %         date = datestr(date, 'yyyy-mm-dd');
     %
     %         % fit the psychometric function separately for 2 biased conditions
-    %         params = splitapply(fitPsych, data_all.signedContrast, data_all.response, gr);
+    %         params = splitapply(fitPsych, data_all.signedContrast, data_all.choice, gr);
     %         params = cat(1, params{:});
     %
     %         tab = array2table(params, 'variablenames', {'bias', 'slope', 'lapse_low', 'lapse_high'});
@@ -99,7 +117,7 @@ for m = 1:length(mice),
     %         writetable(tab, '~/Google Drive/IBL_DATA_SHARE/CSHL/fits/IBL_34_psychfuncfits.csv');
     %
     %         fitHistory = @(x,y) {glmfit(x, (y > 0), 'binomial')};
-    %         resp = double(data_all.response); resp(resp == 0) = NaN;
+    %         resp = double(data_all.choice); resp(resp == 0) = NaN;
     %         designM = [(data_all.signedContrast ./ 100), ...
     %             circshift(sign(data_all.signedContrast), 1), ...
     %             circshift(resp, 1), ...
@@ -117,7 +135,7 @@ for m = 1:length(mice),
     close all;
     
     subplot(5,5,[1 2]);
-    useTrls = (abs(data_all.signedContrast) > 50 & data_all.inclTrials == 1);
+    useTrls = (abs(data_all.signedContrast) > 50);
     errorbar(unique(data_all.dayidx(useTrls)), splitapply(@nanmean, 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
         splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
         splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), 100*data_all.correct(useTrls), findgroups(data_all.dayidx(useTrls))), ...
@@ -148,11 +166,8 @@ for m = 1:length(mice),
     
     % TODO: INDICATE MONDAYS FOR TRIAL COUNT
     [gr, day] = findgroups(data_all.dayidx);
-    daysofweek = splitapply(@unique, weekday(data_all.date), gr);
+    daysofweek = splitapply(@unique, weekday(data_all.start_time), gr);
     p2 = plot(day(daysofweek == 2), ntrials(daysofweek == 2), 'ok', 'markeredgecolor', 'k', 'markerfacecolor', 'w', 'markersize', msz);
-    %  annotation('textarrow', [day(find(daysofweek == 2, 1)) day(find(daysofweek == 2, 1))], ...
-    %      [ntrials(find(daysofweek == 2, 1)) ntrials(find(daysofweek == 2, 1))-10],'String','Mondays');
-    % legend(p2, 'Mondays', 'Location', 'NorthWest'); legend boxoff;
     ylim([0 max(get(gca, 'ylim'))]);
     
     % =============================================== %
@@ -160,7 +175,7 @@ for m = 1:length(mice),
     % =============================================== %
     
     % fit psychometric function over days
-    params   = splitapply(fitPsych, data_clean_all.signedContrast, data_clean_all.response, findgroups(data_clean_all.dayidx));
+    params   = splitapply(fitPsych, data_clean_all.signedContrast, data_clean_all.choice, findgroups(data_clean_all.dayidx));
     params   = cat(1, params{:});
     
     subplot(9, 4,[3 4]); hold on;
@@ -215,7 +230,7 @@ for m = 1:length(mice),
         [gr, bias, dayidx] = findgroups(data_clean_all.probabilityLeft2, data_clean_all.dayidx);
         
         % fit the psychometric function separately for 2 biased conditions
-        params = splitapply(fitPsych, data_clean_all.signedContrast, (data_clean_all.response > 0), gr);
+        params = splitapply(fitPsych, data_clean_all.signedContrast, (data_clean_all.choice > 0), gr);
         params = cat(1, params{:});
         
         colors = linspecer(numel(unique(bias)));
@@ -233,7 +248,7 @@ for m = 1:length(mice),
     % OVERVIEW OF LAST 3 DAYS
     % =============================================== %
     
-    days = sort(unique(data_all.dayidx_rev));
+    days = sort(unique(data_all.dayidx));
     if length(days) <= 2,
         continue;
     end
@@ -241,8 +256,8 @@ for m = 1:length(mice),
     for didx = 1:length(days),
         
         % use only the data for this day
-        data_clean  = data_clean_all(data_clean_all.dayidx_rev == days(didx), :);
-        data        = data_all(data_all.dayidx_rev == days(didx), :);
+        data_clean  = data_clean_all(data_clean_all.dayidx == days(didx), :);
+        data        = data_all(data_all.dayidx == days(didx), :);
         
         % PSYCHOMETRIC AND CHRONOMETRIC FUNCTION
         subplot(4,4,didx+8);
@@ -270,12 +285,12 @@ for m = 1:length(mice),
         for lp = 1:length(leftProbs),
             tmpdata = data_clean(data_clean.probabilityLeft == leftProbs(lp), :);
             errorbar(unique(tmpdata.signedContrast(~isnan(tmpdata.signedContrast))), ...
-                splitapply(@nanmean, tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
-                splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.response > 0, findgroups(tmpdata.signedContrast)), ...
+                splitapply(@nanmean, tmpdata.choice > 0, findgroups(tmpdata.signedContrast)), ...
+                splitapply(@(x) (bootstrappedCI(x, 'mean', 'low')), tmpdata.choice > 0, findgroups(tmpdata.signedContrast)), ...
+                splitapply(@(x) (bootstrappedCI(x, 'mean', 'high')), tmpdata.choice > 0, findgroups(tmpdata.signedContrast)), ...
                 'color', colors(lp, :), 'capsize', 0, 'marker', 'o', 'markerfacecolor', 'w', 'markersize', 2, 'linestyle', 'none');
             
-            [mu, sigma, gamma, lambda] = fitErf(tmpdata.signedContrast, tmpdata.response > 0);
+            [mu, sigma, gamma, lambda] = fitErf(tmpdata.signedContrast, tmpdata.choice > 0);
             y = psychFuncPred(linspace(min(tmpdata.signedContrast), max(tmpdata.signedContrast), 100), ...
                 mu, sigma, gamma, lambda);
             plot(linspace(min(tmpdata.signedContrast), max(tmpdata.signedContrast), 100), y, '-', 'color', colors(lp, :));
@@ -290,18 +305,18 @@ for m = 1:length(mice),
         %                 sprintf('\\mu %.2f \\sigma %.2f \\gamma %.2f \\lambda %.2f', mu, sigma, gamma, lambda)}, ...
         %                 'fontweight', fontweigth, 'color', titlecol); % show date
         %
-        title(sprintf('%s', datestr(unique(data_clean.date))), ...
+        title(sprintf('%s', datestr(unique(data_clean.start_time))), ...
             'fontweight', 'normal'); % show date
         
         % RTs over time
         subplot(4,4,didx+12); hold on; colormap(linspecer(2));
-        s3 = scatter(data.trialNum(data.inclTrials == 0), data.rt(data.inclTrials ==0), 3, '.k');
-        s1 = scatter(data.trialNum(data.inclTrials == 1 & data.correct == 1), data.rt(data.inclTrials == 1 & data.correct == 1), 3, '.b');
-        s2 = scatter(data.trialNum(data.inclTrials == 1 & data.correct == 0), data.rt(data.inclTrials == 1 & data.correct == 0), 3, '.r');
+        s3 = scatter(data.trial(data.included == 0), data.rt(data.included ==0), 3, '.k');
+        s1 = scatter(data.trial(data.included == 1 & data.correct == 1), data.rt(data.included == 1 & data.correct == 1), 3, '.b');
+        s2 = scatter(data.trial(data.included == 1 & data.correct == 0), data.rt(data.included == 1 & data.correct == 0), 3, '.r');
         
         xlabel('# trials');
         if didx == 1, ylabel('RT (s)'); end
-        axis tight; xlim([-2 max(data.trialNum)]);
+        axis tight; xlim([-2 max(data.trial)]);
         set(gca, 'yscale', 'log');
         ylim([-1000 max(get(gca, 'ylim'))]);
         set(gca, 'yticklabel', sprintfc('%.1f', get(gca, 'ytick')));
@@ -323,15 +338,17 @@ for m = 1:length(mice),
         case 0
             trainedStr = 'not trained';
     end
-    titlestr = sprintf('Lab %s, task %s, mouse %s, %s', data.Properties.UserData.lab, ...
-        regexprep(batches(bidx).name{1}, '_', ' '), regexprep(batches(bidx).mice{m}, '_', ''), trainedStr);
+    
+    titlestr = sprintf('Lab %s, mouse %s, %s', ses.lab{1}, ...
+        regexprep(mice{m}, '_', ''), trainedStr);
     try suptitle(titlestr); end
     
-    foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', ...
-        'DataFigures', 'BehaviourData_Weekly', '2018-10-22');
+    foldername = fullfile(getenv('HOME'), 'Google Drive', 'Rig building WG', ...
+        'DataFigures', 'BehaviourData_Weekly', '2018-10-29');
     if ~exist(foldername, 'dir'), mkdir(foldername); end
     print(gcf, '-dpdf', fullfile(foldername, sprintf('%s_%s_%s_%s.pdf', datestr(now, 'yyyy-mm-dd'), ...
-        data.Properties.UserData.lab, batches(bidx).name{1}, batches(bidx).mice{m})));
+        ses.lab{1}, 'choiceWorld', mice{m})));
+    toc;
     
 end
 end

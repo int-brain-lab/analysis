@@ -330,8 +330,8 @@ for bidx = length(batches):-1:2,
             regexprep(batches(bidx).name{1}, '_', ' '), regexprep(batches(bidx).mice{m}, '_', ''), trainedStr);
         try suptitle(titlestr); end
         
-        foldername = fullfile(homedir, 'Google Drive', 'Rig building WG', ...
-            'DataFigures', 'BehaviourData_Weekly', '2018-10-22');
+        foldername = fullfile(getenv('HOME'), 'Google Drive', 'Rig building WG', ...
+            'DataFigures', 'BehaviourData_Weekly', '2018-10-29');
         if ~exist(foldername, 'dir'), mkdir(foldername); end
         print(gcf, '-dpdf', fullfile(foldername, sprintf('%s_%s_%s_%s.pdf', datestr(now, 'yyyy-mm-dd'), ...
             data.Properties.UserData.lab, batches(bidx).name{1}, batches(bidx).mice{m})));
