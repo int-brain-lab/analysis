@@ -50,8 +50,7 @@ for m = 1:length(mice),
     data_all.dayidx     = findgroups(dateshift(data_all.start_time, 'start', 'day'));
     
     if isempty(data_all), continue; end
-    %data_clean_all = data_all(data_all.included ~= 0, :);
-    data_clean_all = data_all;
+    data_clean_all = data_all(data_all.included ~= 0, :);
     
     % =============================================== %
     % DETERMINE WHETHER (AND WHEN) THIS MOUSE IS TRAINED
@@ -63,7 +62,7 @@ for m = 1:length(mice),
     
     % for each day, test the 2 top criteria
     correct = 100 * data_all.correct;
-    correct(abs(data_all.signedContrast) > 25) = NaN;
+    correct(abs(data_all.signedContrast) < 50 | data_all.included == 0) = NaN;
     accuracy_crit = splitapply(@nanmean, correct, findgroups(data_all.dayidx));
     accuracy_crit = (accuracy_crit > 80);
     
