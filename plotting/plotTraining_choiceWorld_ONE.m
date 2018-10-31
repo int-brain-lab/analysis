@@ -13,11 +13,11 @@ msz = 4;
 one = One();
 
 % GRAB ALL THE MICE THAT ARE CURRENTLY TRAINING
-[eid, ses] = one.search('lab', 'zadorlab', 'date_range', datenum({'2018-10-22', '2018-10-22'})) ;
-mice = ses.subject;
+[eid, ses] = one.search('lab', 'zadorlab', 'date_range', datenum({'2018-10-22', '2018-10-30'})) ;
+mice = unique(ses.subject);
 
 % get only behavior
-datatypes = one.list(eid);
+datatypes = one.list(eid{1});
 datatypes = datatypes(contains(datatypes, '_ibl_trials'));
 
 for m = 1:length(mice),

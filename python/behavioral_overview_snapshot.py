@@ -18,129 +18,7 @@ from oneibl.one import ONE
 from ibllib.time import isostr2date
 from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
 
-def get_metadata(mousename):
-	
-	metadata = {'date_birth': one._alyxClient.get('/weighings?nickname=%s' %mousename),
-		'cage': one._alyxClient.get('/cage?nickname=%s' %mousename)}
-
-	return metadata
-
-def get_weights(mousename):
-	wei = one._alyxClient.get('/weighings?nickname=%s' %mousename)
-	wei = pd.DataFrame(wei)
-	wei['date_time'] = pd.to_datetime(wei.date_time)
-	wei.sort_values('date_time', inplace=True)
-	wei.reset_index(drop=True, inplace=True)
-	wei['date'] = wei['date_time'].dt.floor('D')  
-	wei['days'] = wei.date - wei.date[0]
-	wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
-
-	return wei
-
-def get_water(mousename):
-	wei = one._alyxClient.get('/water-administrations?nickname=%s' %mousename)
-	wei = pd.DataFrame(wei)
-	wei['date_time'] = pd.to_datetime(wei.date_time)
-
-	# for w in wei:
-	# wei['date_time'] = isostr2date(wei['date_time'])
-	wei.sort_values('date_time', inplace=True)
-	wei.reset_index(drop=True, inplace=True)
-	wei['date'] = wei['date_time'].dt.floor('D')  
-
-	wei['days'] = wei.date - wei.date[0]
-	wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
-
-	wei = wei.set_index('date')
-	wei.index = pd.to_datetime(wei.index)
-
-	wa_unstacked = wei.pivot_table(index='date', 
-		columns='water_type', values='water_administered', aggfunc='sum').reset_index()
-	# wa_unstacked = wa_unstacked.set_index('date')
-	# wa_unstacked.index = pd.to_datetime(wa_unstacked.index)
-
-	wa_unstacked['date'] = pd.to_datetime(wa_unstacked.date)
-	wa_unstacked.set_index('date', inplace=True)
-
-	return wa_unstacked, wei
-
-def fix_date_axis(ax):
-	# deal with date axis and make nice looking 
-	ax.xaxis_date()
-	ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=1))
-	ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%d'))
-	for item in ax.get_xticklabels():
-		item.set_rotation(60)
-
-def get_behavior(mousename, **kwargs):
-
-	# find metadata we need
-	eid, details = one.search(subjects=mousename, details=True, **kwargs)
-
-	# sort by date so that the sessions are shown in order
-	start_times  = [d['start_time'] for d in details]
-	eid 		 = [x for _,x in sorted(zip(start_times, eid))]
-	details 	 = [x for _,x in sorted(zip(start_times, details))]
-
-	# grab only behavioral datatypes, all start with _ibl_trials
-	types 		= one.list(eid)
-	types2 		= [item for sublist in types for item in sublist]
-	types2 		= list(set(types2)) # take unique by converting to a set and back to list
-	dataset_types = [s for i, s in enumerate(types2) if '_ibl_trials' in s]
-	
-	# load data over sessions
-	for ix, eidx in enumerate(eid):
-		dat = one.load(eidx, dataset_types=dataset_types, dclass_output=True)
-
-		# skip if no data, or if there are fewer than 10 trials in this session
-		if len(dat.data) == 0:
-			continue
-		else:
-			if len(dat.data[0]) < 10:
-				continue
-	
-		# pull out a dict with variables and their values
-		tmpdct = {}
-		for vi, var in enumerate(dat.dataset_type):
-			k = [item[0] for item in dat.data[vi]]
-			tmpdct[re.sub('_ibl_trials.', '', var)] = k
-
-		# add crucial metadata
-		tmpdct['subject'] 		= details[ix]['subject']
-		tmpdct['users'] 		= details[ix]['users'][0]
-		tmpdct['lab'] 			= details[ix]['lab']
-		tmpdct['session'] 		= details[ix]['number']
-		tmpdct['start_time'] 	= details[ix]['start_time']
-		tmpdct['end_time'] 		= details[ix]['end_time']
-		tmpdct['trial']         = [i for i in range(len(dat.data[0]))]
-
-		# append all sessions into one dataFrame
-		if not 'df' in locals():
-			df = pd.DataFrame.from_dict(tmpdct)
-		else:
-			df = df.append(pd.DataFrame.from_dict(tmpdct), sort=False, ignore_index=True)
-
-	# take care of dates properly
-	df['start_time'] = pd.to_datetime(df.start_time)
-	df['end_time'] 	 = pd.to_datetime(df.end_time)
-	df['date'] 	 	 = df['start_time'].dt.floor("D")
-
-	# convert to number of days from start of the experiment
-	df['days'] 		 = df.date - df.date[0]
-	df['days'] 		 = df.days.dt.days 
-
-	# add some more handy things
-	df['rt'] 		= df['response_times'] - df['stimOn_times']
-	df['signedContrast'] = (df['contrastLeft'] - df['contrastRight']) * 100
-	df['signedContrast'] = df.signedContrast.astype(int)
-
-	df['correct']   = np.where(np.sign(df['signedContrast']) == df['choice'], 1, 0)
-	df.loc[df['signedContrast'] == 0, 'correct'] = np.NaN
-
-	df['choice2'] = df.choice.replace([-1, 0, 1], [0, np.nan, 1]) # code as 0, 100 for percentages
-	df['probabilityLeft'] = df.probabilityLeft.round(decimals=2)
-
-	return df
+import behavior_plots, load_mouse_data # this has all plotting functions
 
 def fit_psychfunc(df):
 
@@ -153,26 +31,6 @@ def fit_psychfunc(df):
 
 	df2 = {'bias':pars[0],'threshold':pars[1], 'lapselow':pars[2], 'lapsehigh':pars[3]}
 	return pd.DataFrame(df2, index=[0])
-
-def plot_psychometric(df, ax):
-
-	color = next(ax._get_lines.prop_cycler)['color']
-	pars = fit_psychfunc(df)
-	xvals = np.linspace(df['signedContrast'].min(), df['signedContrast'].max(), 100)
-	tmpdf = pd.DataFrame.from_dict({'xvals': xvals, 
-		'yvals': psy.erf_psycho_2gammas(np.transpose(pars.values), xvals)})
-	sns.lineplot(x="xvals", y="yvals", color=color, data=tmpdf, ax=ax)
-
-	# datapoints on top
-	sns.pointplot(x="signedContrast", y="choice2", color=color, join=False, data=df, ax=ax)
-	ax.set(xlabel="Contrast (%)", ylabel="Choose right (%)", ylim=[-0.01,1.01], yticks=[0,0.25,0.5, 0.75, 1])
-	ax.grid(True)
-
-def plot_chronometric(df, ax):
-	color = next(ax._get_lines.prop_cycler)['color']
-	sns.pointplot(x="signedContrast", y="rt", color=color, estimator=np.median, join=True, data=df, ax=ax)
-	ax.set(xlabel="Contrast (%)", ylabel="RT (s)")
-	ax.grid(True)
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -187,6 +45,8 @@ one = ONE() # initialize
 
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?alive=True'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_14'))
+print subjects
 
 for i, mouse in enumerate(subjects['nickname']):
 
@@ -197,6 +57,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		wa_unstacked, wa 	= get_water(mouse)
 		wei 	= get_weights(mouse)
 		behav 	= get_behavior(mouse)
+		print(behav.sample(n=10))
 
 		fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=False,
 	        gridspec_kw=dict(width_ratios=[2,2,1,1,1], height_ratios=[1,1,1,1]), figsize=(11.69, 8.27))
@@ -338,7 +199,8 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		plt.tight_layout()
 		fig.savefig('/Users/urai/Google Drive/Rig building WG/DataFigures/BehaviourData_Weekly/AlyxPlots/%s_overview.pdf' %mouse)
+
 	except:
-		pass
+		raise
 
 	

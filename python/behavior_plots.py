@@ -65,14 +65,7 @@ def plot_psychometric(df, ax=None):
         pars = None
     
     # Hide the right and top spines
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    # Set bounds of axes lines
-    ax.spines['left'].set_bounds(0, 1)
-    ax.spines['bottom'].set_bounds(-100, 100)
-    # Explode out axes
-    ax.spines['left'].set_position(('outward',10))
-    ax.spines['bottom'].set_position(('outward',10))
+    
     # Reduce the clutter
     ax.set_xticks([-100, -50, 0, 50, 100])
     ax.set_yticks([0, .5, 1])
@@ -390,3 +383,19 @@ def plot_choice_windowed(df, window=10, ax=None):
     ax.plot((.5,.5), (1,len(df)), 'k--')
     ax.set_xlim([0,1.])
     return ax
+
+
+def fix_date_axis(ax):
+    # deal with date axis and make nice looking 
+    ax.xaxis_date()
+    ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=1))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%d'))
+    for item in ax.get_xticklabels():
+        item.set_rotation(60)
+
+
+def plot_chronometric(df, ax):
+    color = next(ax._get_lines.prop_cycler)['color']
+    sns.pointplot(x="signedContrast", y="rt", color=color, estimator=np.median, join=True, data=df, ax=ax)
+    ax.set(xlabel="Contrast (%)", ylabel="RT (s)")
+    ax.grid(True)
