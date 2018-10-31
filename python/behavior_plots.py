@@ -8,8 +8,15 @@ Created on Tue Sep 11 18:39:52 2018
 import psychofit as psy
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import numpy as np
+import scipy as sp
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
+import seaborn as sns 
 
-def plot_psychometric(df, ax=None):
+def plot_psychometric(df, ax=None, color="black"):
     """
     Plots psychometric data for a given DataFrame of behavioural trials
     
@@ -36,45 +43,44 @@ def plot_psychometric(df, ax=None):
     TODO: Change plot_psychometric to split by side prob
     """
     
-    contrastSet = np.sort(df['contrast'].unique())
+    contrastSet = np.sort(df['signedContrast'].unique())
     #choiceSet = np.array(set(df['choice']))
-    nn = np.array([sum((df['contrast']==c) & (df['included']==True)) for c in contrastSet])
-    pp = np.array([sum((df['contrast']==c) & (df['included']==True) & (df['choice']==-1)) for c in contrastSet])/nn
-    ci = 1.96*np.sqrt(pp*(1-pp)/nn)
+    nn = np.array([sum((df['signedContrast']==c) & (df['included']==True)) for c in contrastSet])
+    pp = np.array([sum((df['signedContrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
+    ci = 1.96*np.sqrt(pp*(1-pp)/nn) # TODO: this is not the binomial CI
     
     # graphics
     if ax is None:
         plt.figure()
         ax = plt.gca()
     ax.cla()
-    ax.plot((-100, 100),(.5, .5),'k--', alpha=.5, dashes=(4, 7), linewidth=1)
-    if contrastSet.size > 6:
+    if contrastSet.size > 4:
         pars, L = psy.mle_fit_psycho(np.vstack((contrastSet,nn,pp)), 
                                      P_model='erf_psycho_2gammas',
                                      parstart=np.array([np.mean(contrastSet), 3., 0.05, 0.05]),
                                      parmin=np.array([np.min(contrastSet), 10., 0., 0.]), 
                                      parmax=np.array([np.max(contrastSet), 30., .4, .4]))
-        ax.errorbar(contrastSet,pp,ci,fmt='ko',mfc='k')
-        ax.plot(np.arange(-100,100), psy.erf_psycho_2gammas( pars, np.arange(-100,100) ))
 
-        ax.plot((0,0),(0,1),'k:', alpha=.5, dashes=(4, 7), linewidth=1)
-        ax.set_title('bias = {:.2f}, threshold = {:.2g}, lapse = {:.2g}, {:.2f}'.format(*pars))
+        ax.errorbar(contrastSet,pp,ci,fmt='o', ecolor=color, mfc=color, mec="white")
+        ax.plot(np.arange(-100,100), psy.erf_psycho_2gammas( pars, np.arange(-100,100)) , color=color)
+        # ax.set_title('bias = {:.2f}, threshold = {:.2g}, lapse = {:.2g}, {:.2f}'.format(*pars))
+
     else:
-        ax.errorbar(contrastSet[contrastSet<0],pp[contrastSet<0],ci[contrastSet<0],fmt='k-o',mfc='k')
-        ax.errorbar(contrastSet[contrastSet>0],pp[contrastSet>0],ci[contrastSet>0],fmt='k-o',mfc='k')
+        ax.errorbar(contrastSet[contrastSet<0],pp[contrastSet<0],ci[contrastSet<0],fmt='ko',mfc=color)
+        ax.errorbar(contrastSet[contrastSet>0],pp[contrastSet>0],ci[contrastSet>0],fmt='ko',mfc=color)
         pars = None
-    
-    # Hide the right and top spines
-    
+
+    #ax.plot((-100, 100),(.5, .5),'k--', alpha=.5, dashes=(4, 7), linewidth=1)
+    #ax.plot((0,0),(0,1),':', color="black", alpha=.5, dashes=(4, 7), linewidth=1)
+
     # Reduce the clutter
     ax.set_xticks([-100, -50, 0, 50, 100])
     ax.set_yticks([0, .5, 1])
     # Set the limits
-    ax.set_xlim([-102, 102])
-    ax.set_ylim([0., 1.])
+    ax.set_xlim([-110, 110])
+    ax.set_ylim([-0.03, 1.03])
     ax.set_xlabel('Contrast (%)')
-    #plt.ylabel('Rightward choices')
-    #plt.tick_params(top='off', bottom='off', left='off', right='off', labelleft='off', labelbottom='on')
+
     return ax
     
 def plot_RTs(df, ax=None):
@@ -154,9 +160,9 @@ def perf_per_contrast(df):
     TODO: Optional contrast set input
     """
     contrastSet = (-100., -50., -25., -12.5, -0.06, 0., 0.06, 12.5, 25., 50., 100.)
-    nn = np.array([sum((df['contrast']==c) & (df['included']==True)) for c in contrastSet], dtype=float)
+    nn = np.array([sum((df['signedContrast']==c) & (df['included']==True)) for c in contrastSet], dtype=float)
     nn[nn == 0] = np.nan
-    pp = np.array([sum((df['contrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
+    pp = np.array([sum((df['signedContrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
     return pp
 
 
@@ -269,10 +275,10 @@ def plot_learning(dfs, ax=None):
     Returns:
         ax (Axes): The plot axes
     """
-    nn = np.array([sum((df['contrast']>=.5) & 
+    nn = np.array([sum((df['signedContrast']>=.5) & 
                        (df['included']==True)) 
                    for df in dfs])
-    pp = np.array([sum((df['contrast']>=.5) & 
+    pp = np.array([sum((df['signedContrast']>=.5) & 
                        (df['feedbackType']==1) & 
                        (df['included']==True))
                    for df in dfs]) / nn
@@ -394,8 +400,15 @@ def fix_date_axis(ax):
         item.set_rotation(60)
 
 
-def plot_chronometric(df, ax):
-    color = next(ax._get_lines.prop_cycler)['color']
-    sns.pointplot(x="signedContrast", y="rt", color=color, estimator=np.median, join=True, data=df, ax=ax)
+def plot_chronometric(df, ax, color):
+
+    contrastSet = np.sort(df['signedContrast'].unique())
+    # #choiceSet = np.array(set(df['choice']))
+    # nn = np.array([sum((df['signedContrast']==c) & (df['included']==True)) for c in contrastSet])
+    # pp = np.array([sum((df['signedContrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
+
+    # ax.errorbar(contrastSet,pp,ci,fmt='o', ecolor=color, mfc=color, mec="white")
+
+    sns.pointplot(x="signedContrast", y="rt", color=color, estimator=np.median, ci=None, join=True, data=df, ax=ax)
     ax.set(xlabel="Contrast (%)", ylabel="RT (s)")
     ax.grid(True)

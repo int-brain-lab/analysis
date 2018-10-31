@@ -9,8 +9,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import pandas as pd
 from IPython import embed as shell
 
@@ -18,7 +16,9 @@ from oneibl.one import ONE
 from ibllib.time import isostr2date
 from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
 
-import behavior_plots, load_mouse_data # this has all plotting functions
+# loading and plotting functions
+from behavior_plots import *
+from load_mouse_data import * # this has all plotting functions
 
 def fit_psychfunc(df):
 
@@ -46,7 +46,6 @@ one = ONE() # initialize
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?alive=True'))
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_14'))
-print subjects
 
 for i, mouse in enumerate(subjects['nickname']):
 
@@ -57,7 +56,6 @@ for i, mouse in enumerate(subjects['nickname']):
 		wa_unstacked, wa 	= get_water(mouse)
 		wei 	= get_weights(mouse)
 		behav 	= get_behavior(mouse)
-		print(behav.sample(n=10))
 
 		fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=False,
 	        gridspec_kw=dict(width_ratios=[2,2,1,1,1], height_ratios=[1,1,1,1]), figsize=(11.69, 8.27))
@@ -166,31 +164,35 @@ for i, mouse in enumerate(subjects['nickname']):
 				continue
 
 			dat = behav.loc[behav['days'] == day, :]
+			print(dat['date'].unique())
 			didx += 1
 
 			# PSYCHOMETRIC FUNCTION
 			ax = axes[0, didx]
-			dat.groupby(['probabilityLeft']).apply(plot_psychometric, (ax))
+			cmap = sns.diverging_palette(220, 20, n=len(dat['probabilityLeft'].unique()), center="dark")
+			if len(dat['probabilityLeft'].unique()) == 1:
+				cmap = [np.array([0,0,0,1])]
+			print(cmap)
+
+			for ix, probLeft in enumerate(dat['probabilityLeft'].unique()):
+				plot_psychometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax=ax, color=cmap[ix])
 			ax.set(title=pd.to_datetime(dat['start_time'].unique()[0]).strftime('%b-%d, %A'))
 
 			# CHRONOMETRIC FUNCTION
 			ax = axes[1, didx]
-			dat.groupby(['probabilityLeft']).apply(plot_chronometric, (ax))
+			for ix, probLeft in enumerate(dat['probabilityLeft'].unique()):
+				plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
 
-			# RTS THROUGHOUT SESSION - add running mean
-			# def rolling_mean(data):
-			#     return pd.rolling_mean(data, 10).mean()
-
+			# RTS THROUGHOUT SESSION
 			ax = axes[2, didx]
 			sns.scatterplot(x='trial', y='rt', hue='correct', 
 				palette={1:"forestgreen", 0:"crimson"},
 				alpha=.5, data=dat, ax=ax, legend=False)
 			sns.lineplot(x='trial', y='rt', color='black', ci=None, 
-				data=dat[['trial', 'rt']].rolling(10).median()) 
+				data=dat[['trial', 'rt']].rolling(10).median(), ax=ax) 
 			ax.set(xlabel="Trial number", ylabel="RT (s)")
 			ax.set_yscale("log")
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
-			# ax.set_xticks(np.arange(0, dat['trial'].max(), 100))
 
 		for i in range(3):
 			axes[i,3].set(ylabel='')

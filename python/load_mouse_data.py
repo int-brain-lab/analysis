@@ -1,4 +1,12 @@
-﻿def load_behavior(ref, rootDir=None):
+﻿from oneibl.one import ONE
+import pandas as pd
+import numpy as np
+from os import listdir, getcwd
+from os.path import isfile, join
+import re
+one = ONE() # initialize
+
+def load_behavior(ref, rootDir=None):
     """
     Load the trials for a given experiment reference
     
@@ -19,9 +27,7 @@
            
     @author: Miles
     """
-    import pandas as pd
-    from os import listdir, getcwd
-    from os.path import isfile, join
+
     
     if rootDir is None:
         rootDir = getcwd()
