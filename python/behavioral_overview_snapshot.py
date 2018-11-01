@@ -37,15 +37,17 @@ def fit_psychfunc(df):
 # ============================================= #
 
 ## INITIALIZE A FEW THINGS
-sns.set()
+sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True} )
 sns.set_context(context="paper")
 current_palette = sns.color_palette()
+
 # set a new palette for biased blocks: black, purple, orange
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?alive=True'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_14'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True'))
+# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_1'))
+print(subjects['nickname'].unique())
 
 for i, mouse in enumerate(subjects['nickname']):
 
@@ -53,7 +55,6 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		# MAKE THE FIGURE, divide subplots using gridspec
 		print(mouse)
-		wa_unstacked, wa 	= get_water(mouse)
 		wei 	= get_weights(mouse)
 		behav 	= get_behavior(mouse)
 
@@ -65,20 +66,21 @@ for i, mouse in enumerate(subjects['nickname']):
 		# ============================================= #
 
 		# write mouse info
-		ax = axes[0,0]
-		ax.annotate('Mouse %s (%s), DoB %s \n user %s, %s\n strain %s, cage %s \n %s' %(subjects['nickname'][i],
-		 subjects['sex'][i], subjects['birth_date'][i], 
-		 subjects['responsible_user'][i], subjects['lab'][i],
-		 subjects['strain'][i], subjects['litter'][i], subjects['description'][i]),
-		 xy=(0.5, 0.5), xycoords='axes fraction', va='center', ha='center')
-		ax.axis('off')
+		# TODO: MOVE THIS INTO SUPTITLE
+		# ax = axes[0,0]
+		# ax.annotate('Mouse %s (%s), DoB %s \n user %s, %s\n strain %s, cage %s \n %s' %(subjects['nickname'][i],
+		#  subjects['sex'][i], subjects['birth_date'][i], 
+		#  subjects['responsible_user'][i], subjects['lab'][i],
+		#  subjects['strain'][i], subjects['litter'][i], subjects['description'][i]),
+		#  xy=(0.5, 0.5), xycoords='axes fraction', va='center', ha='center')
+		# ax.axis('off')
 
 		# ============================================= #
 		# WEIGHT CURVE AND WATER INTAKE
 		# ============================================= #
 
 		# weight on top
-		ax = axes[1,0]
+		ax = axes[0,0]
 		sns.lineplot(x="date_time", y="weight", color="black", markers=True, data=wei, ax=ax)
 		sns.scatterplot(x="date_time", y="weight", color="black", data=wei, ax=ax)
 		ax.set(xlabel='', ylabel="Weight (g)", 
@@ -86,24 +88,28 @@ for i, mouse in enumerate(subjects['nickname']):
 		fix_date_axis(ax)
 
 		# use pandas plot for a stacked bar - water types
-		ax = axes[2,0]
+		ax = axes[1,0]
 		sns.set_palette("colorblind") # palette for water
-		wa_unstacked.loc[:,['Water','Hydrogel']].plot.bar(stacked=True, ax=ax)
-		l = ax.legend()
-		l.set_title('')
-		ax.set(ylabel="Water intake (mL)", xlabel='')
+		try:
+			wa_unstacked, wa 	= get_water(mouse)
+			wa_unstacked.loc[:,['Water','Hydrogel']].plot.bar(stacked=True, ax=ax)
+			l = ax.legend()
+			l.set_title('')
+			ax.set(ylabel="Water intake (mL)", xlabel='')
 
-		# fix dates, known to be an issue in pandas/matplotlib
-		ax.set_xticklabels([dt.strftime('%b-%d') if dt.weekday() is 1 else "" for dt in wa_unstacked.index.to_pydatetime()])
-		for item in ax.get_xticklabels():
-			item.set_rotation(60)
+			# fix dates, known to be an issue in pandas/matplotlib
+			ax.set_xticklabels([dt.strftime('%b-%d') if dt.weekday() is 1 else "" for dt in wa_unstacked.index.to_pydatetime()])
+			for item in ax.get_xticklabels():
+				item.set_rotation(60)
+		except:
+			pass
 
 		# ============================================= #
 		# TRIAL COUNTS AND PERFORMANCE
 		# ============================================= #
 
 		# performance on easy trials
-		ax = axes[3,0]
+		ax = axes[2,0]
 		behav['correct_easy'] = behav.correct
 		behav.loc[np.abs(behav['signedContrast']) < 50, 'correct_easy'] = np.NaN
 		correct_easy = behav.groupby(['start_time'])['correct_easy'].mean().reset_index()
@@ -111,7 +117,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		sns.lineplot(x="start_time", y="correct_easy", markers=True, color="black", data=correct_easy, ax=ax)
 		sns.scatterplot(x="start_time", y="correct_easy", color="black", data=correct_easy, ax=ax)
 		ax.set(xlabel='', ylabel="Performance on easy trials", 
-			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)],
+			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=2)],
 			yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
 		ax.yaxis.label.set_color("black")
 
@@ -125,7 +131,17 @@ for i, mouse in enumerate(subjects['nickname']):
 		fix_date_axis(righty)
 		fix_date_axis(ax)
 		righty.set(xlabel='', ylabel="Trial count", 
-			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
+			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=2)])
+
+		# ============================================= #
+		# CONTRAST/CHOICE HEATMAP
+		# ============================================= #
+
+		ax = axes[3,0]
+		plot_perf_heatmap(behav, ax=ax)
+		ax.set_xticklabels([dt.strftime('%b-%d') if dt.weekday() is 1 else "" for dt in wa_unstacked.index.to_pydatetime()])
+		for item in ax.get_xticklabels():
+			item.set_rotation(60)
 
 		# ============================================= #
 		# PSYCHOMETRIC FUNCTION FITS OVER TIME
@@ -135,6 +151,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		pars = behav.groupby(['start_time', 'probabilityLeft']).apply(fit_psychfunc).reset_index()
 		parsdict = {'threshold': r'Threshold $(\sigma)$', 'bias': r'Bias $(\mu)$', 
 			'lapselow': r'Lapse low $(\gamma)$', 'lapsehigh': r'Lapse high $(\lambda)$'}
+		ylims = [[-5, 105], [-105, 105], [-0.05, 1.05], [-0.05, 1.05]]
 
 		# pick a good-looking diverging colormap with black in the middle
 		cmap = sns.diverging_palette(220, 20, n=len(behav['probabilityLeft'].unique()), center="dark")
@@ -146,7 +163,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[pidx,1]
 			sns.lineplot(x="start_time", y=var, hue="probabilityLeft", palette=cmap, data=pars, legend=None, ax=ax)
 			sns.scatterplot(x="start_time", y=var, hue="probabilityLeft", palette=cmap, data=pars, legend=None, ax=ax)
-			ax.set(xlabel='', ylabel=labelname, xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
+			ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx], xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
 
 			fix_date_axis(ax)
 			if pidx == 0:
@@ -159,12 +176,15 @@ for i, mouse in enumerate(subjects['nickname']):
 		# ============================================= #
 
 		didx = 1
+		sorteddays = behav['days'].sort_values(ascending=True).unique()
 		for day in behav['days'].unique():
-			if day < behav['days'].max()-3:
+
+			# use only the last three days
+			if day < sorteddays[-3]:
 				continue
 
 			dat = behav.loc[behav['days'] == day, :]
-			print(dat['date'].unique())
+			# print(dat['date'].unique())
 			didx += 1
 
 			# PSYCHOMETRIC FUNCTION
@@ -172,7 +192,6 @@ for i, mouse in enumerate(subjects['nickname']):
 			cmap = sns.diverging_palette(220, 20, n=len(dat['probabilityLeft'].unique()), center="dark")
 			if len(dat['probabilityLeft'].unique()) == 1:
 				cmap = [np.array([0,0,0,1])]
-			print(cmap)
 
 			for ix, probLeft in enumerate(dat['probabilityLeft'].unique()):
 				plot_psychometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax=ax, color=cmap[ix])
@@ -194,6 +213,18 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax.set_yscale("log")
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
+			# # WHEEL ANALYSIS
+			# thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
+			# eid = one.search(subjects=mouse, date_range=[thisdate, thisdate])
+			# t, wheelpos, wheelvel = one.load(eid[0], 
+			# 	dataset_types=['_ibl_wheel.timestamps', '_ibl_wheel.position', '_ibl_wheel.velocity'])
+			# wheeltimes = np.interp(np.arange(0,len(wheelpos)), t[:,0], t[:,1])
+		 #    #times = np.interp(np.arange(0,len(wheelPos)), t[:,0], t[:,1])
+			# wheel = pd.DataFrame.from_dict({'position':wheelpos, 'velocity':wheelvel, 'times':wheeltimes})
+
+			# ax = axes[3, didx]
+			# sns.lineplot(x=wheeltimes, y=wheelpos, ax=ax)
+
 		for i in range(3):
 			axes[i,3].set(ylabel='')
 			axes[i,4].set(ylabel='')
@@ -203,6 +234,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		fig.savefig('/Users/urai/Google Drive/Rig building WG/DataFigures/BehaviourData_Weekly/AlyxPlots/%s_overview.pdf' %mouse)
 
 	except:
-		raise
+		print("%s failed to run" %mouse)
+		pass
 
 	

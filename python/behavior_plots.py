@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
 import seaborn as sns 
+import pandas as pd
+from IPython import embed as shell
 
 def plot_psychometric(df, ax=None, color="black"):
     """
@@ -49,11 +51,20 @@ def plot_psychometric(df, ax=None, color="black"):
     pp = np.array([sum((df['signedContrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
     ci = 1.96*np.sqrt(pp*(1-pp)/nn) # TODO: this is not the binomial CI
     
+    def binom_interval(success, total, confint=0.95):
+        quantile = (1 - confint) / 2
+        lower = sp.stats.beta.ppf(quantile, success, total - success + 1)
+        upper = sp.stats.beta.ppf(1 - quantile, success + 1, total - success)
+        return (lower, upper)
+
+    lowerci, upperci = binom_interval(pp*nn, nn)
+
     # graphics
     if ax is None:
         plt.figure()
         ax = plt.gca()
-    ax.cla()
+        # ax.cla()
+
     if contrastSet.size > 4:
         pars, L = psy.mle_fit_psycho(np.vstack((contrastSet,nn,pp)), 
                                      P_model='erf_psycho_2gammas',
@@ -61,20 +72,17 @@ def plot_psychometric(df, ax=None, color="black"):
                                      parmin=np.array([np.min(contrastSet), 10., 0., 0.]), 
                                      parmax=np.array([np.max(contrastSet), 30., .4, .4]))
 
-        ax.errorbar(contrastSet,pp,ci,fmt='o', ecolor=color, mfc=color, mec="white")
+        ax.errorbar(contrastSet, pp, pp-lowerci, upperci-pp, fmt='o', ecolor=color, mfc=color, mec="white")
         ax.plot(np.arange(-100,100), psy.erf_psycho_2gammas( pars, np.arange(-100,100)) , color=color)
-        # ax.set_title('bias = {:.2f}, threshold = {:.2g}, lapse = {:.2g}, {:.2f}'.format(*pars))
 
     else:
         ax.errorbar(contrastSet[contrastSet<0],pp[contrastSet<0],ci[contrastSet<0],fmt='ko',mfc=color)
         ax.errorbar(contrastSet[contrastSet>0],pp[contrastSet>0],ci[contrastSet>0],fmt='ko',mfc=color)
         pars = None
 
-    #ax.plot((-100, 100),(.5, .5),'k--', alpha=.5, dashes=(4, 7), linewidth=1)
-    #ax.plot((0,0),(0,1),':', color="black", alpha=.5, dashes=(4, 7), linewidth=1)
-
     # Reduce the clutter
-    ax.set_xticks([-100, -50, 0, 50, 100])
+    ax.set_xticks([-100, -50, -25, -12.5, -6, 0, 6, 12.5, 25, 50, 100])
+    ax.set_xticklabels(['-100', '', '', '', '', '0', '', '', '', '', '100'])
     ax.set_yticks([0, .5, 1])
     # Set the limits
     ax.set_xlim([-110, 110])
@@ -171,7 +179,7 @@ def plot_perf_heatmap(dfs, ax=None):
     Plots a heat-map of performance for each contrast per session.
     
     The x-axis is the contrast, going from highest contrast on the left to 
-    highest contrast on the right.  The y-axis is the session number, ordered 
+    highest contrast on the right. The y-axis is the session number, ordered 
     from most recent.  
         
     Example:
@@ -188,21 +196,34 @@ def plot_perf_heatmap(dfs, ax=None):
     
     TODO: Optional contrast set input
     """
-    pp = np.vstack([perf_per_contrast(df) for df in dfs])
-    pp = np.ma.array(pp, mask=np.isnan(pp))
+
     if ax is None:
         plt.figure()
         ax = plt.gca()
     ax.cla()
+
     import copy; cmap=copy.copy(plt.get_cmap('bwr'))
     cmap.set_bad('grey',1.)
-    ax.imshow(pp, extent=[0, 1, 0, 1], cmap=cmap, vmin = 0, vmax = 1)
-    ax.set_xticks([0.05, .5, 0.95])
-    ax.set_xticklabels([-100, 0, 100])
-    ax.set_yticks(list(range(0,pp.shape[0],-1)))
-    ax.set_yticklabels(list(range(0,pp.shape[0],-1)))
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
+
+    if not isinstance(dfs, (list,)):
+        # Anne's version
+        pp = dfs.groupby(['signedContrast', 'date']).agg({'choice2':'mean'}).reset_index()
+        pp2 = pp.pivot("signedContrast", "date",  "choice2").sort_values(by='signedContrast', ascending=False)
+        sns.heatmap(pp2, linewidths=.5, ax=ax, vmin=0, vmax=1, cmap=cmap, cbar=False)
+        ax.set(ylabel="Contrast (%)")
+
+    else:
+        # Miles' version
+        pp = np.vstack([perf_per_contrast(df) for df in dfs])
+        pp = np.ma.array(pp, mask=np.isnan(pp))
+
+        ax.imshow(pp, extent=[0, 1, 0, 1], cmap=cmap, vmin = 0, vmax = 1)
+        ax.set_xticks([0.05, .5, 0.95])
+        ax.set_xticklabels([-100, 0, 100])
+        ax.set_yticks(list(range(0,pp.shape[0],-1)))
+        ax.set_yticklabels(list(range(0,pp.shape[0],-1)))
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
 
     # Set bounds of axes lines
     #ax.spines['left'].set_bounds(0, 1)
@@ -394,7 +415,7 @@ def plot_choice_windowed(df, window=10, ax=None):
 def fix_date_axis(ax):
     # deal with date axis and make nice looking 
     ax.xaxis_date()
-    ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=1))
+    ax.xaxis.set_major_locator(mdates.WeekdayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%d'))
     for item in ax.get_xticklabels():
         item.set_rotation(60)
@@ -403,12 +424,21 @@ def fix_date_axis(ax):
 def plot_chronometric(df, ax, color):
 
     contrastSet = np.sort(df['signedContrast'].unique())
-    # #choiceSet = np.array(set(df['choice']))
-    # nn = np.array([sum((df['signedContrast']==c) & (df['included']==True)) for c in contrastSet])
-    # pp = np.array([sum((df['signedContrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
+    df2 = df.groupby(['signedContrast']).agg({'rt':'median'}).reset_index()
 
-    # ax.errorbar(contrastSet,pp,ci,fmt='o', ecolor=color, mfc=color, mec="white")
+    # get quantiles of the RT distribution
+    def q1(x):
+        return x.quantile(0.25)
 
-    sns.pointplot(x="signedContrast", y="rt", color=color, estimator=np.median, ci=None, join=True, data=df, ax=ax)
+    def q2(x):
+        return x.quantile(0.75)
+    f = {'rt': [q1,q2]}
+    qlow = df.groupby(['signedContrast']).agg(f).reset_index()
+
+    # sns.pointplot(x="signedContrast", y="rt", color=color, estimator=np.median, ci=None, join=True, data=df, ax=ax)
+    ax.errorbar(df2['signedContrast'], df2['rt'], df2['rt']-qlow['rt']['q1'], 
+        qlow['rt']['q2']-df2['rt'], 'o-', color=color, mec="white")
     ax.set(xlabel="Contrast (%)", ylabel="RT (s)")
     ax.grid(True)
+    ax.set_xticks([-100, -50, -25, -12.5, -6, 0, 6, 12.5, 25, 50, 100])
+    ax.set_xticklabels(['-100', '', '', '', '', '0', '', '', '', '', '100'])
