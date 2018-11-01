@@ -193,13 +193,13 @@ for i, mouse in enumerate(subjects['nickname']):
 			if len(dat['probabilityLeft'].unique()) == 1:
 				cmap = [np.array([0,0,0,1])]
 
-			for ix, probLeft in enumerate(dat['probabilityLeft'].unique()):
+			for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
 				plot_psychometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax=ax, color=cmap[ix])
 			ax.set(title=pd.to_datetime(dat['start_time'].unique()[0]).strftime('%b-%d, %A'))
 
 			# CHRONOMETRIC FUNCTION
 			ax = axes[1, didx]
-			for ix, probLeft in enumerate(dat['probabilityLeft'].unique()):
+			for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
 				plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
 
 			# RTS THROUGHOUT SESSION

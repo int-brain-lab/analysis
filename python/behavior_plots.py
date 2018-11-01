@@ -49,7 +49,7 @@ def plot_psychometric(df, ax=None, color="black"):
     #choiceSet = np.array(set(df['choice']))
     nn = np.array([sum((df['signedContrast']==c) & (df['included']==True)) for c in contrastSet])
     pp = np.array([sum((df['signedContrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
-    ci = 1.96*np.sqrt(pp*(1-pp)/nn) # TODO: this is not the binomial CI
+    # ci = 1.96*np.sqrt(pp*(1-pp)/nn) # TODO: this is not the binomial CI
     
     def binom_interval(success, total, confint=0.95):
         quantile = (1 - confint) / 2
@@ -72,13 +72,11 @@ def plot_psychometric(df, ax=None, color="black"):
                                      parmin=np.array([np.min(contrastSet), 10., 0., 0.]), 
                                      parmax=np.array([np.max(contrastSet), 30., .4, .4]))
 
-        ax.errorbar(contrastSet, pp, pp-lowerci, upperci-pp, fmt='o', ecolor=color, mfc=color, mec="white")
+        
         ax.plot(np.arange(-100,100), psy.erf_psycho_2gammas( pars, np.arange(-100,100)) , color=color)
 
-    else:
-        ax.errorbar(contrastSet[contrastSet<0],pp[contrastSet<0],ci[contrastSet<0],fmt='ko',mfc=color)
-        ax.errorbar(contrastSet[contrastSet>0],pp[contrastSet>0],ci[contrastSet>0],fmt='ko',mfc=color)
-        pars = None
+    # when there are not enough contrasts, still fit the same errorbar
+    ax.errorbar(contrastSet, pp, pp-lowerci, upperci-pp, fmt='o', ecolor=color, mfc=color, mec="white")
 
     # Reduce the clutter
     ax.set_xticks([-100, -50, -25, -12.5, -6, 0, 6, 12.5, 25, 50, 100])
