@@ -13,6 +13,7 @@ import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+#from matplotlib.dates import MONDAY
 from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
 import seaborn as sns 
 import pandas as pd
@@ -198,17 +199,22 @@ def plot_perf_heatmap(dfs, ax=None):
     if ax is None:
         plt.figure()
         ax = plt.gca()
-    ax.cla()
 
     import copy; cmap=copy.copy(plt.get_cmap('bwr'))
     cmap.set_bad('grey',1.)
 
     if not isinstance(dfs, (list,)):
+
         # Anne's version
-        pp = dfs.groupby(['signedContrast', 'date']).agg({'choice2':'mean'}).reset_index()
+        pp  = dfs.groupby(['signedContrast', 'date']).agg({'choice2':'mean'}).reset_index()
         pp2 = pp.pivot("signedContrast", "date",  "choice2").sort_values(by='signedContrast', ascending=False)
         sns.heatmap(pp2, linewidths=.5, ax=ax, vmin=0, vmax=1, cmap=cmap, cbar=False)
         ax.set(ylabel="Contrast (%)")
+
+        ax.set_xticklabels([dt.strftime('%b-%d') if dt.weekday() is 0 else "" for dt in pp.date])
+        #ax.set_xticks([dt for dt in pp.date if dt.weekday() is 0])
+        for item in ax.get_xticklabels():
+            item.set_rotation(60)
 
     else:
         # Miles' version
@@ -413,7 +419,7 @@ def plot_choice_windowed(df, window=10, ax=None):
 def fix_date_axis(ax):
     # deal with date axis and make nice looking 
     ax.xaxis_date()
-    ax.xaxis.set_major_locator(mdates.WeekdayLocator())
+    ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.MONDAY))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%d'))
     for item in ax.get_xticklabels():
         item.set_rotation(60)

@@ -4,6 +4,8 @@ import numpy as np
 from os import listdir, getcwd
 from os.path import isfile, join
 import re
+from IPython import embed as shell
+
 one = ONE() # initialize
 
 def load_behavior(ref, rootDir=None):
@@ -130,6 +132,7 @@ def get_metadata(mousename):
     return metadata
 
 def get_weights(mousename):
+
     wei = one._alyxClient.get('/weighings?nickname=%s' %mousename)
     wei = pd.DataFrame(wei)
     wei['date_time'] = pd.to_datetime(wei.date_time)
@@ -155,8 +158,8 @@ def get_water(mousename):
     wei['days'] = wei.date - wei.date[0]
     wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
 
-    wei = wei.set_index('date')
-    wei.index = pd.to_datetime(wei.index)
+    # wei = wei.set_index('date')
+    # wei.index = pd.to_datetime(wei.index)
 
     wa_unstacked = wei.pivot_table(index='date', 
         columns='water_type', values='water_administered', aggfunc='sum').reset_index()
@@ -238,3 +241,19 @@ def get_behavior(mousename, **kwargs):
     df['probabilityLeft'] = df.probabilityLeft.round(decimals=2)
 
     return df
+
+def get_water_weight(mousename):
+
+    wei = get_weights(mousename)
+    wa_unstacked, wa = get_water(mousename)
+    wa.reset_index(inplace=True)
+
+    # make sure that NaNs are entered for days with only water or weight but not both
+    combined = pd.merge(wei, wa, on="date", how='outer')
+    combined = combined[['date', 'weight', 'water_administered', 'water_type']]
+    combined['days'] = combined.date - combined.date[0]
+    combined['days'] = combined.days.dt.days # convert to number of days from start of the experiment
+
+    return combined
+
+ 
