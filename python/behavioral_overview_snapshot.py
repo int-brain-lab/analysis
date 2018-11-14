@@ -43,7 +43,7 @@ one = ONE() # initialize
 
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
-# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_1'))
 
 print(subjects['nickname'].unique())
 
@@ -131,8 +131,10 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty.grid(False)
 		fix_date_axis(righty)
 		fix_date_axis(ax)
-		righty.set(xlabel='', ylabel="RT (s)", ylim=[0,10],
+		righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10],
 			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=2)])
+		righty.set_yscale("log")
+		righty.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
 		# ============================================= #
 		# TRIAL COUNTS AND SESSION DURATION
@@ -228,7 +230,9 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[1, didx]
 			for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
 				plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
-			ax.set(ylim=[0,10])
+			ax.set(ylim=[0.1,10])
+			ax.set_yscale("log")
+			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
 			# RTS THROUGHOUT SESSION
 			ax = axes[2, didx]
@@ -237,7 +241,7 @@ for i, mouse in enumerate(subjects['nickname']):
 				alpha=.5, data=dat, ax=ax, legend=False)
 			sns.lineplot(x='trial', y='rt', color='black', ci=None, 
 				data=dat[['trial', 'rt']].rolling(10).median(), ax=ax) 
-			ax.set(xlabel="Trial number", ylabel="RT (s)", ylim=[0.01, 60])
+			ax.set(xlabel="Trial number", ylabel="RT (s)", ylim=[0.02, 60])
 			ax.set_yscale("log")
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
