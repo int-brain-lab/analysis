@@ -40,10 +40,12 @@ current_palette = sns.color_palette()
 
 # set a new palette for biased blocks: black, purple, orange
 one = ONE() # initialize
+# one = ONE(base_url='https://dev.alyx.internationalbrainlab.org')
 
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_1'))
+#subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
+# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=MW001'))
 
 print(subjects['nickname'].unique())
 
@@ -53,9 +55,6 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		# MAKE THE FIGURE, divide subplots using gridspec
 		print(mouse)
-		wei 	= get_weights(mouse)
-		behav 	= get_behavior(mouse)
-
 		fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=False,
 	        gridspec_kw=dict(width_ratios=[2,2,1,1,1], height_ratios=[1,1,1,1]), figsize=(11.69, 8.27))
 
@@ -73,7 +72,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		# ============================================= #
 
 		ax = axes[0,0]
-		sns.set_palette("colorblind") # palette for water
+		sns.set_palette("colorblind") # palette for water types
 
 		# get all the weights and water aligned in 1 table
 		weight_water = get_water_weight(mouse)
@@ -81,32 +80,44 @@ for i, mouse in enumerate(subjects['nickname']):
 		# use pandas plot for a stacked bar - water types
 		wa_unstacked = weight_water.pivot_table(index='days',
 	    	columns='water_type', values='water_administered', aggfunc='sum').reset_index()
-		wa_unstacked.index = wa_unstacked.days
-		wa_unstacked.loc[:,['Water','Hydrogel']].plot.bar(stacked=True, ax=ax)
-		l = ax.legend(loc='upper left', prop={'size': 'xx-small'})
+
+		# https://stackoverflow.com/questions/44250445/pandas-bar-plot-with-continuous-x-axis
+		plotvar 	  = wa_unstacked
+		plotvar.index = plotvar.days
+		plotvar.drop(columns='days', inplace=True)
+		plotvar = plotvar.reindex(np.arange(weight_water.days.min(), weight_water.days.max()+2))
+
+		# sort the columns by possible water types
+		plotvar = plotvar[sorted(list(plotvar.columns.values), reverse=True)]
+		plotvar.plot(kind='bar', style='.', stacked=True, ax=ax, edgecolor="none")
+		l = ax.legend(loc='lower left', prop={'size': 'x-small'},
+			bbox_to_anchor=(0., 1.02, 1., .102),
+			ncol=2, mode="expand", borderaxespad=0., frameon=False)
 		l.set_title('')
 		ax.set(ylabel="Water intake (mL)", xlabel='')
+		ax.yaxis.label.set_color("#0173B2")
 
 		# overlay the weight curve
-		# shell()
-		weight_water = weight_water.drop_duplicates('days').reset_index()
+		weight_water2 = weight_water.groupby('days').mean().reset_index()
+		weight_water2 = weight_water2.dropna(subset=['weight'])
 		righty = ax.twinx()
-		righty.plot(weight_water.weight, '.k-')
+		righty.plot(weight_water2.days, weight_water2.weight, '.k-')
 		righty.set(xlabel='', ylabel="Weight (g)", 
-			xlim=[weight_water.index.min()-1, weight_water.index.max()+1])
+			xlim=[weight_water.days.min()-2, weight_water.days.max()+2])
 		righty.grid(False)	
 
 		# correct the ticks to show dates, not days
-		# also indicate Mondays clearly
-
-		# ax.set_xticklabels([dt.strftime('%b-%d') if dt.weekday() is 0 else "" for dt in pp.date])
-  #       #ax.set_xticks([dt for dt in pp.date if dt.weekday() is 0])
-  #       for item in ax.get_xticklabels():
-  #           item.set_rotation(60)
+		# also indicate Mondays by grid lines
+		ax.set_xticks([weight_water.days[i] for i, dt in enumerate(weight_water.date) if dt.weekday() is 0])
+		ax.set_xticklabels([weight_water.date[i].strftime('%b-%d') for i, dt in enumerate(weight_water.date) if dt.weekday() is 0])
+		for item in ax.get_xticklabels():
+			item.set_rotation(60)
 
 		# ============================================= #
 		# PERFORMANCE AND MEDIAN RT
 		# ============================================= #
+
+		behav 	= get_behavior(mouse)
 
 		# performance on easy trials
 		ax = axes[1,0]
@@ -263,7 +274,8 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 		fig.savefig('/Users/urai/Google Drive/Rig building WG/DataFigures/BehaviourData_Weekly/AlyxPlots/%s_overview.pdf' %mouse)
-
+		plt.close(fig)
+		
 	except:
 		print("%s failed to run" %mouse)
 		pass
