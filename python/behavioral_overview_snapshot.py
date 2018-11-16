@@ -128,7 +128,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		sns.lineplot(x="date", y="correct_easy", markers=True, color="black", data=correct_easy, ax=ax)
 		sns.scatterplot(x="date", y="correct_easy", color="black", data=correct_easy, ax=ax)
 		ax.set(xlabel='', ylabel="Performance (easy trials)", 
-			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=2)],
+			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)],
 			yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
 		ax.yaxis.label.set_color("black")
 
@@ -143,7 +143,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		fix_date_axis(righty)
 		fix_date_axis(ax)
 		righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10],
-			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=2)])
+			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 		righty.set_yscale("log")
 		righty.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
@@ -156,7 +156,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		sns.lineplot(x="date", y="trial", markers=True, color="black", data=trialcounts, ax=ax)
 		sns.scatterplot(x="date", y="trial", color="black", data=trialcounts, ax=ax)
 		ax.set(xlabel='', ylabel="Trial count", 
-			xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=2)])
+			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 
 		# compute the length of each session
 		behav['sessionlength'] = (behav.end_time - behav.start_time)
@@ -171,7 +171,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		fix_date_axis(righty)
 		fix_date_axis(ax)
 		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
-				xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=2)])
+				xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 		
 		# ============================================= #
 		# CONTRAST/CHOICE HEATMAP
@@ -256,7 +256,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax.set_yscale("log")
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
-			# # WHEEL ANALYSIS
+			# WHEEL ANALYSIS
 			# thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
 			# eid = one.search(subjects=mouse, date_range=[thisdate, thisdate])
 			# t, wheelpos, wheelvel = one.load(eid[0], 
@@ -267,6 +267,8 @@ for i, mouse in enumerate(subjects['nickname']):
 
 			# ax = axes[3, didx]
 			# sns.lineplot(x=wheeltimes, y=wheelpos, ax=ax)
+			ax = axis[3, didx]
+			ax.set(xlabel='Time from cue (s)', ylabel='Wheel rotation (deg)')
 
 		for i in range(3):
 			axes[i,3].set(ylabel='')
