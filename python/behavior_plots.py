@@ -201,16 +201,18 @@ def plot_perf_heatmap(dfs, ax=None):
         ax = plt.gca()
 
     import copy; cmap=copy.copy(plt.get_cmap('bwr'))
-    cmap.set_bad(color='grey')
+    cmap.set_bad(color=".8")
 
     if not isinstance(dfs, (list,)):
 
         # Anne's version
         pp  = dfs.groupby(['signedContrast', 'days']).agg({'choice2':'mean'}).reset_index()
         pp2 = pp.pivot("signedContrast", "days",  "choice2").sort_values(by='signedContrast', ascending=False)
+        pp2 = pp2.reindex([-100, -50, -25, -12, -6, 0, 6, 12, 25, 50, 100])
         sns.heatmap(pp2, linewidths=.5, ax=ax, vmin=0, vmax=1, cmap=cmap, cbar=True,
             cbar_kws={'label': 'Choose right (%)', 'shrink': 0.8, 'ticks': []})
         ax.set(ylabel="Contrast (%)")
+        # ax.set_yticks()
 
         # fix the date axis
         dates  = dfs.date.unique()

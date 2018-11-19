@@ -90,7 +90,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		# sort the columns by possible water types
 		plotvar = plotvar[sorted(list(plotvar.columns.values), reverse=True)]
 		plotvar.plot(kind='bar', style='.', stacked=True, ax=ax, edgecolor="none")
-		l = ax.legend(loc='lower left', prop={'size': 'x-small'},
+		l = ax.legend(loc='lower left', prop={'size': 'xx-small'},
 			bbox_to_anchor=(0., 1.02, 1., .102),
 			ncol=2, mode="expand", borderaxespad=0., frameon=False)
 		l.set_title('')
@@ -267,7 +267,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 			# ax = axes[3, didx]
 			# sns.lineplot(x=wheeltimes, y=wheelpos, ax=ax)
-			ax = axis[3, didx]
+			ax = axes[3, didx]
 			ax.set(xlabel='Time from cue (s)', ylabel='Wheel rotation (deg)')
 
 		for i in range(3):
