@@ -26,11 +26,11 @@ from load_mouse_data import * # this has all plotting functions
 # ============================================= #
 
 ## INITIALIZE A FEW THINGS
-sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True} )
+sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0 } )
 sns.set_context(context="paper")
 sns.set_palette("colorblind") # palette for water types
 
-# set a new palette for biased blocks: black, purple, orange
+## CONNECT TO ONE
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
@@ -83,7 +83,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			ncol=2, mode="expand", borderaxespad=0., frameon=False)
 		l.set_title('')
 		ax.set(ylabel="Water intake (mL)", xlabel='')
-		ax.yaxis.label.set_color("#0173B2")
+		ax.yaxis.label.set_color("#0072B2")
 
 		# overlay the weight curve
 		weight_water2 = weight_water.groupby('days').mean().reset_index()
@@ -196,8 +196,8 @@ for i, mouse in enumerate(subjects['nickname']):
 			fix_date_axis(ax)
 			if pidx == 0:
 				ax.set(title=r'$\gamma + (1 -\gamma-\lambda)  (erf(\frac{x-\mu}{\sigma} + 1)/2$')
-			if pidx < 3:
-				ax.set(xticklabels=[])
+			# if pidx < 3:
+			# 	ax.set(xticklabels=[])
 
 		# ============================================= #
 		# LAST THREE SESSIONS
@@ -232,15 +232,15 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[1, didx]
 			for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
 				plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
-			ax.set(ylim=[0.1,10])
+			ax.set(ylim=[0.1,5])
 			ax.set_yscale("log")
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
 			# RTS THROUGHOUT SESSION
 			ax = axes[2, didx]
 			sns.scatterplot(x='trial', y='rt', style='correct', hue='correct',
-				palette={1:"forestgreen", 0:"crimson"},
-				markers={1:'o', 0:'X'}, sizes=[1,1],
+				palette={1:"#009E73", 0:"#D55E00"}, # from https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/mpl-data/stylelib/seaborn-colorblind.mplstyle
+				markers={1:'o', 0:'X'}, s=10, linewidths=0, edgecolors='none', 
 				alpha=.5, data=dat, ax=ax, legend=False)
 			# running median overlaid
 			sns.lineplot(x='trial', y='rt', color='black', ci=None, 

@@ -29,7 +29,7 @@ def fit_psychfunc(df):
         parmin=np.array([choicedat['signedContrast'].min(), 0., 0., 0.]), 
         parmax=np.array([choicedat['signedContrast'].max(), 100., 1, 1]))
     df2 = {'bias':pars[0],'threshold':pars[1], 'lapselow':pars[2], 'lapsehigh':pars[3]}
-    
+
     return pd.DataFrame(df2, index=[0])
 
 def plot_psychometric(df, ax=None, color="black"):
@@ -51,43 +51,26 @@ def plot_psychometric(df, ax=None, color="black"):
         
     Returns:
         ax (Axes): The plot axes
-    
-    TODO Process three response types
-    TODO Better titling of figure
-    TODO Return fit pars if available
-    TODO May as well reuse perf_per_contrast?
-    TODO: Change plot_psychometric to split by side prob
     """
     
-    contrastSet = np.sort(df['signedContrast'].unique())
-    #choiceSet = np.array(set(df['choice']))
-    nn = np.array([sum((df['signedContrast']==c) & (df['included']==True)) for c in contrastSet])
-    pp = np.array([sum((df['signedContrast']==c) & (df['included']==True) & (df['choice']==1)) for c in contrastSet])/nn
-    # ci = 1.96*np.sqrt(pp*(1-pp)/nn) # TODO: this is not the binomial CI
-    
-    # define binomial CI
-    def binom_interval(success, total, confint=0.95):
-        quantile = (1 - confint) / 2
-        lower = sp.stats.beta.ppf(quantile, success, total - success + 1)
-        upper = sp.stats.beta.ppf(1 - quantile, success + 1, total - success)
-        return (lower, upper)
+    if len(df['signedContrast'].unique()) > 4:
+        df2 = df.groupby(['signedContrast']).agg({'choice':'count', 'choice2':'mean'}).reset_index()
+        df2.rename(columns={"choice2": "fraction", "choice": "ntrials"}, inplace=True)
 
-    lowerci, upperci = binom_interval(pp*nn, nn)
-
-    if contrastSet.size > 4:
-        pars, L = psy.mle_fit_psycho(np.vstack((contrastSet,nn,pp)), 
+        pars, L = psy.mle_fit_psycho(df2.transpose().values, # extract the data from the df
                                      P_model='erf_psycho_2gammas',
-                                     parstart=np.array([np.mean(contrastSet), 3., 0.05, 0.05]),
-                                     parmin=np.array([np.min(contrastSet), 10., 0., 0.]), 
-                                     parmax=np.array([np.max(contrastSet), 30., .4, .4]))
+                                     parstart=np.array([df2['signedContrast'].mean(), 20., 0.05, 0.05]),
+                                     parmin=np.array([df2['signedContrast'].min(), 0., 0., 0.]), 
+                                     parmax=np.array([df2['signedContrast'].max(), 100., 1, 1]))
         sns.lineplot(np.arange(-100,100), psy.erf_psycho_2gammas( pars, np.arange(-100,100)), color=color, ax=ax)
 
-    # when there are not enough contrasts, still fit the same errorbar
-    ax.errorbar(contrastSet, pp, pp-lowerci, upperci-pp, fmt='o', ecolor=color, mfc=color, mec="white")
+    # plot datapoints on top
+    sns.lineplot(x='signedContrast', y='choice2', err_style="bars", linewidth=0, linestyle='None', mew=0.5,
+        marker='.', ci=68, data=df, color=color, ax=ax)
 
     # Reduce the clutter
-    ax.set_xticks([-100, -50, -25, -12.5, -6, 0, 6, 12.5, 25, 50, 100])
-    ax.set_xticklabels(['-100', '', '', '', '', '0', '', '', '', '', '100'])
+    ax.set_xticks([-100, -50, 0, 50, 100])
+    ax.set_xticklabels(['-100', '-50', '0', '50', '100'])
     ax.set_yticks([0, .5, 1])
     # Set the limits
     ax.set_xlim([-110, 110])
@@ -99,25 +82,12 @@ def plot_psychometric(df, ax=None, color="black"):
 
 def plot_chronometric(df, ax, color):
 
-    contrastSet = np.sort(df['signedContrast'].unique())
-    df2 = df.groupby(['signedContrast']).agg({'rt':'median'}).reset_index()
-
-    # get quantiles of the RT distribution
-    def q1(x):
-        return x.quantile(0.25)
-
-    def q2(x):
-        return x.quantile(0.75)
-    f = {'rt': [q1,q2]}
-    qlow = df.groupby(['signedContrast']).agg(f).reset_index()
-
-    # sns.pointplot(x="signedContrast", y="rt", color=color, estimator=np.median, ci=None, join=True, data=df, ax=ax)
-    ax.errorbar(df2['signedContrast'], df2['rt'], df2['rt']-qlow['rt']['q1'], 
-        qlow['rt']['q2']-df2['rt'], 'o-', color=color, mec="white")
+    sns.lineplot(x='signedContrast', y='rt', err_style="bars", mew=0.5,
+        estimator=np.median, marker='.', ci=68, data=df, color=color, ax=ax)
     ax.set(xlabel="Contrast (%)", ylabel="RT (s)")
     ax.grid(True)
-    ax.set_xticks([-100, -50, -25, -12.5, -6, 0, 6, 12.5, 25, 50, 100])
-    ax.set_xticklabels(['-100', '', '', '', '', '0', '', '', '', '', '100'])
+    ax.set_xticks([-100, -50, 0, 50, 100])
+    ax.set_xticklabels(['-100', '-50', '0', '50', '100'])
 
 def plot_perf_heatmap(dfs, ax=None):
     """
@@ -158,8 +128,8 @@ def plot_perf_heatmap(dfs, ax=None):
         pp2 = pp2.reindex([-100, -50, -25, -12, -6, 0, 6, 12, 25, 50, 100])
 
         # inset axes for colorbar
-        axins1 = inset_axes(ax, width="5%", height="9q0%", loc='right',
-            bbox_to_anchor=(0.1, 0., 1, 1), bbox_transform=ax.transAxes, borderpad=0,)
+        axins1 = inset_axes(ax, width="5%", height="90%", loc='right',
+            bbox_to_anchor=(0.15, 0., 1, 1), bbox_transform=ax.transAxes, borderpad=0,)
         # now heatmap
         sns.heatmap(pp2, linewidths=.5, ax=ax, vmin=0, vmax=1, cmap=cmap, cbar=True,
             cbar_ax=axins1,
