@@ -9,128 +9,9 @@ from IPython import embed as shell
 one = ONE() # initialize
 # one = ONE(base_url='https://dev.alyx.internationalbrainlab.org')
 
-def load_behavior(ref, rootDir=None):
-    """
-    Load the trials for a given experiment reference
-    
-    Example:
-        df = load_behaviour('2018-09-11_1_MOUSE', rootDir = r'\\server1\Subjects')
-        df.head()
-        
-    Args: 
-        subject (str): The subject name
-        rootDir (str): The root directory, i.e. where the subject data are stored.
-                       If rootDir is None, the current working directory is used.
-        
-    Returns:
-        df (DataFrame): DataFrame constructed from the trials object of the ALF 
-                        files located in the experiment directory
-    
-    TODO: return multi-level data frame
-           
-    @author: Miles
-    """
-
-    
-    if rootDir is None:
-        rootDir = getcwd()
-    path = dat.exp_path(ref, rootDir)
-    alfs = [f for f in listdir(path) if (isfile(join(path, f))) & (is_alf(f))]
-    parts = [alf_parts(alf) for alf in alfs]
-    # List of 'trials' attributes
-    attr = [parts[i]['typ'] for i in range(len(parts)) if parts[i]['obj'] == 'trials']
-    attr.extend(['trialStart', 'trialEnd'])
-    # Pull paths of trials ALFs
-    trials = [join(path,f) for f in alfs if 'trials' in f]
-    if not trials:
-        print('{}: Nothing to process'.format(ref))
-        return
-    # Load arrays into dictionary
-    trialsDict = dict.fromkeys(attr)
-    for p,name in zip(trials, attr):
-        trialsDict[name] = np.load(p).squeeze()
-    # Check all arrays the same length
-    lengths = [len(val) for val in [trialsDict.values()]]
-    assert len(set(lengths))==1,'Not all arrays in trials the same length'
-    # Deal with intervals
-    trialsDict['trialStart'] = trialsDict['intervals'][:,0]
-    trialsDict['trialEnd'] = trialsDict['intervals'][:,1]
-    trialsDict.pop('intervals', None)
-    # Create data from from trials dict
-    df = pd.DataFrame(trialsDict)
-    df['contrast'] = (df['contrastRight']-df['contrastLeft'])*100
-    df.name = ref
-    return df
-
-
-def get_weight_records(subjects, ai):
-    """
-    Determine whether the mouse has met the criteria for having learned
-    
-    Example:
-        baseURL = 'https://alyx.internationalbrainlab.org/'
-        ai = AlyxClient(username='miles', password=pwd, base_url=baseURL)
-        records, info = get_weight_records(['ALK081', 'LEW010'], ai)
-        
-    Args: 
-        subjects (list): List of subjects.
-        ai (AlyxClient): An instance of the AlyxClient
-        
-    Returns:
-        records (Data Frame): Data frame of weight and water records
-        info (Data Frame): Data frame of subject information
-        
-    """
-    s = ai.get('subjects?stock=False')
-    rmKeys = ['actions_sessions','water_administrations','weighings','genotype']
-    subject_info = []
-    records = []
-    weight_info = []
-    for s in subjects:
-        subj = ai.get('subjects/{}'.format(s))
-        subject_info.append({key: subj[key] for key in subj if key not in rmKeys})
-        endpoint = ('water-requirement/{}?start_date=2016-01-01&end_date={}'
-                    .format(s, datetime.datetime.now().strftime('%Y-%m-%d')))
-        wr = ai.get(endpoint)
-        if wr['implant_weight']:
-            iw = wr['implant_weight']
-        else:
-            iw = 0
-        #TODO MultiIndex without None
-        if not wr['records']:
-            records.append(None)
-        else:
-            df = pd.DataFrame(wr['records'])
-            df = (df.set_index(pd.DatetimeIndex(df['date']))
-                  .drop('date', axis=1)
-                  .assign(pct_weight = lambda x: 
-                          (x['weight_measured']-iw) /
-                          (x['weight_expected']-iw) 
-                          if 'weight_measured' in x.columns.values 
-                          else np.nan))
-            records.append(df)
-            wr.pop('records', None)
-        weight_info.append(wr)
-
-    
-    info = (pd.DataFrame(weight_info)
-            .merge(pd.DataFrame(subject_info), left_on='subject', right_on='nickname')
-           .set_index('subject'))
-    records = pd.concat(records, keys=subjects, names=['name', 'date'])
-    return records, info
-    return records
-
 # ==================== #
 # ONE/ALYX
 # ==================== #
-
-
-def get_metadata(mousename):
-    
-    metadata = {'date_birth': one._alyxClient.get('/weighings?nickname=%s' %mousename),
-        'cage': one._alyxClient.get('/cage?nickname=%s' %mousename)}
-
-    return metadata
 
 def get_weights(mousename):
 
@@ -171,6 +52,44 @@ def get_water(mousename):
     wa_unstacked.set_index('date', inplace=True)
 
     return wa_unstacked, wei
+
+
+def get_water_weight(mousename):
+
+    wei = get_weights(mousename)
+    wa_unstacked, wa = get_water(mousename)
+    wa.reset_index(inplace=True)
+
+    # also grab the info about water restriction
+    # shell()
+    restr = mouse_data_ = one._alyxClient.get('/subjects/%s' %mousename)
+
+    # make sure that NaNs are entered for days with only water or weight but not both
+    combined = pd.merge(wei, wa, on="date", how='outer')
+    combined = combined[['date', 'weight', 'water_administered', 'water_type']]
+
+    # if no hydrogel was ever given to this mouse, add it anyway with NaN
+
+    # remove those weights below current water restriction start
+    combined = combined[combined.date >= pd.to_datetime(restr['last_water_restriction'])]
+
+    # add a weight measurement on day 0 that shows the baseline weight
+    combined = combined.append(pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
+        'weight': restr['reference_weight'], 'water_administered': np.nan, 'water_type': np.nan, 'index':[0]}), 
+        sort=False)
+    combined = combined.sort_values(by='date')
+    combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
+    
+    combined = combined.reset_index()
+    combined = combined.drop(columns='index')
+
+    # also indicate all the dates as days from the start of water restriction (for easier plotting)
+    combined['days'] = combined.date - combined.date[0]
+    combined['days'] = combined.days.dt.days # convert to number of days from start of the experiment
+    
+
+    return combined
+
 
 
 def get_behavior(mousename, **kwargs):
@@ -242,41 +161,4 @@ def get_behavior(mousename, **kwargs):
     df['probabilityLeft'] = df.probabilityLeft.round(decimals=2)
 
     return df
-
-def get_water_weight(mousename):
-
-    wei = get_weights(mousename)
-    wa_unstacked, wa = get_water(mousename)
-    wa.reset_index(inplace=True)
-
-    # also grab the info about water restriction
-    # shell()
-    restr = mouse_data_ = one._alyxClient.get('/subjects/%s' %mousename)
-
-    # make sure that NaNs are entered for days with only water or weight but not both
-    combined = pd.merge(wei, wa, on="date", how='outer')
-    combined = combined[['date', 'weight', 'water_administered', 'water_type']]
-
-    # if no hydrogel was ever given to this mouse, add it anyway with NaN
-
-    # remove those weights below current water restriction start
-    combined = combined[combined.date >= pd.to_datetime(restr['last_water_restriction'])]
-
-    # add a weight measurement on day 0 that shows the baseline weight
-    combined = combined.append(pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
-        'weight': restr['reference_weight'], 'water_administered': np.nan, 'water_type': np.nan, 'index':[0]}), 
-        sort=False)
-    combined = combined.sort_values(by='date')
-    combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
-    
-    combined = combined.reset_index()
-    combined = combined.drop(columns='index')
-
-    # also indicate all the dates as days from the start of water restriction (for easier plotting)
-    combined['days'] = combined.date - combined.date[0]
-    combined['days'] = combined.days.dt.days # convert to number of days from start of the experiment
-    
-
-    return combined
-
  

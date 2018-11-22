@@ -12,6 +12,7 @@ import scipy as sp
 import pandas as pd
 from IPython import embed as shell
 
+# IBL stuff
 from oneibl.one import ONE
 from ibllib.time import isostr2date
 from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
@@ -20,15 +21,6 @@ from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
 from behavior_plots import *
 from load_mouse_data import * # this has all plotting functions
 
-def fit_psychfunc(df):
-	choicedat = df.groupby('signedContrast').agg({'trial':'max', 'choice2':'mean'}).reset_index()
-	pars, L = psy.mle_fit_psycho(choicedat.values.transpose(), P_model='erf_psycho_2gammas', 
-		parstart=np.array([choicedat['signedContrast'].mean(), 20., 0.05, 0.05]), 
-		parmin=np.array([choicedat['signedContrast'].min(), 0., 0., 0.]), 
-		parmax=np.array([choicedat['signedContrast'].max(), 100., 1, 1]))
-	df2 = {'bias':pars[0],'threshold':pars[1], 'lapselow':pars[2], 'lapsehigh':pars[3]}
-	return pd.DataFrame(df2, index=[0])
-
 # ============================================= #
 # START BIG OVERVIEW PLOT
 # ============================================= #
@@ -36,19 +28,17 @@ def fit_psychfunc(df):
 ## INITIALIZE A FEW THINGS
 sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True} )
 sns.set_context(context="paper")
-current_palette = sns.color_palette()
+sns.set_palette("colorblind") # palette for water types
 
 # set a new palette for biased blocks: black, purple, orange
 one = ONE() # initialize
-# one = ONE(base_url='https://dev.alyx.internationalbrainlab.org')
 
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
 #subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
-# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=MW001'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_45'))
 
 print(subjects['nickname'].unique())
-
 for i, mouse in enumerate(subjects['nickname']):
 
 	try:
@@ -72,8 +62,6 @@ for i, mouse in enumerate(subjects['nickname']):
 		# ============================================= #
 
 		ax = axes[0,0]
-		sns.set_palette("colorblind") # palette for water types
-
 		# get all the weights and water aligned in 1 table
 		weight_water = get_water_weight(mouse)
 
@@ -101,7 +89,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		weight_water2 = weight_water.groupby('days').mean().reset_index()
 		weight_water2 = weight_water2.dropna(subset=['weight'])
 		righty = ax.twinx()
-		righty.plot(weight_water2.days, weight_water2.weight, '.k-')
+		sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
 		righty.set(xlabel='', ylabel="Weight (g)", 
 			xlim=[weight_water.days.min()-2, weight_water.days.max()+2])
 		righty.grid(False)	
@@ -125,36 +113,35 @@ for i, mouse in enumerate(subjects['nickname']):
 		behav.loc[np.abs(behav['signedContrast']) < 50, 'correct_easy'] = np.NaN
 		correct_easy = behav.groupby(['date'])['correct_easy'].mean().reset_index()
 		
-		sns.lineplot(x="date", y="correct_easy", markers=True, color="black", data=correct_easy, ax=ax)
-		sns.scatterplot(x="date", y="correct_easy", color="black", data=correct_easy, ax=ax)
+		sns.lineplot(x="date", y="correct_easy", marker='o', color=".15", data=correct_easy, ax=ax)
 		ax.set(xlabel='', ylabel="Performance (easy trials)", 
 			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)],
 			yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
-		ax.yaxis.label.set_color("black")
+		# ax.yaxis.label.set_color("black")
 
 		# RTs on right y-axis
 		trialcounts = behav.groupby(['date'])['rt'].median().reset_index()
 		righty = ax.twinx()
-		sns.lineplot(x="date", y="rt", markers=True, color="firebrick", data=trialcounts, ax=righty)
-		sns.scatterplot(x="date", y="rt", color="firebrick", data=trialcounts, ax=righty)
+		sns.lineplot(x="date", y="rt", marker='o', color="firebrick", data=trialcounts, ax=righty)
+
 		righty.yaxis.label.set_color("firebrick")
 		righty.tick_params(axis='y', colors='firebrick')
-		righty.grid(False)
-		fix_date_axis(righty)
-		fix_date_axis(ax)
 		righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10],
 			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 		righty.set_yscale("log")
+		
 		righty.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
-
+		righty.grid(False)
+		fix_date_axis(righty)
+		fix_date_axis(ax)
+		
 		# ============================================= #
 		# TRIAL COUNTS AND SESSION DURATION
 		# ============================================= #
 
 		ax = axes[2,0]
 		trialcounts = behav.groupby(['date'])['trial'].max().reset_index()
-		sns.lineplot(x="date", y="trial", markers=True, color="black", data=trialcounts, ax=ax)
-		sns.scatterplot(x="date", y="trial", color="black", data=trialcounts, ax=ax)
+		sns.lineplot(x="date", y="trial", marker='o', color=".15", data=trialcounts, ax=ax)
 		ax.set(xlabel='', ylabel="Trial count", 
 			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 
@@ -162,16 +149,17 @@ for i, mouse in enumerate(subjects['nickname']):
 		behav['sessionlength'] = (behav.end_time - behav.start_time)
 		behav['sessionlength'] = behav.sessionlength.dt.total_seconds() / 60
 		sessionlength = behav.groupby(['date'])['sessionlength'].mean().reset_index()
+
 		righty = ax.twinx()
-		sns.lineplot(x="date", y="sessionlength", markers=True, color="firebrick", data=sessionlength, ax=righty)
-		sns.scatterplot(x="date", y="sessionlength", color="firebrick", data=sessionlength, ax=righty)
+		sns.lineplot(x="date", y="sessionlength", marker='o', color="firebrick", data=sessionlength, ax=righty)
 		righty.yaxis.label.set_color("firebrick")
 		righty.tick_params(axis='y', colors='firebrick')
+		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
+				xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
+		
 		righty.grid(False)
 		fix_date_axis(righty)
 		fix_date_axis(ax)
-		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
-				xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 		
 		# ============================================= #
 		# CONTRAST/CHOICE HEATMAP
@@ -197,11 +185,13 @@ for i, mouse in enumerate(subjects['nickname']):
 			cmap = "gist_gray"
 		sns.set_palette(cmap)
 
+		# plot the fitted parameters
 		for pidx, (var, labelname) in enumerate(parsdict.items()):
 			ax = axes[pidx,1]
-			sns.lineplot(x="date", y=var, hue="probabilityLeft", palette=cmap, data=pars, legend=None, ax=ax)
-			sns.scatterplot(x="date", y=var, hue="probabilityLeft", palette=cmap, data=pars, legend=None, ax=ax)
-			ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx], xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
+			sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft", 
+				palette=cmap, data=pars, legend=None, ax=ax)
+			ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx], 
+				xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
 
 			fix_date_axis(ax)
 			if pidx == 0:
@@ -221,19 +211,20 @@ for i, mouse in enumerate(subjects['nickname']):
 			if day < sorteddays[-3]:
 				continue
 
+			# grab only that day
 			dat = behav.loc[behav['days'] == day, :]
-			# print(dat['date'].unique())
+			print(dat['date'].unique())
 			didx += 1
 
-			# PSYCHOMETRIC FUNCTION
-			ax = axes[0, didx]
+			# colormap for the asymmetric blocks
 			cmap = sns.diverging_palette(220, 20, n=len(dat['probabilityLeft'].unique()), center="dark")
 			if len(dat['probabilityLeft'].unique()) == 1:
 				cmap = [np.array([0,0,0,1])]
 
+			# PSYCHOMETRIC FUNCTION
+			ax = axes[0, didx]
 			for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
 				plot_psychometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax=ax, color=cmap[ix])
-
 			ax.set(xlabel="Contrast (%)", ylabel="Choose right (%)")
 			ax.set(title=pd.to_datetime(dat['start_time'].unique()[0]).strftime('%b-%d, %A'))
 
@@ -247,14 +238,17 @@ for i, mouse in enumerate(subjects['nickname']):
 
 			# RTS THROUGHOUT SESSION
 			ax = axes[2, didx]
-			sns.scatterplot(x='trial', y='rt', hue='correct', 
+			sns.scatterplot(x='trial', y='rt', style='correct', hue='correct',
 				palette={1:"forestgreen", 0:"crimson"},
+				markers={1:'o', 0:'X'}, sizes=[1,1],
 				alpha=.5, data=dat, ax=ax, legend=False)
+			# running median overlaid
 			sns.lineplot(x='trial', y='rt', color='black', ci=None, 
 				data=dat[['trial', 'rt']].rolling(10).median(), ax=ax) 
 			ax.set(xlabel="Trial number", ylabel="RT (s)", ylim=[0.02, 60])
 			ax.set_yscale("log")
-			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
+			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: 
+				('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
 			# WHEEL ANALYSIS
 			# thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
@@ -270,6 +264,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[3, didx]
 			ax.set(xlabel='Time from cue (s)', ylabel='Wheel rotation (deg)')
 
+		# clean up layout
 		for i in range(3):
 			axes[i,3].set(ylabel='')
 			axes[i,4].set(ylabel='')
@@ -280,6 +275,6 @@ for i, mouse in enumerate(subjects['nickname']):
 		
 	except:
 		print("%s failed to run" %mouse)
-		pass
+		raise
 
 	
