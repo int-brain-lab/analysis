@@ -28,17 +28,17 @@ from load_mouse_data import * # this has all plotting functions
 ## INITIALIZE A FEW THINGS
 sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0 } )
 sns.set_context(context="paper")
-sns.set_palette("colorblind") # palette for water types
 
 ## CONNECT TO ONE
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True&responsible_user=valeria'))
 #subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_45'))
+# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_45'))
 
 print(subjects['nickname'].unique())
+
 for i, mouse in enumerate(subjects['nickname']):
 
 	try:
@@ -47,6 +47,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		print(mouse)
 		fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=False,
 	        gridspec_kw=dict(width_ratios=[2,2,1,1,1], height_ratios=[1,1,1,1]), figsize=(11.69, 8.27))
+		sns.set_palette("colorblind") # palette for water types
 
 		# ============================================= #
 		# GENERAL METADATA
@@ -102,13 +103,39 @@ for i, mouse in enumerate(subjects['nickname']):
 			item.set_rotation(60)
 
 		# ============================================= #
+		# TRIAL COUNTS AND SESSION DURATION
+		# ============================================= #
+
+		ax = axes[1,0]
+		trialcounts = behav.groupby(['date'])['trial'].max().reset_index()
+		sns.lineplot(x="date", y="trial", marker='o', color=".15", data=trialcounts, ax=ax)
+		ax.set(xlabel='', ylabel="Trial count", 
+			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
+
+		# compute the length of each session
+		behav['sessionlength'] = (behav.end_time - behav.start_time)
+		behav['sessionlength'] = behav.sessionlength.dt.total_seconds() / 60
+		sessionlength = behav.groupby(['date'])['sessionlength'].mean().reset_index()
+
+		righty = ax.twinx()
+		sns.lineplot(x="date", y="sessionlength", marker='o', color="firebrick", data=sessionlength, ax=righty)
+		righty.yaxis.label.set_color("firebrick")
+		righty.tick_params(axis='y', colors='firebrick')
+		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
+				xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
+		
+		righty.grid(False)
+		fix_date_axis(righty)
+		fix_date_axis(ax)
+
+		# ============================================= #
 		# PERFORMANCE AND MEDIAN RT
 		# ============================================= #
 
 		behav 	= get_behavior(mouse)
 
 		# performance on easy trials
-		ax = axes[1,0]
+		ax = axes[2,0]
 		behav['correct_easy'] = behav.correct
 		behav.loc[np.abs(behav['signedContrast']) < 50, 'correct_easy'] = np.NaN
 		correct_easy = behav.groupby(['date'])['correct_easy'].mean().reset_index()
@@ -135,31 +162,6 @@ for i, mouse in enumerate(subjects['nickname']):
 		fix_date_axis(righty)
 		fix_date_axis(ax)
 		
-		# ============================================= #
-		# TRIAL COUNTS AND SESSION DURATION
-		# ============================================= #
-
-		ax = axes[2,0]
-		trialcounts = behav.groupby(['date'])['trial'].max().reset_index()
-		sns.lineplot(x="date", y="trial", marker='o', color=".15", data=trialcounts, ax=ax)
-		ax.set(xlabel='', ylabel="Trial count", 
-			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
-
-		# compute the length of each session
-		behav['sessionlength'] = (behav.end_time - behav.start_time)
-		behav['sessionlength'] = behav.sessionlength.dt.total_seconds() / 60
-		sessionlength = behav.groupby(['date'])['sessionlength'].mean().reset_index()
-
-		righty = ax.twinx()
-		sns.lineplot(x="date", y="sessionlength", marker='o', color="firebrick", data=sessionlength, ax=righty)
-		righty.yaxis.label.set_color("firebrick")
-		righty.tick_params(axis='y', colors='firebrick')
-		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
-				xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
-		
-		righty.grid(False)
-		fix_date_axis(righty)
-		fix_date_axis(ax)
 		
 		# ============================================= #
 		# CONTRAST/CHOICE HEATMAP
