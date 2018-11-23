@@ -106,6 +106,8 @@ for i, mouse in enumerate(subjects['nickname']):
 		# TRIAL COUNTS AND SESSION DURATION
 		# ============================================= #
 
+		behav 	= get_behavior(mouse)
+
 		ax = axes[1,0]
 		trialcounts = behav.groupby(['date'])['trial'].max().reset_index()
 		sns.lineplot(x="date", y="trial", marker='o', color=".15", data=trialcounts, ax=ax)
@@ -131,8 +133,6 @@ for i, mouse in enumerate(subjects['nickname']):
 		# ============================================= #
 		# PERFORMANCE AND MEDIAN RT
 		# ============================================= #
-
-		behav 	= get_behavior(mouse)
 
 		# performance on easy trials
 		ax = axes[2,0]
