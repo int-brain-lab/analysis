@@ -15,9 +15,11 @@ from IPython import embed as shell
 # IBL stuff
 from oneibl.one import ONE
 from ibllib.time import isostr2date
-from psychofit import psychofit as psy # https://github.com/cortex-lab/psychofit
+import psychofit as psy # https://github.com/cortex-lab/psychofit
 
 # loading and plotting functions
+from define_paths import fig_path
+from os.path import join as join
 from behavior_plots import *
 from load_mouse_data import * # this has all plotting functions
 
@@ -33,9 +35,12 @@ sns.set_context(context="paper")
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True&responsible_user=valeria'))
-#subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
+#subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True&responsible_user=valeria'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
 # subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_45'))
+
+# get folder to save plots
+path = fig_path()
 
 print(subjects['nickname'].unique())
 
@@ -272,7 +277,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			axes[i,4].set(ylabel='')
 
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-		fig.savefig('/Users/urai/Google Drive/Rig building WG/DataFigures/BehaviourData_Weekly/AlyxPlots/%s_overview.pdf' %mouse)
+		fig.savefig(join(path + '%s_overview.pdf'%mouse))
 		plt.close(fig)
 		
 	except:
