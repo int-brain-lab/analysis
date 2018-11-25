@@ -1,9 +1,9 @@
 # Anne Urai, CSHL, 2018
 # see https://github.com/int-brain-lab/ibllib/tree/master/python/oneibl/examples
 
-import time, re, datetime, os, glob 
+import time, re, datetime, os, glob
 from datetime import timedelta
-import seaborn as sns 
+import seaborn as sns
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -14,7 +14,7 @@ from IPython import embed as shell
 
 # IBL stuff
 from oneibl.one import ONE
-from ibllib.time import isostr2date
+# from ibllib.time import isostr2date
 import psychofit as psy # https://github.com/cortex-lab/psychofit
 
 # loading and plotting functions
@@ -34,13 +34,13 @@ sns.set_context(context="paper")
 ## CONNECT TO ONE
 one = ONE() # initialize
 
-# get a list of all mice that are currently training
-#subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True&responsible_user=valeria'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
-# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_45'))
-
 # get folder to save plots
 path = fig_path()
+
+# get a list of all mice that are currently training
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
+# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
+# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_45'))
 
 print(subjects['nickname'].unique())
 
@@ -59,7 +59,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		# ============================================= #
 
 		fig.suptitle('Mouse %s (%s), DoB %s, user %s (%s), strain %s, cage %s, %s' %(subjects['nickname'][i],
-		 subjects['sex'][i], subjects['birth_date'][i], 
+		 subjects['sex'][i], subjects['birth_date'][i],
 		 subjects['responsible_user'][i], subjects['lab'][i],
 		 subjects['strain'][i], subjects['litter'][i], subjects['description'][i]))
 
@@ -96,9 +96,9 @@ for i, mouse in enumerate(subjects['nickname']):
 		weight_water2 = weight_water2.dropna(subset=['weight'])
 		righty = ax.twinx()
 		sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
-		righty.set(xlabel='', ylabel="Weight (g)", 
+		righty.set(xlabel='', ylabel="Weight (g)",
 			xlim=[weight_water.days.min()-2, weight_water.days.max()+2])
-		righty.grid(False)	
+		righty.grid(False)
 
 		# correct the ticks to show dates, not days
 		# also indicate Mondays by grid lines
@@ -116,7 +116,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		ax = axes[1,0]
 		trialcounts = behav.groupby(['date'])['trial'].max().reset_index()
 		sns.lineplot(x="date", y="trial", marker='o', color=".15", data=trialcounts, ax=ax)
-		ax.set(xlabel='', ylabel="Trial count", 
+		ax.set(xlabel='', ylabel="Trial count",
 			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 
 		# compute the length of each session
@@ -130,7 +130,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty.tick_params(axis='y', colors='firebrick')
 		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
 				xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
-		
+
 		righty.grid(False)
 		fix_date_axis(righty)
 		fix_date_axis(ax)
@@ -144,9 +144,9 @@ for i, mouse in enumerate(subjects['nickname']):
 		behav['correct_easy'] = behav.correct
 		behav.loc[np.abs(behav['signedContrast']) < 50, 'correct_easy'] = np.NaN
 		correct_easy = behav.groupby(['date'])['correct_easy'].mean().reset_index()
-		
+
 		sns.lineplot(x="date", y="correct_easy", marker='o', color=".15", data=correct_easy, ax=ax)
-		ax.set(xlabel='', ylabel="Performance (easy trials)", 
+		ax.set(xlabel='', ylabel="Performance (easy trials)",
 			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)],
 			yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
 		# ax.yaxis.label.set_color("black")
@@ -161,13 +161,13 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10],
 			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
 		righty.set_yscale("log")
-		
+
 		righty.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 		righty.grid(False)
 		fix_date_axis(righty)
 		fix_date_axis(ax)
-		
-		
+
+
 		# ============================================= #
 		# CONTRAST/CHOICE HEATMAP
 		# ============================================= #
@@ -182,7 +182,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		# fit psychfunc on choice fraction, rather than identity
 		pars = behav.groupby(['date', 'probabilityLeft']).apply(fit_psychfunc).reset_index()
-		parsdict = {'threshold': r'Threshold $(\sigma)$', 'bias': r'Bias $(\mu)$', 
+		parsdict = {'threshold': r'Threshold $(\sigma)$', 'bias': r'Bias $(\mu)$',
 			'lapselow': r'Lapse low $(\gamma)$', 'lapsehigh': r'Lapse high $(\lambda)$'}
 		ylims = [[-5, 105], [-105, 105], [-0.05, 1.05], [-0.05, 1.05]]
 
@@ -195,9 +195,9 @@ for i, mouse in enumerate(subjects['nickname']):
 		# plot the fitted parameters
 		for pidx, (var, labelname) in enumerate(parsdict.items()):
 			ax = axes[pidx,1]
-			sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft", 
+			sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft",
 				palette=cmap, data=pars, legend=None, ax=ax)
-			ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx], 
+			ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx],
 				xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
 
 			fix_date_axis(ax)
@@ -247,20 +247,20 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[2, didx]
 			sns.scatterplot(x='trial', y='rt', style='correct', hue='correct',
 				palette={1:"#009E73", 0:"#D55E00"}, # from https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/mpl-data/stylelib/seaborn-colorblind.mplstyle
-				markers={1:'o', 0:'X'}, s=10, linewidths=0, edgecolors='none', 
+				markers={1:'o', 0:'X'}, s=10, linewidths=0, edgecolors='none',
 				alpha=.5, data=dat, ax=ax, legend=False)
 			# running median overlaid
-			sns.lineplot(x='trial', y='rt', color='black', ci=None, 
-				data=dat[['trial', 'rt']].rolling(10).median(), ax=ax) 
+			sns.lineplot(x='trial', y='rt', color='black', ci=None,
+				data=dat[['trial', 'rt']].rolling(10).median(), ax=ax)
 			ax.set(xlabel="Trial number", ylabel="RT (s)", ylim=[0.02, 60])
 			ax.set_yscale("log")
-			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: 
+			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos:
 				('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
 			# WHEEL ANALYSIS
 			# thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
 			# eid = one.search(subjects=mouse, date_range=[thisdate, thisdate])
-			# t, wheelpos, wheelvel = one.load(eid[0], 
+			# t, wheelpos, wheelvel = one.load(eid[0],
 			# 	dataset_types=['_ibl_wheel.timestamps', '_ibl_wheel.position', '_ibl_wheel.velocity'])
 			# wheeltimes = np.interp(np.arange(0,len(wheelpos)), t[:,0], t[:,1])
 		 	#    #times = np.interp(np.arange(0,len(wheelPos)), t[:,0], t[:,1])
@@ -279,9 +279,9 @@ for i, mouse in enumerate(subjects['nickname']):
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 		fig.savefig(join(path + '%s_overview.pdf'%mouse))
 		plt.close(fig)
-		
+
 	except:
 		print("%s failed to run" %mouse)
 		raise
 
-	
+
