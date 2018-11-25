@@ -39,8 +39,10 @@ path = fig_path()
 
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?responsible_user=ines'))
+
 # subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
-# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_45'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_47'))
 
 print(subjects['nickname'].unique())
 
@@ -167,13 +169,38 @@ for i, mouse in enumerate(subjects['nickname']):
 		fix_date_axis(righty)
 		fix_date_axis(ax)
 
-
 		# ============================================= #
 		# CONTRAST/CHOICE HEATMAP
 		# ============================================= #
 
 		ax = axes[3,0]
-		plot_perf_heatmap(behav, ax=ax)
+		import copy; cmap=copy.copy(plt.get_cmap('vlag'))
+		cmap.set_bad(color="w") # remove those squares
+
+        # TODO: only take the mean when there is more than 1 trial (to remove bug in early sessions)
+		pp  = behav.groupby(['signedContrast', 'days']).agg({'choice2':'mean'}).reset_index()
+		pp2 = pp.pivot("signedContrast", "days",  "choice2").sort_values(by='signedContrast', ascending=False)
+		pp2 = pp2.reindex([-100, -50, -25, -12, -6, 0, 6, 12, 25, 50, 100])
+
+		# inset axes for colorbar, to the right of plot
+		axins1 = inset_axes(ax, width="5%", height="90%", loc='right',
+			bbox_to_anchor=(0.15, 0., 1, 1), bbox_transform=ax.transAxes, borderpad=0,)
+		# now heatmap
+		sns.heatmap(pp2, linewidths=.5, ax=ax, vmin=0, vmax=1, cmap=cmap, cbar=True,
+			cbar_ax=axins1,
+			cbar_kws={'label': 'Choose right (%)', 'shrink': 0.8, 'ticks': []})
+		ax.set(ylabel="Contrast (%)")
+
+		# fix the date axis
+		dates  = behav.date.unique()
+		xpos   = np.arange(len(dates)) + 0.5 # the tick locations for each day
+		xticks = [i for i, dt in enumerate(dates) if pd.to_datetime(dt).weekday() is 0]
+		ax.set_xticks(np.array(xticks) + 0.5)
+
+		xticklabels = [pd.to_datetime(dt).strftime('%b-%d') for i, dt in enumerate(dates) if pd.to_datetime(dt).weekday() is 0]
+		ax.set_xticklabels(xticklabels)
+		for item in ax.get_xticklabels():
+			item.set_rotation(60)
 		ax.set(xlabel='')
 
 		# ============================================= #
@@ -203,8 +230,6 @@ for i, mouse in enumerate(subjects['nickname']):
 			fix_date_axis(ax)
 			if pidx == 0:
 				ax.set(title=r'$\gamma + (1 -\gamma-\lambda)  (erf(\frac{x-\mu}{\sigma} + 1)/2$')
-			# if pidx < 3:
-			# 	ax.set(xticklabels=[])
 
 		# ============================================= #
 		# LAST THREE SESSIONS
@@ -257,19 +282,33 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos:
 				('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
-			# WHEEL ANALYSIS
+			# # WHEEL ANALYSIS
+			# # FIRST CREATE A PANDAS DATAFRAME WITH THE FULL WHEEL TRACE DURING THE SESSION
 			# thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
 			# eid = one.search(subjects=mouse, date_range=[thisdate, thisdate])
 			# t, wheelpos, wheelvel = one.load(eid[0],
 			# 	dataset_types=['_ibl_wheel.timestamps', '_ibl_wheel.position', '_ibl_wheel.velocity'])
-			# wheeltimes = np.interp(np.arange(0,len(wheelpos)), t[:,0], t[:,1])
-		 	#    #times = np.interp(np.arange(0,len(wheelPos)), t[:,0], t[:,1])
-			# wheel = pd.DataFrame.from_dict({'position':wheelpos, 'velocity':wheelvel, 'times':wheeltimes})
+			# wheel = pd.DataFrame.from_dict({'position':wheelpos[0], 'velocity':np.transpose(wheelvel)[0]})
+			# wheel['time'] = pd.to_timedelta(np.linspace(t[0,0], t[1,1], len(wheelpos[0])), unit='s')
+			# wheel.set_index('time')
+
+			# # ADD NANS TO THE BEGINNING AND END FOR EPOCHING
+
+
+			# # THEN EPOCH BY LOCKING TO THE STIMULUS ONSET TIMES
+			# prestim 	= pd.to_timedelta(0, 's')
+			# poststim 	= pd.to_timedelta(behav.rt.median(), 's') + pd.to_timedelta(1, 's')
+			# stimlocked = []
+			# for stimonset in pd.to_timedelta(behav['stimOn_times']):
+			# 	sliceidx = (wheel.time > (stimonset - prestim)) & (wheel.time < (stimonset + poststim))
+			# 	stimlocked.append(wheel['position'][sliceidx])
+			# 	shell()
+
+			# dat['wheel_stimlocked'] = stimlocked
 
 			# ax = axes[3, didx]
-			# sns.lineplot(x=wheeltimes, y=wheelpos, ax=ax)
-			ax = axes[3, didx]
-			ax.set(xlabel='Time from cue (s)', ylabel='Wheel rotation (deg)')
+			# sns.lineplot(x='time', y=stimlocked, color=dat.signedContrast, style=dat.correct, cmap='vlag', ax=ax)
+			# ax.set(xlabel='Time from stim (s)', ylabel='Wheel rotation (deg)')
 
 		# clean up layout
 		for i in range(3):
