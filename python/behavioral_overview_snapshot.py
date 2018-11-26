@@ -39,10 +39,9 @@ path = fig_path()
 
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?responsible_user=ines'))
-
+# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?responsible_user=ines'))
 # subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=IBL_47'))
+# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ALK082'))
 
 print(subjects['nickname'].unique())
 
@@ -76,6 +75,17 @@ for i, mouse in enumerate(subjects['nickname']):
 		# use pandas plot for a stacked bar - water types
 		wa_unstacked = weight_water.pivot_table(index='days',
 	    	columns='water_type', values='water_administered', aggfunc='sum').reset_index()
+
+		# shorten names for legend
+		wa_unstacked.columns = wa_unstacked.columns.str.replace("Water", "Wa")
+		wa_unstacked.columns = wa_unstacked.columns.str.replace("Sucrose", "Sucr")
+		wa_unstacked.columns = wa_unstacked.columns.str.replace("Citric Acid", "CA")
+		wa_unstacked.columns = wa_unstacked.columns.str.replace("Hydrogel", "Hdrg")
+
+	    # mark the citric acid columns to indicate adlib amount
+		for ic, c in enumerate(wa_unstacked.columns):
+			if 'CA' in c:
+				wa_unstacked[c].replace({0:2}, inplace=True)
 
 		# https://stackoverflow.com/questions/44250445/pandas-bar-plot-with-continuous-x-axis
 		plotvar 	  = wa_unstacked
@@ -264,7 +274,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[1, didx]
 			for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
 				plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
-			ax.set(ylim=[0.1,5])
+			ax.set(ylim=[0.1,1])
 			ax.set_yscale("log")
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
@@ -282,33 +292,67 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos:
 				('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
-			# # WHEEL ANALYSIS
-			# # FIRST CREATE A PANDAS DATAFRAME WITH THE FULL WHEEL TRACE DURING THE SESSION
-			# thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
-			# eid = one.search(subjects=mouse, date_range=[thisdate, thisdate])
-			# t, wheelpos, wheelvel = one.load(eid[0],
-			# 	dataset_types=['_ibl_wheel.timestamps', '_ibl_wheel.position', '_ibl_wheel.velocity'])
-			# wheel = pd.DataFrame.from_dict({'position':wheelpos[0], 'velocity':np.transpose(wheelvel)[0]})
-			# wheel['time'] = pd.to_timedelta(np.linspace(t[0,0], t[1,1], len(wheelpos[0])), unit='s')
-			# wheel.set_index('time')
+			# ============================ #
+			# WHEEL ANALYSIS
+			# ============================ #
 
-			# # ADD NANS TO THE BEGINNING AND END FOR EPOCHING
+			plotWheel = False
+			if plotWheel:
+				# FIRST CREATE A PANDAS DATAFRAME WITH THE FULL WHEEL TRACE DURING THE SESSION
+				thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
+				eid = one.search(subjects=mouse, date_range=[thisdate, thisdate])
+				t, wheelpos, wheelvel = one.load(eid[0],
+					dataset_types=['_ibl_wheel.timestamps', '_ibl_wheel.position', '_ibl_wheel.velocity'])
+				wheel = pd.DataFrame.from_dict({'position':wheelpos[0], 'velocity':np.transpose(wheelvel)[0]})
+				wheel['time'] = pd.to_timedelta(np.linspace(t[0,0], t[1,1], len(wheelpos[0])), unit='s')
+				wheel.set_index(wheel['time'], inplace=True)
+				wheel = wheel.resample('10ms', on='time').mean().reset_index() # to do analyses more quickly, RESAMPLE to 10ms
 
+				# ADD A FEW SECONDS WITH NANS AT THE BEGINNING AND END
+				wheel = pd.concat([ pd.DataFrame.from_dict({'time': pd.to_timedelta(np.arange(-10, 0, 0.1), 's'), 
+					'position': np.full((100,), np.nan), 'velocity':  np.full((100,), np.nan)}),
+					 wheel,
+					 pd.DataFrame.from_dict({'time': pd.to_timedelta(np.arange(wheel.time.max().total_seconds(), 
+					 	wheel.time.max().total_seconds()+10, 0.1), 's'), 
+					'position': np.full((100,), np.nan), 'velocity':  np.full((100,), np.nan)})])
+				wheel.index = wheel['time']
 
-			# # THEN EPOCH BY LOCKING TO THE STIMULUS ONSET TIMES
-			# prestim 	= pd.to_timedelta(0, 's')
-			# poststim 	= pd.to_timedelta(behav.rt.median(), 's') + pd.to_timedelta(1, 's')
-			# stimlocked = []
-			# for stimonset in pd.to_timedelta(behav['stimOn_times']):
-			# 	sliceidx = (wheel.time > (stimonset - prestim)) & (wheel.time < (stimonset + poststim))
-			# 	stimlocked.append(wheel['position'][sliceidx])
-			# 	shell()
+				# round to have the same sampling rate as wheeltimes
+				stimonset_times = pd.to_timedelta(np.round(dat['stimOn_times'], 2), 's') # express in timedelta
 
-			# dat['wheel_stimlocked'] = stimlocked
+				# THEN EPOCH BY LOCKING TO THE STIMULUS ONSET TIMES
+				prestim 		= pd.to_timedelta(0.2, 's')
+				poststim 		= pd.to_timedelta(dat.rt.median(), 's') + pd.to_timedelta(1, 's')
+				
+				signal = []; time = []
+				for i, stimonset in enumerate(stimonset_times):
+					sliceidx = (wheel.index > (stimonset - prestim)) & (wheel.index < (stimonset + poststim))
+					signal.append(wheel['position'][sliceidx].values)
 
-			# ax = axes[3, didx]
-			# sns.lineplot(x='time', y=stimlocked, color=dat.signedContrast, style=dat.correct, cmap='vlag', ax=ax)
-			# ax.set(xlabel='Time from stim (s)', ylabel='Wheel rotation (deg)')
+					# also append the time axis to alignment in seaborn plot
+					if i == 0:
+						timeaxis = np.linspace(-prestim.total_seconds(), poststim.total_seconds(), len(wheel['position'][sliceidx].values))
+					time.append(timeaxis)
+
+				# also baseline correct at zero
+				zeroindex = np.argmin(np.abs(timeaxis))
+				signal_blcorr = []
+				for i, item in enumerate(signal):
+					signal_blcorr.append(item - item[zeroindex])
+
+				# MAKE INTO A PANDAS DATAFRAME AGAIN, append all relevant columns
+				wheel = pd.DataFrame.from_dict({'time': np.hstack(time), 'position': np.hstack(signal), 
+					'position_blcorr': np.hstack(signal_blcorr), 
+					'choice': np.repeat(dat['choice'], len(timeaxis)), 
+					'correct': np.repeat(dat['correct'], len(timeaxis)),
+					'signedContrast': np.repeat(dat['signedContrast'], len(timeaxis))})
+				
+				ax = axes[3, didx]
+				sns.lineplot(x='time', y='position_blcorr', ci=None, hue='signedContrast', 
+					style='correct', data=wheel, ax=ax, legend=None)
+				ax.set(xlabel='Time from stim (s)', ylabel='Wheel position (deg)')
+			else:
+				ax = axes[3, didx]
 
 		# clean up layout
 		for i in range(3):
@@ -321,6 +365,9 @@ for i, mouse in enumerate(subjects['nickname']):
 
 	except:
 		print("%s failed to run" %mouse)
+		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+		fig.savefig(join(path + '%s_overview.pdf'%mouse))
+
 		raise
 
 

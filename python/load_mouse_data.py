@@ -40,24 +40,12 @@ def get_water(mousename):
     wei['days'] = wei.date - wei.date[0]
     wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
 
-    # wei = wei.set_index('date')
-    # wei.index = pd.to_datetime(wei.index)
-
-    wa_unstacked = wei.pivot_table(index='date', 
-        columns='water_type', values='water_administered', aggfunc='sum').reset_index()
-    # wa_unstacked = wa_unstacked.set_index('date')
-    # wa_unstacked.index = pd.to_datetime(wa_unstacked.index)
-
-    wa_unstacked['date'] = pd.to_datetime(wa_unstacked.date)
-    wa_unstacked.set_index('date', inplace=True)
-
-    return wa_unstacked, wei
-
+    return wei
 
 def get_water_weight(mousename):
 
     wei = get_weights(mousename)
-    wa_unstacked, wa = get_water(mousename)
+    wa = get_water(mousename)
     wa.reset_index(inplace=True)
 
     # also grab the info about water restriction
@@ -67,8 +55,6 @@ def get_water_weight(mousename):
     # make sure that NaNs are entered for days with only water or weight but not both
     combined = pd.merge(wei, wa, on="date", how='outer')
     combined = combined[['date', 'weight', 'water_administered', 'water_type']]
-
-    # if no hydrogel was ever given to this mouse, add it anyway with NaN
 
     # remove those weights below current water restriction start
     combined = combined[combined.date >= pd.to_datetime(restr['last_water_restriction'])]
@@ -86,11 +72,8 @@ def get_water_weight(mousename):
     # also indicate all the dates as days from the start of water restriction (for easier plotting)
     combined['days'] = combined.date - combined.date[0]
     combined['days'] = combined.days.dt.days # convert to number of days from start of the experiment
-    
 
     return combined
-
-
 
 def get_behavior(mousename, **kwargs):
 
