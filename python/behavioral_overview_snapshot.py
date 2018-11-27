@@ -39,9 +39,8 @@ path = fig_path()
 
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
-# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?responsible_user=ines'))
-# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ZM_329'))
-# subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ALK082'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ALK082'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects'))
 
 print(subjects['nickname'].unique())
 
@@ -59,7 +58,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		# GENERAL METADATA
 		# ============================================= #
 
-		fig.suptitle('Mouse %s (%s), DoB %s, user %s (%s), strain %s, cage %s, %s' %(subjects['nickname'][i],
+		fig.suptitle('Mouse %s (%s), born %s, user %s (%s) \nstrain %s, cage %s, %s' %(subjects['nickname'][i],
 		 subjects['sex'][i], subjects['birth_date'][i],
 		 subjects['responsible_user'][i], subjects['lab'][i],
 		 subjects['strain'][i], subjects['litter'][i], subjects['description'][i]))
@@ -129,7 +128,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		trialcounts = behav.groupby(['date'])['trial'].max().reset_index()
 		sns.lineplot(x="date", y="trial", marker='o', color=".15", data=trialcounts, ax=ax)
 		ax.set(xlabel='', ylabel="Trial count",
-			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
+			xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)])
 
 		# compute the length of each session
 		behav['sessionlength'] = (behav.end_time - behav.start_time)
@@ -141,7 +140,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty.yaxis.label.set_color("firebrick")
 		righty.tick_params(axis='y', colors='firebrick')
 		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
-				xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
+				xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)])
 
 		righty.grid(False)
 		fix_date_axis(righty)
@@ -159,7 +158,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		sns.lineplot(x="date", y="correct_easy", marker='o', color=".15", data=correct_easy, ax=ax)
 		ax.set(xlabel='', ylabel="Performance (easy trials)",
-			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)],
+			xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)],
 			yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
 		# ax.yaxis.label.set_color("black")
 
@@ -171,7 +170,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty.yaxis.label.set_color("firebrick")
 		righty.tick_params(axis='y', colors='firebrick')
 		righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10],
-			xlim=[weight_water.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)])
+			xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)])
 		righty.set_yscale("log")
 
 		righty.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
@@ -232,7 +231,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		# plot the fitted parameters
 		for pidx, (var, labelname) in enumerate(parsdict.items()):
 			ax = axes[pidx,1]
-			sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft",
+			sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft", linestyle='', lw=0,
 				palette=cmap, data=pars, legend=None, ax=ax)
 			ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx],
 				xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
@@ -276,7 +275,8 @@ for i, mouse in enumerate(subjects['nickname']):
 				plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
 			ax.set(ylim=[0.1,1])
 			ax.set_yscale("log")
-			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
+			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: 
+				('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
 			# RTS THROUGHOUT SESSION
 			ax = axes[2, didx]
@@ -364,6 +364,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		plt.close(fig)
 
 	except:
+
 		print("%s failed to run" %mouse)
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 		fig.savefig(join(path + '%s_overview.pdf'%mouse))

@@ -49,23 +49,24 @@ def get_water_weight(mousename):
     wa.reset_index(inplace=True)
 
     # also grab the info about water restriction
-    # shell()
     restr = mouse_data_ = one._alyxClient.get('/subjects/%s' %mousename)
 
     # make sure that NaNs are entered for days with only water or weight but not both
     combined = pd.merge(wei, wa, on="date", how='outer')
     combined = combined[['date', 'weight', 'water_administered', 'water_type']]
 
-    # remove those weights below current water restriction start
-    combined = combined[combined.date >= pd.to_datetime(restr['last_water_restriction'])]
+    if restr['last_water_restriction']:
+        # remove those weights below current water restriction start
+        combined = combined[combined.date >= pd.to_datetime(restr['last_water_restriction'])]
 
-    # add a weight measurement on day 0 that shows the baseline weight
-    combined = combined.append(pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
-        'weight': restr['reference_weight'], 'water_administered': np.nan, 'water_type': np.nan, 'index':[0]}), 
-        sort=False)
+        # add a weight measurement on day 0 that shows the baseline weight
+        combined = combined.append(pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
+            'weight': restr['reference_weight'], 'water_administered': np.nan, 'water_type': np.nan, 'index':[0]}), 
+            sort=False)
+
     combined = combined.sort_values(by='date')
     combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
-    
+
     combined = combined.reset_index()
     combined = combined.drop(columns='index')
 
