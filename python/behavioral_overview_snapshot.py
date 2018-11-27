@@ -40,7 +40,7 @@ path = fig_path()
 # get a list of all mice that are currently training
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
 subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ALK082'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects'))
+subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?alive=True'))
 
 print(subjects['nickname'].unique())
 
@@ -273,7 +273,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[1, didx]
 			for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
 				plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
-			ax.set(ylim=[0.1,1])
+			ax.set(ylim=[0.1,1.5], yticks=[0.1, 1.5])
 			ax.set_yscale("log")
 			ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: 
 				('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
@@ -282,7 +282,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			ax = axes[2, didx]
 			sns.scatterplot(x='trial', y='rt', style='correct', hue='correct',
 				palette={1:"#009E73", 0:"#D55E00"}, # from https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/mpl-data/stylelib/seaborn-colorblind.mplstyle
-				markers={1:'o', 0:'X'}, s=10, linewidths=0, edgecolors='none',
+				markers={1:'o', 0:'X'}, s=10, edgecolors='face',
 				alpha=.5, data=dat, ax=ax, legend=False)
 			# running median overlaid
 			sns.lineplot(x='trial', y='rt', color='black', ci=None,
@@ -369,6 +369,6 @@ for i, mouse in enumerate(subjects['nickname']):
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 		fig.savefig(join(path + '%s_overview.pdf'%mouse))
 
-		raise
+		pass
 
 
