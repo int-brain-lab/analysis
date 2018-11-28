@@ -38,9 +38,9 @@ one = ONE() # initialize
 path = fig_path()
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?water_restricted=True&alive=True'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?nickname=ALK082'))
-subjects 	= pd.DataFrame(one._alyxClient.get('/subjects?alive=True'))
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True'))
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?nickname=ALK082'))
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?alive=True'))
 
 print(subjects['nickname'].unique())
 

@@ -15,7 +15,7 @@ one = ONE() # initialize
 
 def get_weights(mousename):
 
-    wei = one._alyxClient.get('/weighings?nickname=%s' %mousename)
+    wei = one.alyx.get('/weighings?nickname=%s' %mousename)
     wei = pd.DataFrame(wei)
     wei['date_time'] = pd.to_datetime(wei.date_time)
     wei.sort_values('date_time', inplace=True)
@@ -27,7 +27,7 @@ def get_weights(mousename):
     return wei
 
 def get_water(mousename):
-    wei = one._alyxClient.get('/water-administrations?nickname=%s' %mousename)
+    wei = one.alyx.get('/water-administrations?nickname=%s' %mousename)
     wei = pd.DataFrame(wei)
     wei['date_time'] = pd.to_datetime(wei.date_time)
 
@@ -49,7 +49,7 @@ def get_water_weight(mousename):
     wa.reset_index(inplace=True)
 
     # also grab the info about water restriction
-    restr = mouse_data_ = one._alyxClient.get('/subjects/%s' %mousename)
+    restr = mouse_data_ = one.ALYX.get('/subjects/%s' %mousename)
 
     # make sure that NaNs are entered for days with only water or weight but not both
     combined = pd.merge(wei, wa, on="date", how='outer')
