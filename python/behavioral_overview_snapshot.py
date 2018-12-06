@@ -36,11 +36,12 @@ one = ONE() # initialize
 
 # get folder to save plots
 path = fig_path()
+if not os.path.exists(path):
+    os.mkdir(path)
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True'))
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?nickname=ALK082'))
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?alive=True'))
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=valeria'))
+#subjects 	= pd.DataFrame(one.alyx.get('/subjects?nickname=ZM_346'))
 
 print(subjects['nickname'].unique())
 
@@ -69,7 +70,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		ax = axes[0,0]
 		# get all the weights and water aligned in 1 table
-		weight_water = get_water_weight(mouse)
+		weight_water, baseline = get_water_weight(mouse)
 
 		# use pandas plot for a stacked bar - water types
 		wa_unstacked = weight_water.pivot_table(index='days',
@@ -108,7 +109,8 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty = ax.twinx()
 		sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
 		righty.set(xlabel='', ylabel="Weight (g)",
-			xlim=[weight_water.days.min()-2, weight_water.days.max()+2])
+			xlim=[weight_water.days.min()-2, weight_water.days.max()+2],
+			ylim=[baseline*1.2, baseline*0.7])
 		righty.grid(False)
 
 		# correct the ticks to show dates, not days
@@ -221,6 +223,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		parsdict = {'threshold': r'Threshold $(\sigma)$', 'bias': r'Bias $(\mu)$',
 			'lapselow': r'Lapse low $(\gamma)$', 'lapsehigh': r'Lapse high $(\lambda)$'}
 		ylims = [[-5, 105], [-105, 105], [-0.05, 1.05], [-0.05, 1.05]]
+		yticks = [[0, 19, 100], [-100, -16, 0, 16, 100], [-0, 0.2, 0.5, 1], [-0, 0.2, 0.5, 1]]
 
 		# pick a good-looking diverging colormap with black in the middle
 		cmap = sns.diverging_palette(220, 20, n=len(behav['probabilityLeft'].unique()), center="dark")
@@ -234,6 +237,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft", linestyle='', lw=0,
 				palette=cmap, data=pars, legend=None, ax=ax)
 			ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx],
+				yticks=yticks[pidx],
 				xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
 
 			fix_date_axis(ax)
@@ -368,7 +372,6 @@ for i, mouse in enumerate(subjects['nickname']):
 		print("%s failed to run" %mouse)
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 		fig.savefig(join(path + '%s_overview.pdf'%mouse))
-
 		pass
 
 
