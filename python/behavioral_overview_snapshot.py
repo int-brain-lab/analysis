@@ -14,7 +14,6 @@ from IPython import embed as shell
 
 # IBL stuff
 from oneibl.one import ONE
-# from ibllib.time import isostr2date
 import psychofit as psy # https://github.com/cortex-lab/psychofit
 
 # loading and plotting functions
@@ -23,6 +22,9 @@ from os.path import join as join
 from behavior_plots import *
 from load_mouse_data import * # this has all plotting functions
 
+# use datajoint?
+
+(subject.Subject & 'subject_nickname="IBL_17"').proj('subject_nickname') * (behavior.TrialSet.proj('trials_total_num', session_dow='dayofweek(session_start_time)') & 'session_start_time>"2018-08-31"' & 'session_dow in (1, 2, 5)')
 # ============================================= #
 # START BIG OVERVIEW PLOT
 # ============================================= #
@@ -40,8 +42,8 @@ if not os.path.exists(path):
     os.mkdir(path)
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=valeria'))
-#subjects 	= pd.DataFrame(one.alyx.get('/subjects?nickname=ZM_346'))
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=miles'))
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?nickname=ALK082'))
 
 print(subjects['nickname'].unique())
 
@@ -71,6 +73,10 @@ for i, mouse in enumerate(subjects['nickname']):
 		ax = axes[0,0]
 		# get all the weights and water aligned in 1 table
 		weight_water, baseline = get_water_weight(mouse)
+		behav 	= get_behavior(mouse)
+
+		# determine x limits
+		xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
 
 		# use pandas plot for a stacked bar - water types
 		wa_unstacked = weight_water.pivot_table(index='days',
@@ -91,7 +97,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		plotvar 	  = wa_unstacked
 		plotvar.index = plotvar.days
 		plotvar.drop(columns='days', inplace=True)
-		plotvar = plotvar.reindex(np.arange(weight_water.days.min(), weight_water.days.max()+2))
+		plotvar = plotvar.reindex(np.arange(weight_water.days.min()-2, weight_water.days.max()+2))
 
 		# sort the columns by possible water types
 		plotvar = plotvar[sorted(list(plotvar.columns.values), reverse=True)]
@@ -100,7 +106,7 @@ for i, mouse in enumerate(subjects['nickname']):
 			bbox_to_anchor=(0., 1.02, 1., .102),
 			ncol=2, mode="expand", borderaxespad=0., frameon=False)
 		l.set_title('')
-		ax.set(ylabel="Water intake (mL)", xlabel='')
+		ax.set(ylabel="Water intake (mL)", xlabel='', xlim=xlims)
 		ax.yaxis.label.set_color("#0072B2")
 
 		# overlay the weight curve
@@ -109,8 +115,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty = ax.twinx()
 		sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
 		righty.set(xlabel='', ylabel="Weight (g)",
-			xlim=[weight_water.days.min()-2, weight_water.days.max()+2],
-			ylim=[baseline*1.2, baseline*0.7])
+			xlim=[weight_water.days.min()-2, weight_water.days.max()+2], ylim=[baseline*1.2, baseline*0.7])
 		righty.grid(False)
 
 		# correct the ticks to show dates, not days
@@ -124,13 +129,10 @@ for i, mouse in enumerate(subjects['nickname']):
 		# TRIAL COUNTS AND SESSION DURATION
 		# ============================================= #
 
-		behav 	= get_behavior(mouse)
-
 		ax = axes[1,0]
 		trialcounts = behav.groupby(['date'])['trial'].max().reset_index()
 		sns.lineplot(x="date", y="trial", marker='o', color=".15", data=trialcounts, ax=ax)
-		ax.set(xlabel='', ylabel="Trial count",
-			xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)])
+		ax.set(xlabel='', ylabel="Trial count", xlim=xlims)
 
 		# compute the length of each session
 		behav['sessionlength'] = (behav.end_time - behav.start_time)
@@ -141,8 +143,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		sns.lineplot(x="date", y="sessionlength", marker='o', color="firebrick", data=sessionlength, ax=righty)
 		righty.yaxis.label.set_color("firebrick")
 		righty.tick_params(axis='y', colors='firebrick')
-		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80],
-				xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)])
+		righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80], xlim=xlims)
 
 		righty.grid(False)
 		fix_date_axis(righty)
@@ -160,8 +161,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		sns.lineplot(x="date", y="correct_easy", marker='o', color=".15", data=correct_easy, ax=ax)
 		ax.set(xlabel='', ylabel="Performance (easy trials)",
-			xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)],
-			yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
+			xlim=xlims, yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
 		# ax.yaxis.label.set_color("black")
 
 		# RTs on right y-axis
@@ -171,8 +171,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		righty.yaxis.label.set_color("firebrick")
 		righty.tick_params(axis='y', colors='firebrick')
-		righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10],
-			xlim=[weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)])
+		righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10], xlim=xlims)
 		righty.set_yscale("log")
 
 		righty.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
@@ -371,7 +370,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 		print("%s failed to run" %mouse)
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-		fig.savefig(join(path + '%s_overview.pdf'%mouse))
+		# fig.savefig(join(path + '%s_overview.pdf'%mouse))
 		pass
 
 
