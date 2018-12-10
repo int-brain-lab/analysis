@@ -35,7 +35,7 @@ path = fig_path()
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['valeria', 'ines', 'miles']
+users = ['miles', 'ines', 'valeria']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -43,38 +43,34 @@ users = ['valeria', 'ines', 'miles']
 
 for lidx, lab in enumerate(users):
 
-	subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&responsible_user=%s'%lab))
-	fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=False,
-        gridspec_kw=dict(width_ratios=[2,2,1,1,1], height_ratios=[1,1,1,1]), figsize=(11.69, 8.27))
-	sns.set_palette("colorblind") # palette for water types
-	axes = axes.flatten() # to enable 1d indexing
+	subjects 		= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=%s'%lab))
+	fig1, axes1 	= plt.subplots(ncols=int(np.ceil(np.sqrt(len(subjects)))), nrows=int(np.ceil(np.sqrt(len(subjects)))), 
+		constrained_layout=True, figsize=(11.69, 8.27))
+	axes1 = axes1.flatten() # to enable 1d indexing
+
+	fig2, axes2 	= plt.subplots(ncols=int(np.ceil(np.sqrt(len(subjects)))), nrows=int(np.ceil(np.sqrt(len(subjects)))), 
+		constrained_layout=True, figsize=(11.69, 8.27))
+	axes2 = axes2.flatten() # to enable 1d indexing
 
 	for i, mouse in enumerate(subjects['nickname']):
 
+		print(mouse)
 		try:
-
-			# ============================================= #
-			# GENERAL METADATA
-			# ============================================= #
-
-			fig.suptitle('Mouse %s (%s), born %s, user %s (%s) \nstrain %s, cage %s, %s' %(subjects['nickname'][i],
-			 subjects['sex'][i], subjects['birth_date'][i],
-			 subjects['responsible_user'][i], subjects['lab'][i],
-			 subjects['strain'][i], subjects['litter'][i], subjects['description'][i]))
+			behav 	= get_behavior(mouse)
 
 			# ============================================= #
 			# PERFORMANCE AND MEDIAN RT
 			# ============================================= #
 
 			# performance on easy trials
-			ax = axes[2,0]
+			ax = axes1[i]
 			behav['correct_easy'] = behav.correct
 			behav.loc[np.abs(behav['signedContrast']) < 50, 'correct_easy'] = np.NaN
 			correct_easy = behav.groupby(['date'])['correct_easy'].mean().reset_index()
 
 			sns.lineplot(x="date", y="correct_easy", marker='o', color=".15", data=correct_easy, ax=ax)
 			ax.set(xlabel='', ylabel="Performance (easy trials)",
-				xlim=xlims, yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
+				yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01], title=mouse)
 			# ax.yaxis.label.set_color("black")
 
 			# RTs on right y-axis
@@ -84,7 +80,7 @@ for lidx, lab in enumerate(users):
 
 			righty.yaxis.label.set_color("firebrick")
 			righty.tick_params(axis='y', colors='firebrick')
-			righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10], xlim=xlims)
+			righty.set(xlabel='', ylabel="RT (s)", ylim=[0.1,10])
 			righty.set_yscale("log")
 
 			righty.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
@@ -96,7 +92,7 @@ for lidx, lab in enumerate(users):
 			# CONTRAST/CHOICE HEATMAP
 			# ============================================= #
 
-			ax = axes[3,0]
+			ax = axes2[i]
 			import copy; cmap=copy.copy(plt.get_cmap('vlag'))
 			cmap.set_bad(color="w") # remove those squares
 
@@ -110,9 +106,8 @@ for lidx, lab in enumerate(users):
 				bbox_to_anchor=(0.15, 0., 1, 1), bbox_transform=ax.transAxes, borderpad=0,)
 			# now heatmap
 			sns.heatmap(pp2, linewidths=.5, ax=ax, vmin=0, vmax=1, cmap=cmap, cbar=True,
-				cbar_ax=axins1,
 				cbar_kws={'label': 'Choose right (%)', 'shrink': 0.8, 'ticks': []})
-			ax.set(ylabel="Contrast (%)")
+			ax.set(ylabel="Contrast (%)", title=mouse)
 
 			# fix the date axis
 			dates  = behav.date.unique()
@@ -125,10 +120,10 @@ for lidx, lab in enumerate(users):
 			for item in ax.get_xticklabels():
 				item.set_rotation(60)
 			ax.set(xlabel='')
-
+		except:
+			pass
 
 	print("%s failed to run" %mouse)
-	plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-	fig.savefig(join(path + '%s_overview.pdf'%lab))
-
+	fig1.savefig(join(path + '%s_overview_perf_rt.pdf'%lab))
+	fig2.savefig(join(path + '%s_overview_contrast_heatmap.pdf'%lab))
 

@@ -22,9 +22,6 @@ from os.path import join as join
 from behavior_plots import *
 from load_mouse_data import * # this has all plotting functions
 
-# use datajoint?
-
-(subject.Subject & 'subject_nickname="IBL_17"').proj('subject_nickname') * (behavior.TrialSet.proj('trials_total_num', session_dow='dayofweek(session_start_time)') & 'session_start_time>"2018-08-31"' & 'session_dow in (1, 2, 5)')
 # ============================================= #
 # START BIG OVERVIEW PLOT
 # ============================================= #
@@ -42,9 +39,7 @@ if not os.path.exists(path):
     os.mkdir(path)
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=miles'))
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?nickname=ALK082'))
-
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False'))
 print(subjects['nickname'].unique())
 
 for i, mouse in enumerate(subjects['nickname']):
@@ -115,7 +110,7 @@ for i, mouse in enumerate(subjects['nickname']):
 		righty = ax.twinx()
 		sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
 		righty.set(xlabel='', ylabel="Weight (g)",
-			xlim=[weight_water.days.min()-2, weight_water.days.max()+2], ylim=[baseline*1.2, baseline*0.7])
+			xlim=[weight_water.days.min()-2, weight_water.days.max()+2], ylim=[baseline*0.8, baseline*1.2])
 		righty.grid(False)
 
 		# correct the ticks to show dates, not days
