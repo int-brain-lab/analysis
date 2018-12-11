@@ -35,7 +35,7 @@ path = fig_path()
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['ines', 'miles', 'valeria']
+users = ['miles', 'valeria', 'ines']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -59,23 +59,26 @@ for lidx, lab in enumerate(users):
 		for i, mouse in enumerate(mice):
 			print(mouse)
 
-			# WEIGHT CURVE AND WATER INTAKE
-			weight_water, baseline = get_water_weight(mouse)
+			try:
+				# WEIGHT CURVE AND WATER INTAKE
+				weight_water, baseline = get_water_weight(mouse)
 
-			# determine x limits
-			xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
-			plot_water_weight_curve(weight_water, baseline, axes[0,i])
-			axes[0,i].set_title(mouse, fontweight="bold")
+				# determine x limits
+				xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
+				plot_water_weight_curve(weight_water, baseline, axes[0,i])
+				axes[0,i].set_title(mouse, fontweight="bold")
 
-			# TRIAL COUNTS AND SESSION DURATION
-			behav 	= get_behavior(mouse)
-			plot_trialcounts_sessionlength(behav, axes[1,i], xlims)
+				# TRIAL COUNTS AND SESSION DURATION
+				behav 	= get_behavior(mouse)
+				plot_trialcounts_sessionlength(behav, axes[1,i], xlims)
 
-			# PERFORMANCE AND MEDIAN RT
-			plot_performance_rt(behav, axes[2,i], xlims)
+				# PERFORMANCE AND MEDIAN RT
+				plot_performance_rt(behav, axes[2,i], xlims)
 
-			# CONTRAST/CHOICE HEATMAP
-			plot_contrast_heatmap(behav, axes[3,i])
+				# CONTRAST/CHOICE HEATMAP
+				plot_contrast_heatmap(behav, axes[3,i])
+			except:
+				pass
 
 		# SAVE PER BATCH, MAX 5
 		fig.suptitle('Mice born on %s, user %s' %(birth_date, lab))
