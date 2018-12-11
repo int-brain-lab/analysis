@@ -35,7 +35,7 @@ path = fig_path()
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['miles', 'ines', 'valeria']
+users = ['ines', 'miles', 'valeria']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -50,44 +50,36 @@ for lidx, lab in enumerate(users):
 
 	for birth_date in batches:
 
-		mice = subjects.loc[subjects['birth_date'] == '2018-07-17']['nickname']
+		mice = subjects.loc[subjects['birth_date'] == birth_date]['nickname']
 		print(mice)
-		fig, axes = plt.subplots(ncols=len(mice), nrows=4, constrained_layout=False, figsize=(11.69, 8.27))
+		fig, axes = plt.subplots(ncols=max([len(mice), 4]), nrows=4, constrained_layout=False, figsize=(11.69, 8.27))
 		sns.set_palette("colorblind") # palette for water types
-		fig.suptitle('Mice born on %s, user %s' %(birth_date, lab))
+		
 
 		for i, mouse in enumerate(mice):
+			print(mouse)
 
-			# ============================================= #
 			# WEIGHT CURVE AND WATER INTAKE
-			# ============================================= #
-
-			# get all the weights and water aligned in 1 table
 			weight_water, baseline = get_water_weight(mouse)
 
 			# determine x limits
 			xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
 			plot_water_weight_curve(weight_water, baseline, axes[0,i])
-			axes[0,i].set_title(mouse)
+			axes[0,i].set_title(mouse, fontweight="bold")
 
-			# ============================================= #
 			# TRIAL COUNTS AND SESSION DURATION
-			# ============================================= #
-
 			behav 	= get_behavior(mouse)
 			plot_trialcounts_sessionlength(behav, axes[1,i], xlims)
 
-			# ============================================= #
 			# PERFORMANCE AND MEDIAN RT
-			# ============================================= #
-
 			plot_performance_rt(behav, axes[2,i], xlims)
 
-			# ============================================= #
 			# CONTRAST/CHOICE HEATMAP
-			# ============================================= #
-
 			plot_contrast_heatmap(behav, axes[3,i])
 
+		# SAVE PER BATCH, MAX 5
+		fig.suptitle('Mice born on %s, user %s' %(birth_date, lab))
+		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 		fig.savefig(join(path + '%s_overview_batch_%s.pdf'%(lab, birth_date)))
+		plt.close(fig)
 
