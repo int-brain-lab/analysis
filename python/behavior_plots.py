@@ -130,17 +130,24 @@ def plot_water_weight_curve(weight_water, baseline, ax):
     weight_water2 = weight_water.groupby('days').mean().reset_index()
     weight_water2 = weight_water2.dropna(subset=['weight'])
     righty = ax.twinx()
-    sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
-    righty.set(xlabel='', ylabel="Weight (g)",
-        xlim=[weight_water.days.min()-2, weight_water.days.max()+2], ylim=[baseline.weight[0]*0.8, baseline.weight[0]*1.2])
 
-    # add a line for 85% of baseline weight
+     # add a line for 85% of baseline weight
     righty.axhline(y=baseline.weight[0]*0.85, color='k', linestyle='--', linewidth=0.5)
 
-    # also show the value that we're using as the baseline
-    baseline['days'] = weight_water.loc[weight_water['date'] == baseline['date'][0], 'days'].iloc[0]
-    sns.scatterplot(x='days', y='weight', data=baseline, ax=righty, marker='^', color='k', s=40, zorder=100, legend=False)
+    # plot weight curve
+    sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
+    
+    # also show the value that we're using as the baseline with a different marker
+    try: # only if there is a baseline logged
+        baseline['days'] = weight_water.loc[weight_water['date'] == baseline['date'][0], 'days'].iloc[0]
+        sns.scatterplot(x='days', y='weight', data=baseline, ax=righty, marker='D', 
+            facecolor='white', edgecolor='black', s=10, zorder=100, legend=False)
+    except:
+        pass
+    
     righty.grid(False)
+    righty.set(xlabel='', ylabel="Weight (g)",
+        xlim=[weight_water.days.min()-2, weight_water.days.max()+2], ylim=[baseline.weight[0]*0.8, baseline.weight[0]*1.2])
 
     # correct the ticks to show dates, not days
     # also indicate Mondays by grid lines

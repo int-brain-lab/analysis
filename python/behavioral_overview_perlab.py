@@ -32,7 +32,8 @@ path = fig_path()
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['ines', 'valeria', 'miles']
+users = ['miles', 'ines', 'valeria']
+users = ['mainenlab', 'cortexlab', 'zadorlab']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -40,7 +41,7 @@ users = ['ines', 'valeria', 'miles']
 
 for lidx, lab in enumerate(users):
 
-	subjects = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&responsible_user=%s'%lab))
+	subjects = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&lab=%s'%lab))
 
 	# group by batches: mice that were born on the same day
 	batches = subjects.birth_date.unique()
@@ -59,18 +60,22 @@ for lidx, lab in enumerate(users):
 
 				# WEIGHT CURVE AND WATER INTAKE
 				t = time.time()
+				axes[3,i].set_xlabel("Mouse " + mouse, fontweight="bold")
+
 				weight_water, baseline = get_water_weight(mouse)
 
 				# determine x limits
 				xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
 				plot_water_weight_curve(weight_water, baseline, axes[0,i])
-				
+
 				# TRIAL COUNTS AND SESSION DURATION
 				behav 	= get_behavior(mouse)
 				plot_trialcounts_sessionlength(behav, axes[1,i], xlims)
+				fix_date_axis(axes[1,i])
 
 				# PERFORMANCE AND MEDIAN RT
 				plot_performance_rt(behav, axes[2,i], xlims)
+				fix_date_axis(axes[2,i])
 
 				# CONTRAST/CHOICE HEATMAP
 				plot_contrast_heatmap(behav, axes[3,i])
