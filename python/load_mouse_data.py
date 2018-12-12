@@ -62,13 +62,10 @@ def get_water_weight(mousename):
         if restr['responsible_user'] == 'valeria':
             combined = combined[combined.date >= pd.to_datetime(restr['last_water_restriction'])]
 
-        # add a weight measurement on day 0 that shows the baseline weight
-        combined = combined.append(pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
-            'weight': restr['reference_weight'], 'water_administered': np.nan, 'water_type': np.nan, 'index':[0]}), 
-            sort=False)
-        baseline = restr['reference_weight']
+        baseline = pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
+            'weight': restr['reference_weight'], 'index':[0]})
     else:
-        baseline = combined.weight[0]
+        baseline = pd.DataFrame.from_dict({'date': None, 'weight': combined.date[0], 'index':[0]})
 
     combined = combined.sort_values(by='date')
     combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
