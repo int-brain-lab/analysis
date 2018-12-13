@@ -61,10 +61,16 @@ for i, mouse in enumerate(subjects['nickname']):
 	# assert(len(df['water_type'].unique()) > 2)
 	df['concentration'] = df['water_type'].map({'Water': '0%', 'Water 10% Sucrose': '10%', 'Water 15% Sucrose': '15%'})
 
+	# remove duplicate dates
+	df.drop_duplicates(subset=['date', 'trial'], inplace=True)
+
+	# show what's in here
+	print(df.head(n=20))
+
 	# plot their trial counts, errorbar on top of swarm
-	sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
+	sns.catplot(x="concentration", y="trial", kind="swarm", order=['0%', '10%', '15%'],
 	            data=df, ax=axes[i], zorder=1);
-	sns.pointplot(x="concentration", y="trial", color="k", order=['10%', '15%'],
+	sns.pointplot(x="concentration", y="trial", color="k", order=['0%', '10%', '15%'],
 	              data=df, ax=axes[i], join=False, zorder=100)
 	axes[i].set(xlabel='', title=mouse)
 	fig.savefig(join(path + 'sucrose_concentration.pdf'))
@@ -79,9 +85,9 @@ for i, mouse in enumerate(subjects['nickname']):
 # ADD A GRAND AVERAGE PANEL
 # ============================================= #
 
-sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
+sns.catplot(x="concentration", y="trial", kind="swarm", order=['0%', '10%', '15%'],
 		            data=all_data, ax=axes[i+1], zorder=1);
-sns.pointplot(x="concentration", y="trial", color="k",  order=['10%', '15%'],
+sns.pointplot(x="concentration", y="trial", color="k",  order=['0%', '10%', '15%'],
 		              data=all_data, ax=axes[i+1], join=False, zorder=100)
 axes[i+1].set(xlabel='', ylabel="Trial count", title='Group')
 
