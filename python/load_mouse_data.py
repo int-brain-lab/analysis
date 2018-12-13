@@ -50,7 +50,7 @@ def get_water_weight(mousename):
 
     # also grab the info about water restriction
     restr = mouse_data_ = one.alyx.get('/subjects/%s' %mousename)
-
+    
     # make sure that NaNs are entered for days with only water or weight but not both
     combined = pd.merge(wei, wa, on="date", how='outer')
     combined = combined[['date', 'weight', 'water_administered', 'water_type']]

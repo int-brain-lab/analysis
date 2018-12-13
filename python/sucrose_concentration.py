@@ -46,14 +46,14 @@ for i, mouse in enumerate(subjects['nickname']):
 	
 	print(mouse)
 	weight_water, baseline 	= get_water_weight(mouse)
-	behav 					= get_behavior(mouse)
+	behav 					= get_behavior(mouse, date_range=['2018-12-03', '2018-12-18'])
 	trialcounts 			= behav.groupby(['date'])['trial'].count().reset_index()
 
 	# combine into a table that has trial counts, weights, water type 
 	df = pd.merge(weight_water, trialcounts, on="date", how='outer')
 	df.dropna(inplace=True)
 	df = df[df['water_type'].str.contains("Water")] # subselect those days where some sucrose was given
-	assert(len(df['water_type'].unique()) > 2)
+	# assert(len(df['water_type'].unique()) > 2)
 	df['concentration'] = df['water_type'].map({'Water': '0%', 'Water 10% Sucrose': '10%', 'Water 15% Sucrose': '15%'})
 
 	# plot their trial counts, errorbar on top of swarm
