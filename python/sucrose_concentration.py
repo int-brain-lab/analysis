@@ -46,7 +46,12 @@ for i, mouse in enumerate(subjects['nickname']):
 	
 	print(mouse)
 	weight_water, baseline 	= get_water_weight(mouse)
-	behav 					= get_behavior(mouse, date_range=['2018-12-03', '2018-12-18'])
+
+	# HACK TO RESTRICT TO TUES, WED, THU IN BOTH WEEKS
+	behav_1stwk  = get_behavior(mouse, date_range=['2018-12-04', '2018-12-06'])
+	behav_2ndwk  = get_behavior(mouse, date_range=['2018-12-11', '2018-12-13'])
+	behav = pd.concat([behav_1stwk, behav_2ndwk])
+
 	trialcounts 			= behav.groupby(['date'])['trial'].count().reset_index()
 
 	# combine into a table that has trial counts, weights, water type 
@@ -57,9 +62,9 @@ for i, mouse in enumerate(subjects['nickname']):
 	df['concentration'] = df['water_type'].map({'Water': '0%', 'Water 10% Sucrose': '10%', 'Water 15% Sucrose': '15%'})
 
 	# plot their trial counts, errorbar on top of swarm
-	sns.catplot(x="concentration", y="trial", kind="swarm", order=['0%', '10%', '15%'],
+	sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
 	            data=df, ax=axes[i], zorder=1);
-	sns.pointplot(x="concentration", y="trial", color="k", order=['0%', '10%', '15%'],
+	sns.pointplot(x="concentration", y="trial", color="k", order=['10%', '15%'],
 	              data=df, ax=axes[i], join=False, zorder=100)
 	axes[i].set(xlabel='', title=mouse)
 	fig.savefig(join(path + 'sucrose_concentration.pdf'))
@@ -74,9 +79,9 @@ for i, mouse in enumerate(subjects['nickname']):
 # ADD A GRAND AVERAGE PANEL
 # ============================================= #
 
-sns.catplot(x="concentration", y="trial", kind="swarm", order=['0%', '10%', '15%'],
+sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
 		            data=all_data, ax=axes[i+1], zorder=1);
-sns.pointplot(x="concentration", y="trial", color="k",  order=['0%', '10%', '15%'],
+sns.pointplot(x="concentration", y="trial", color="k",  order=['10%', '15%'],
 		              data=all_data, ax=axes[i+1], join=False, zorder=100)
 axes[i+1].set(xlabel='', ylabel="Trial count", title='Group')
 

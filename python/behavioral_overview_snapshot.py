@@ -39,7 +39,7 @@ if not os.path.exists(path):
     os.mkdir(path)
 
 # get a list of all mice that are currently training
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False'))
+subjects 	= pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=valeria'))
 # subjects 	= pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_44'))
 
 print(subjects['nickname'].unique())
