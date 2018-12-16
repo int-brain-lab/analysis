@@ -49,7 +49,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 	# HACK TO RESTRICT TO TUES, WED, THU IN BOTH WEEKS
 	behav_1stwk  = get_behavior(mouse, date_range=['2018-12-04', '2018-12-06'])
-	behav_2ndwk  = get_behavior(mouse, date_range=['2018-12-11', '2018-12-13'])
+	behav_2ndwk  = get_behavior(mouse, date_range=['2018-12-11', '2018-12-12'])
 	behav = pd.concat([behav_1stwk, behav_2ndwk])
 
 	trialcounts 			= behav.groupby(['date'])['trial'].count().reset_index()
@@ -68,9 +68,9 @@ for i, mouse in enumerate(subjects['nickname']):
 	print(df.head(n=20))
 
 	# plot their trial counts, errorbar on top of swarm
-	sns.catplot(x="concentration", y="trial", kind="swarm", order=['0%', '10%', '15%'],
+	sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
 	            data=df, ax=axes[i], zorder=1);
-	sns.pointplot(x="concentration", y="trial", color="k", order=['0%', '10%', '15%'],
+	sns.pointplot(x="concentration", y="trial", color="k", order=['10%', '15%'],
 	              data=df, ax=axes[i], join=False, zorder=100)
 	axes[i].set(xlabel='', title=mouse)
 	fig.savefig(join(path + 'sucrose_concentration.pdf'))
@@ -85,11 +85,13 @@ for i, mouse in enumerate(subjects['nickname']):
 # ADD A GRAND AVERAGE PANEL
 # ============================================= #
 
-sns.catplot(x="concentration", y="trial", kind="swarm", order=['0%', '10%', '15%'],
+sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
 		            data=all_data, ax=axes[i+1], zorder=1);
-sns.pointplot(x="concentration", y="trial", color="k",  order=['0%', '10%', '15%'],
+sns.pointplot(x="concentration", y="trial", color="k",  order=['10%', '15%'],
 		              data=all_data, ax=axes[i+1], join=False, zorder=100)
 axes[i+1].set(xlabel='', ylabel="Trial count", title='Group')
+
+print(all_data.groupby(['concentration'])['trial'].mean().reset_index())
 
 # save
 plt.tight_layout()

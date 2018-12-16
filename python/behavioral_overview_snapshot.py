@@ -1,8 +1,7 @@
 # Anne Urai, CSHL, 2018
 # see https://github.com/int-brain-lab/ibllib/tree/master/python/oneibl/examples
 
-import time, os
-from datetime import timedelta
+import time, os, datetime
 import seaborn as sns
 import pandas as pd
 import matplotlib as mpl
@@ -31,12 +30,12 @@ sns.set_context(context="paper")
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-#subjects     = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=valeria'))
-subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_44'))
+subjects     = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=valeria'))
+# subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_44'))
 
-# set date range 
-#date_range = ['2016-10-15', '2020-11-15']
-set_date_range = ['2018-10-15', '2018-11-15']
+# set date range, until now
+set_date_range = ['2018-10-15', datetime.datetime.now().strftime("%Y-%m-%d")]
+set_date_range = ['2018-10-15', '2018-12-12']
 
 # get folder to save plots
 path = fig_path()
@@ -71,14 +70,14 @@ for i, mouse in enumerate(subjects['nickname']):
         # WEIGHT CURVE AND WATER INTAKE
         # ============================================= #
         
-        xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
+        xlims = [weight_water.date.min()-datetime.timedelta(days=2), weight_water.date.max()+datetime.timedelta(days=2)]
         plot_water_weight_curve(weight_water, baseline, axes[0,0])
 
         # ============================================= #
         # TRIAL COUNTS AND SESSION DURATION
         # ============================================= #
         
-        xlims = [behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)]
+        xlims = [behav.date.min()-datetime.timedelta(days=1), behav.date.max()+datetime.timedelta(days=1)]
         plot_trialcounts_sessionlength(behav, axes[1,0], xlims)
 
         # ============================================= #
@@ -117,7 +116,7 @@ for i, mouse in enumerate(subjects['nickname']):
                 palette=cmap, data=pars, legend=None, ax=ax)
             ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx],
                 yticks=yticks[pidx],
-                xlim=[behav.date.min()-timedelta(days=1), behav.date.max()+timedelta(days=1)])
+                xlim=[behav.date.min()-datetime.timedelta(days=1), behav.date.max()+datetime.timedelta(days=1)])
 
             fix_date_axis(ax)
             if pidx == 0:
@@ -187,25 +186,25 @@ for i, mouse in enumerate(subjects['nickname']):
                 t, wheelpos, wheelvel = one.load(eid[0],
                     dataset_types=['_ibl_wheel.timestamps', '_ibl_wheel.position', '_ibl_wheel.velocity'])
                 wheel = pd.DataFrame.from_dict({'position':wheelpos[0], 'velocity':np.transpose(wheelvel)[0]})
-                wheel['time'] = pd.to_timedelta(np.linspace(t[0,0], t[1,1], len(wheelpos[0])), unit='s')
+                wheel['time'] = pd.to_datetime.timedelta(np.linspace(t[0,0], t[1,1], len(wheelpos[0])), unit='s')
                 wheel.set_index(wheel['time'], inplace=True)
                 wheel = wheel.resample('10ms', on='time').mean().reset_index() # to do analyses more quickly, RESAMPLE to 10ms
 
                 # ADD A FEW SECONDS WITH NANS AT THE BEGINNING AND END
-                wheel = pd.concat([ pd.DataFrame.from_dict({'time': pd.to_timedelta(np.arange(-10, 0, 0.1), 's'), 
+                wheel = pd.concat([ pd.DataFrame.from_dict({'time': pd.to_datetime.timedelta(np.arange(-10, 0, 0.1), 's'), 
                     'position': np.full((100,), np.nan), 'velocity':  np.full((100,), np.nan)}),
                      wheel,
-                     pd.DataFrame.from_dict({'time': pd.to_timedelta(np.arange(wheel.time.max().total_seconds(), 
+                     pd.DataFrame.from_dict({'time': pd.to_datetime.timedelta(np.arange(wheel.time.max().total_seconds(), 
                          wheel.time.max().total_seconds()+10, 0.1), 's'), 
                     'position': np.full((100,), np.nan), 'velocity':  np.full((100,), np.nan)})])
                 wheel.index = wheel['time']
 
                 # round to have the same sampling rate as wheeltimes
-                stimonset_times = pd.to_timedelta(np.round(dat['stimOn_times'], 2), 's') # express in timedelta
+                stimonset_times = pd.to_datetime.timedelta(np.round(dat['stimOn_times'], 2), 's') # express in datetime.timedelta
 
                 # THEN EPOCH BY LOCKING TO THE STIMULUS ONSET TIMES
-                prestim         = pd.to_timedelta(0.2, 's')
-                poststim         = pd.to_timedelta(dat.rt.median(), 's') + pd.to_timedelta(1, 's')
+                prestim         = pd.to_datetime.timedelta(0.2, 's')
+                poststim         = pd.to_datetime.timedelta(dat.rt.median(), 's') + pd.to_datetime.timedelta(1, 's')
                 
                 signal = []; time = []
                 for i, stimonset in enumerate(stimonset_times):
@@ -250,7 +249,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
         print("%s failed to run" %mouse)
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        # fig.savefig(join(path + '%s_overview.pdf'%mouse))
+        fig.savefig(join(path + '%s_overview.pdf'%mouse))
         raise
 
 
