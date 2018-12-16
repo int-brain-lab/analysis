@@ -30,7 +30,7 @@ sns.set_context(context="paper")
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-subjects     = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False&responsible_user=valeria'))
+subjects     = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False'))
 # subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_44'))
 
 # set date range, until now
@@ -39,6 +39,7 @@ set_date_range = ['2018-10-15', '2018-12-12']
 
 # get folder to save plots
 path = fig_path()
+path = os.path.join(path, 'per_mouse/')
 if not os.path.exists(path):
     os.mkdir(path)
 
@@ -58,7 +59,10 @@ for i, mouse in enumerate(subjects['nickname']):
         # GET DATA
         # ============================================= #
 
-        behav = get_behavior(mouse, date_range=set_date_range)
+        try:
+            behav = get_behavior(mouse)
+        except:
+            behav = get_behavior(mouse, date_range=set_date_range)
         weight_water, baseline = get_water_weight(mouse)   
 
         fig.suptitle('Mouse %s (%s), born %s, user %s (%s) \nstrain %s, cage %s, %s' %(subjects['nickname'][i],
@@ -250,6 +254,6 @@ for i, mouse in enumerate(subjects['nickname']):
         print("%s failed to run" %mouse)
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         fig.savefig(join(path + '%s_overview.pdf'%mouse))
-        raise
+        pass
 
 

@@ -103,7 +103,10 @@ def get_behavior(mousename, **kwargs):
         if len(dat.data) == 0:
             continue
         else:
-            if len(dat.data[0]) < 10:
+            try:
+                if len(dat.data[0]) < 10:
+                    continue
+            except:
                 continue
     
         # pull out a dict with variables and their values

@@ -235,10 +235,14 @@ def plot_contrast_heatmap(behav, ax):
     ax.set(xlabel='')
 
 def fix_date_axis(ax):
+
     # deal with date axis and make nice looking 
     ax.xaxis_date()
     ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.MONDAY))
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%d'))
     for item in ax.get_xticklabels():
         item.set_rotation(60)
+
+    # what to do to keep the ticks?
+    plt.setp(ax.get_xticklabels(), visible=True)
 

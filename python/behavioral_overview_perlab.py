@@ -29,11 +29,12 @@ one = ONE() # initialize
 
 # get folder to save plots
 path = fig_path()
+path = os.path.join(path, 'per_lab/')
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['miles', 'ines', 'valeria']
 users = ['mainenlab', 'cortexlab', 'zadorlab']
+users = ['zadorlab']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -50,7 +51,9 @@ for lidx, lab in enumerate(users):
 
 		mice = subjects.loc[subjects['birth_date'] == birth_date]['nickname']
 		print(mice)
-		fig, axes = plt.subplots(ncols=max([len(mice), 4]), nrows=4, constrained_layout=False, figsize=(11.69, 8.27))
+
+		fig  = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
+		axes = []
 		sns.set_palette("colorblind") # palette for water types
 
 		for i, mouse in enumerate(mice):
@@ -60,35 +63,52 @@ for lidx, lab in enumerate(users):
 
 				# WEIGHT CURVE AND WATER INTAKE
 				t = time.time()
-				axes[3,i].set_xlabel("Mouse " + mouse, fontweight="bold")
-
 				weight_water, baseline = get_water_weight(mouse)
 
 				# determine x limits
 				xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
-				plot_water_weight_curve(weight_water, baseline, axes[0,i])
+				ax = plt.subplot2grid((4, max([len(mice), 4])), (0, i))
+				plot_water_weight_curve(weight_water, baseline, ax)
+				axes.append(ax)
 
 				# TRIAL COUNTS AND SESSION DURATION
-				behav 	= get_behavior(mouse)
-				plot_trialcounts_sessionlength(behav, axes[1,i], xlims)
-				fix_date_axis(axes[1,i])
+				try:
+					behav 	= get_behavior(mouse)
+				except:
+					behav 	= get_behavior(mouse, date_range=['2018-07-15', '2018-12-12'])
+
+				ax = plt.subplot2grid((4, max([len(mice), 4])), (1, i))
+				plot_trialcounts_sessionlength(behav, ax, xlims)
+				fix_date_axis(ax)
+				axes.append(ax)
 
 				# PERFORMANCE AND MEDIAN RT
-				plot_performance_rt(behav, axes[2,i], xlims)
-				fix_date_axis(axes[2,i])
+				ax = plt.subplot2grid((4, max([len(mice), 4])), (2, i))
+				plot_performance_rt(behav, ax, xlims)
+				fix_date_axis(ax)
+				axes.append(ax)
 
 				# CONTRAST/CHOICE HEATMAP
-				plot_contrast_heatmap(behav, axes[3,i])
-				axes[3,i].set_xlabel("Mouse " + mouse, fontweight="bold")
+				ax = plt.subplot2grid((4, max([len(mice), 4])), (3, i))
+				plot_contrast_heatmap(behav, ax)
 
 				elapsed = time.time() - t
 				print( "Elapsed time: %f seconds.\n" %elapsed )
 
 			except:
-				pass
+				pass 
 
-		# SAVE PER BATCH, MAX 5
-		fig.suptitle('Mice born on %s, user %s' %(birth_date, lab))
+			# add an xlabel with the mouse's name and sex
+			ax.set_xlabel('Mouse %s (%s)'%(mouse,
+				subjects.loc[subjects['nickname'] == mouse]['sex'].item()), fontweight="bold")
+
+		# FIX: after creating the whole plot, make sure xticklabels are shown
+		# https://stackoverflow.com/questions/46824263/x-ticks-disappear-when-plotting-on-subplots-sharing-x-axis
+		for i, ax in enumerate(axes):
+			[t.set_visible(True) for t in ax.get_xticklabels()]
+	
+		# SAVE FIGURE PER BATCH
+		fig.suptitle('Mice born on %s, %s' %(birth_date, lab))
 		plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 		fig.savefig(os.path.join(path + '%s_overview_batch_%s.pdf'%(lab, birth_date)))
 		plt.close(fig)

@@ -49,7 +49,7 @@ for i, mouse in enumerate(subjects['nickname']):
 
 	# HACK TO RESTRICT TO TUES, WED, THU IN BOTH WEEKS
 	behav_1stwk  = get_behavior(mouse, date_range=['2018-12-04', '2018-12-06'])
-	behav_2ndwk  = get_behavior(mouse, date_range=['2018-12-11', '2018-12-12'])
+	behav_2ndwk  = get_behavior(mouse, date_range=['2018-12-11', '2018-12-13'])
 	behav = pd.concat([behav_1stwk, behav_2ndwk])
 
 	trialcounts 			= behav.groupby(['date'])['trial'].count().reset_index()
