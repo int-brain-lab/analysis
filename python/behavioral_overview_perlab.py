@@ -34,7 +34,6 @@ if not os.path.exists(path):
     os.mkdir(path)
 
 users = ['mainenlab', 'cortexlab', 'zadorlab']
-users = ['zadorlab']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
