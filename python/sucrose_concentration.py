@@ -15,81 +15,81 @@ from IPython import embed as shell
 # IBL stuff
 from oneibl.one import ONE
 # from ibllib.time import isostr2date
-import psychofit as psy # https://github.com/cortex-lab/psychofit
+import psychofit as psy  # https://github.com/cortex-lab/psychofit
 
 # loading and plotting functions
 from define_paths import fig_path
 from os.path import join as join
-from load_mouse_data import * # this has all plotting functions
+from load_mouse_data import *  # this has all plotting functions
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
 # ============================================= #
 
-## INITIALIZE A FEW THINGS
-sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0 } )
+# INITIALIZE A FEW THINGS
+sns.set_style("darkgrid", {'xtick.bottom': True, 'ytick.left': True, 'lines.markeredgewidth': 0})
 sns.set_context(context="paper")
 
-## CONNECT TO ONE
-one = ONE() # initialize
+# CONNECT TO ONE
+one = ONE()  # initialize
 path = fig_path()
 
 # get a list of all mice at cshl
-subjects 	= pd.DataFrame(one.alyx.get('/subjects?alive=True&water_restricted=True&responsible_user=valeria'))
+subjects = pd.DataFrame(one.alyx.get('/subjects?alive=True&water_restricted=True&responsible_user=valeria'))
 print(subjects['nickname'].unique())
-fig, axes 	= plt.subplots(ncols=int(np.ceil(np.sqrt(len(subjects)))),
-	nrows=int(np.ceil(np.sqrt(len(subjects)))),
-	figsize=(11.69, 8.27), sharex=True, sharey=True)
-axes = axes.flatten() # to enable 1d indexing
+fig, axes = plt.subplots(ncols=int(np.ceil(np.sqrt(len(subjects)))),
+                         nrows=int(np.ceil(np.sqrt(len(subjects)))),
+                         figsize=(11.69, 8.27), sharex=True, sharey=True)
+axes = axes.flatten()  # to enable 1d indexing
 
 for i, mouse in enumerate(subjects['nickname']):
-	
-	print(mouse)
-	weight_water, baseline 	= get_water_weight(mouse)
 
-	# HACK TO RESTRICT TO TUES, WED, THU IN BOTH WEEKS
-	behav_1stwk  = get_behavior(mouse, date_range=['2018-12-04', '2018-12-06'])
-	behav_2ndwk  = get_behavior(mouse, date_range=['2018-12-11', '2018-12-13'])
-	behav = pd.concat([behav_1stwk, behav_2ndwk])
+    print(mouse)
+    weight_water, baseline = get_water_weight(mouse)
 
-	trialcounts 			= behav.groupby(['date'])['trial'].count().reset_index()
+    # HACK TO RESTRICT TO TUES, WED, THU IN BOTH WEEKS
+    behav_1stwk = get_behavior(mouse, date_range=['2018-12-04', '2018-12-06'])
+    behav_2ndwk = get_behavior(mouse, date_range=['2018-12-11', '2018-12-13'])
+    behav = pd.concat([behav_1stwk, behav_2ndwk])
 
-	# combine into a table that has trial counts, weights, water type 
-	df = pd.merge(weight_water, trialcounts, on="date", how='outer')
-	df.dropna(inplace=True)
-	df = df[df['water_type'].str.contains("Water")] # subselect those days where some sucrose was given
-	# assert(len(df['water_type'].unique()) > 2)
-	df['concentration'] = df['water_type'].map({'Water': '0%', 'Water 10% Sucrose': '10%', 'Water 15% Sucrose': '15%'})
+    trialcounts = behav.groupby(['date'])['trial'].count().reset_index()
 
-	# remove duplicate dates
-	df.drop_duplicates(subset=['date', 'trial'], inplace=True)
+    # combine into a table that has trial counts, weights, water type
+    df = pd.merge(weight_water, trialcounts, on="date", how='outer')
+    df.dropna(inplace=True)
+    df = df[df['water_type'].str.contains("Water")]  # subselect those days where some sucrose was given
+    # assert(len(df['water_type'].unique()) > 2)
+    df['concentration'] = df['water_type'].map({'Water': '0%', 'Water 10% Sucrose': '10%', 'Water 15% Sucrose': '15%'})
 
-	# show what's in here
-	print(df.head(n=20))
+    # remove duplicate dates
+    df.drop_duplicates(subset=['date', 'trial'], inplace=True)
 
-	# plot their trial counts, errorbar on top of swarm
-	sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
-	            data=df, ax=axes[i], zorder=1);
-	sns.pointplot(x="concentration", y="trial", color="k", order=['10%', '15%'],
-	              data=df, ax=axes[i], join=False, zorder=100)
-	axes[i].set(xlabel='', title=mouse)
-	fig.savefig(join(path + 'sucrose_concentration.pdf'))
+    # show what's in here
+    print(df.head(n=20))
 
-	# save into larger dataset
-	if not 'all_data' in locals():
-		all_data = df.groupby(['concentration'])['trial'].mean().reset_index()
-	else:
-		all_data = all_data.append(df.groupby(['concentration'])['trial'].mean().reset_index())
+    # plot their trial counts, errorbar on top of swarm
+    sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
+                data=df, ax=axes[i], zorder=1)
+    sns.pointplot(x="concentration", y="trial", color="k", order=['10%', '15%'],
+                  data=df, ax=axes[i], join=False, zorder=100)
+    axes[i].set(xlabel='', title=mouse)
+    fig.savefig(join(path + 'sucrose_concentration.pdf'))
+
+    # save into larger dataset
+    if not 'all_data' in locals():
+        all_data = df.groupby(['concentration'])['trial'].mean().reset_index()
+    else:
+        all_data = all_data.append(df.groupby(['concentration'])['trial'].mean().reset_index())
 
 # ============================================= #
 # ADD A GRAND AVERAGE PANEL
 # ============================================= #
 
 sns.catplot(x="concentration", y="trial", kind="swarm", order=['10%', '15%'],
-		            data=all_data, ax=axes[i+1], zorder=1);
-sns.pointplot(x="concentration", y="trial", color="k",  order=['10%', '15%'],
-		              data=all_data, ax=axes[i+1], join=False, zorder=100)
-axes[i+1].set(xlabel='', ylabel="Trial count", title='Group')
+            data=all_data, ax=axes[i + 1], zorder=1);
+sns.pointplot(x="concentration", y="trial", color="k", order=['10%', '15%'],
+              data=all_data, ax=axes[i + 1], join=False, zorder=100)
+axes[i + 1].set(xlabel='', ylabel="Trial count", title='Group')
 
 print(all_data.groupby(['concentration'])['trial'].mean().reset_index())
 
@@ -97,4 +97,3 @@ print(all_data.groupby(['concentration'])['trial'].mean().reset_index())
 plt.tight_layout()
 fig.savefig(join(path + 'sucrose_concentration.pdf'))
 plt.close(fig)
-
