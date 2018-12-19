@@ -64,8 +64,12 @@ def get_water_weight(mousename):
 
         baseline = pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
             'weight': restr['reference_weight'], 'index':[0]})
+
+        # add the baseline to the combined df
+        combined = combined.append(baseline, sort=False)
+
     else:
-        baseline = pd.DataFrame.from_dict({'date': None, 'weight': combined.date[0], 'index':[0]})
+        baseline = pd.DataFrame.from_dict({'date': None, 'weight': combined.weight[0], 'index':[0]})
 
     combined = combined.sort_values(by='date')
     combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
@@ -141,8 +145,12 @@ def get_behavior(mousename, **kwargs):
 
     # add some more handy things
     df['rt']        = df['response_times'] - df['stimOn_times']
-    df['signedContrast'] = (df['contrastLeft'] - df['contrastRight']) * 100
+
+    df['signedContrast'] = (- df['contrastLeft'] + df['contrastRight']) * 100
     df['signedContrast'] = df.signedContrast.astype(int)
+
+    # flip around choice coding - go from wheel movement to percept
+    df['choice'] = -1*df['choice']
 
     df['correct']   = np.where(np.sign(df['signedContrast']) == df['choice'], 1, 0)
     df.loc[df['signedContrast'] == 0, 'correct'] = np.NaN

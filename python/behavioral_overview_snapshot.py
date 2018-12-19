@@ -31,11 +31,11 @@ one = ONE() # initialize
 
 # get a list of all mice that are currently training
 subjects     = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False'))
-# subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_44'))
+# subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_45'))
 
 # set date range, until now
-set_date_range = ['2018-10-15', datetime.datetime.now().strftime("%Y-%m-%d")]
-set_date_range = ['2018-10-15', '2018-12-12']
+#set_date_range = ['2018-10-15', datetime.datetime.now().strftime("%Y-%m-%d")]
+#set_date_range = ['2018-10-15', '2018-12-12']
 
 # get folder to save plots
 path = fig_path()
@@ -59,10 +59,7 @@ for i, mouse in enumerate(subjects['nickname']):
         # GET DATA
         # ============================================= #
 
-        try:
-            behav = get_behavior(mouse)
-        except:
-            behav = get_behavior(mouse, date_range=set_date_range)
+        behav = get_behavior(mouse)
         weight_water, baseline = get_water_weight(mouse)   
 
         fig.suptitle('Mouse %s (%s), born %s, user %s (%s) \nstrain %s, cage %s, %s' %(subjects['nickname'][i],
@@ -70,7 +67,7 @@ for i, mouse in enumerate(subjects['nickname']):
          subjects['responsible_user'][i], subjects['lab'][i],
          subjects['strain'][i], subjects['litter'][i], subjects['description'][i]))
         
-        #============================================ #
+        # ============================================ #
         # WEIGHT CURVE AND WATER INTAKE
         # ============================================= #
         
@@ -107,8 +104,8 @@ for i, mouse in enumerate(subjects['nickname']):
         ylims = [[-5, 105], [-105, 105], [-0.05, 1.05], [-0.05, 1.05]]
         yticks = [[0, 19, 100], [-100, -16, 0, 16, 100], [-0, 0.2, 0.5, 1], [-0, 0.2, 0.5, 1]]
 
-        # pick a good-looking diverging colormap with black in the middle
-        cmap = sns.diverging_palette(220, 20, n=len(behav['probabilityLeft'].unique()), center="dark")
+        # pick a good-looking diverging colormap (green/blueish to red/orange) with black in the middle
+        cmap = sns.diverging_palette(20, 220, n=len(behav['probabilityLeft'].unique()), center="dark")
         if len(behav['probabilityLeft'].unique()) == 1:
             cmap = "gist_gray"
         sns.set_palette(cmap)
@@ -144,7 +141,7 @@ for i, mouse in enumerate(subjects['nickname']):
             didx += 1
 
             # colormap for the asymmetric blocks
-            cmap = sns.diverging_palette(220, 20, n=len(dat['probabilityLeft'].unique()), center="dark")
+            cmap = sns.diverging_palette(20, 220, n=len(dat['probabilityLeft'].unique()), center="dark")
             if len(dat['probabilityLeft'].unique()) == 1:
                 cmap = [np.array([0,0,0,1])]
 
@@ -246,14 +243,14 @@ for i, mouse in enumerate(subjects['nickname']):
             axes[i,4].set(ylabel='')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        fig.savefig(join(path + '%s_overview.pdf'%mouse))
+        fig.savefig(join(path + '%s_overview_test.pdf'%mouse))
         plt.close(fig)
 
     except:
 
         print("%s failed to run" %mouse)
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        fig.savefig(join(path + '%s_overview.pdf'%mouse))
-        pass
+        # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        # fig.savefig(join(path + '%s_overview.pdf'%mouse))
+        raise
 
 
