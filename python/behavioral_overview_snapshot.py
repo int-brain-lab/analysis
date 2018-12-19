@@ -251,6 +251,6 @@ for i, mouse in enumerate(subjects['nickname']):
         print("%s failed to run" %mouse)
         # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         # fig.savefig(join(path + '%s_overview.pdf'%mouse))
-        raise
+        pass
 
 
