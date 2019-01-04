@@ -6,14 +6,13 @@
 % grab all the data that's on Drive
 addpath('~/Documents/code/npy-matlab//');
 addpath('~/Documents/code/gramm/');
-addpath('~/Google Drive/IBL_DATA_SHARE/CSHL/code');
+%addpath('~/Google Drive/IBL_DATA_SHARE/CSHL/code');
 
 clear all; close all; clc;
 %eval(gramm_helperfuncs);
 set(groot, 'defaultaxesfontsize', 7, 'DefaultFigureWindowStyle', 'normal');
 
-data = readAlf_allData([], {'Myelin', 'Mouse2', 'Axon', 'Arthur', 'M5', 'M6', 'M7', ...
-    'IBL_34', 'IBL_1b'});
+data = readAlf_allData('~/Data/FlatIron/', {    'IBL_34', 'IBL_1'});
 
 % data = readAlf_allData([], {'Myelin', 'Mouse2', 'Axon', 'Arthur', 'M5', 'M6', 'M7'});
 data(data.inclTrials ~= 1, :) = [];

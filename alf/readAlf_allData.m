@@ -15,7 +15,7 @@ if ~exist('datapath', 'var') || isempty(datapath),
 end
 
 % iterate over the different labs
-labs            = {'CSHL/Subjects', 'CCU/Subjects', 'UCL/Subjects'};
+labs            = {'zadorlab/Subjects', 'CCU/Subjects', 'UCL/Subjects'};
 alldata         = {};
 
 for l = 1:length(labs),
