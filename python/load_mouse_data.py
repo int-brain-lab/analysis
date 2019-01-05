@@ -45,6 +45,9 @@ def get_water(mousename):
 def get_water_weight(mousename):
 
     wei = get_weights(mousename)
+    # avoid duplicates
+    wei.groupby(['date']).mean().reset_index()
+
     wa = get_water(mousename)
     wa.reset_index(inplace=True)
 
@@ -69,7 +72,7 @@ def get_water_weight(mousename):
         combined = combined.append(baseline, sort=False)
 
     else:
-        baseline = pd.DataFrame.from_dict({'date': None, 'weight': combined.weight[0], 'index':[0]})
+        baseline = pd.DataFrame.from_dict({'date': None, 'weight': restr['reference_weight'], 'index':[0]})
 
     combined = combined.sort_values(by='date')
     combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
@@ -112,12 +115,29 @@ def get_behavior(mousename, **kwargs):
                     continue
             except:
                 continue
-    
+
         # pull out a dict with variables and their values
         tmpdct = {}
         for vi, var in enumerate(dat.dataset_type):
-            k = [item[0] for item in dat.data[vi]]
-            tmpdct[re.sub('_ibl_trials.', '', var)] = k
+            if dat.data[vi].ndim == 1:
+                tmpdct[re.sub('_ibl_trials.', '', var)] = dat.data[vi]
+            elif dat.data[vi].ndim == 2: # intervals
+                if dat.data[vi].shape[1] == 1:
+                    tmpdct[re.sub('_ibl_trials.', '', var)] = [item[0] for item in dat.data[vi]]
+                elif dat.data[vi].shape[1] == 1:
+                    tmpdct[re.sub('_ibl_trials.', '', var) + '_start'] = dat.data[vi][:,0]
+                    tmpdct[re.sub('_ibl_trials.', '', var) + '_end']   = dat.data[vi][:,1]
+            else:
+                print('behavioral data %s has more than 2 dimensions, not sure what it is'%var)
+                shell()
+
+        # ADD SOME CRUCIAL THINGS
+        if 'probabilityLeft' not in tmpdct.keys():
+            tmpdct['probabilityLeft'] = 0.5 * np.ones(tmpdct['choice'].shape)
+        if 'included' not in tmpdct.keys():
+            tmpdct['included'] = np.ones(tmpdct['choice'].shape)
+        if 'goCue_times' not in tmpdct.keys():
+            tmpdct['goCue_times'] = tmpdct['stimOn_times']
 
         # add crucial metadata
         tmpdct['subject']       = details[ix]['subject']
@@ -144,8 +164,10 @@ def get_behavior(mousename, **kwargs):
     df['days']       = df.days.dt.days 
 
     # add some more handy things
-    df['rt']        = df['response_times'] - df['stimOn_times']
+    df['rt']        = df['response_times'] - df['goCue_times']
 
+    # make sure there are no NA values in the contrasts
+    df.fillna({'contrastLeft': 0, 'contrastRight': 0}, inplace=True)
     df['signedContrast'] = (- df['contrastLeft'] + df['contrastRight']) * 100
     df['signedContrast'] = df.signedContrast.astype(int)
 

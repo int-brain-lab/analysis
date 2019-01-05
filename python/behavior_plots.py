@@ -185,7 +185,6 @@ def plot_performance_rt(behav, ax, xlims):
     sns.lineplot(x="date", y="correct_easy", marker='o', color=".15", data=correct_easy, ax=ax)
     ax.set(xlabel='', ylabel="Performance (easy trials)",
         xlim=xlims, yticks=[0.5, 0.75, 1], ylim=[0.4, 1.01])
-    # ax.yaxis.label.set_color("black")
 
     # RTs on right y-axis
     trialcounts = behav.groupby(['date'])['rt'].median().reset_index()

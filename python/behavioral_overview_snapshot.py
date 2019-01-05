@@ -14,7 +14,6 @@ from oneibl.one import ONE
 
 # loading and plotting functions
 from define_paths import fig_path
-from os.path import join as join
 from behavior_plots import *
 from load_mouse_data import get_water_weight, get_behavior
 
@@ -30,12 +29,8 @@ sns.set_context(context="paper")
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-subjects     = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&stock=False'))
-# subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_45'))
-
-# set date range, until now
-#set_date_range = ['2018-10-15', datetime.datetime.now().strftime("%Y-%m-%d")]
-#set_date_range = ['2018-10-15', '2018-12-12']
+subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False'))
+# subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_1'))
 
 # get folder to save plots
 path = fig_path()
@@ -49,8 +44,12 @@ for i, mouse in enumerate(subjects['nickname']):
 
     try:
 
-        # MAKE THE FIGURE, divide subplots using gridspec
+        # SKIP IF THIS FIGURE ALREADY EXISTS, DONT OVERWRITE
+        if os.path.exists(os.path.join(path + '%s_overview_test.pdf'%mouse)):
+             pass #continue
         print(mouse)
+
+        # MAKE THE FIGURE, divide subplots using gridspec
         fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=False,
             gridspec_kw=dict(width_ratios=[2,2,1,1,1], height_ratios=[1,1,1,1]), figsize=(11.69, 8.27))
         sns.set_palette("colorblind") # palette for water types
@@ -243,14 +242,12 @@ for i, mouse in enumerate(subjects['nickname']):
             axes[i,4].set(ylabel='')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        fig.savefig(join(path + '%s_overview_test.pdf'%mouse))
+        fig.savefig(os.path.join(path + '%s_overview_test.pdf'%mouse))
         plt.close(fig)
 
     except:
 
         print("%s failed to run" %mouse)
-        # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        # fig.savefig(join(path + '%s_overview.pdf'%mouse))
         pass
 
 

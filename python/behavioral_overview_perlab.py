@@ -33,7 +33,7 @@ path = os.path.join(path, 'per_lab/')
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['mainenlab', 'cortexlab', 'zadorlab']
+users = ['mainenlab', 'cortexlab', 'zadorlab', 'wittenlab']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -71,10 +71,7 @@ for lidx, lab in enumerate(users):
 				axes.append(ax)
 
 				# TRIAL COUNTS AND SESSION DURATION
-				try:
-					behav 	= get_behavior(mouse)
-				except:
-					behav 	= get_behavior(mouse, date_range=['2018-07-15', '2018-12-12'])
+				behav 	= get_behavior(mouse)
 
 				ax = plt.subplot2grid((4, max([len(mice), 4])), (1, i))
 				plot_trialcounts_sessionlength(behav, ax, xlims)
@@ -95,7 +92,7 @@ for lidx, lab in enumerate(users):
 				print( "Elapsed time: %f seconds.\n" %elapsed )
 
 			except:
-				pass 
+				pass
 
 			# add an xlabel with the mouse's name and sex
 			ax.set_xlabel('Mouse %s (%s)'%(mouse,
