@@ -147,7 +147,7 @@ def plot_water_weight_curve(weight_water, baseline, ax):
     righty.grid(False)
     righty.set(xlabel='', ylabel="Weight (g)",
         xlim=[weight_water.days.min()-2, weight_water.days.max()+2],
-               ylim=[baseline.weight.item()*0.8, baseline.weight.item()*1.2])
+               ylim=[baseline.weight.item()*0.70, baseline.weight.item()*1.2])
 
     # correct the ticks to show dates, not days
     # also indicate Mondays by grid lines
@@ -171,7 +171,7 @@ def plot_trialcounts_sessionlength(behav, ax, xlims):
     sns.lineplot(x="date", y="sessionlength", marker='o', color="firebrick", data=sessionlength, ax=righty)
     righty.yaxis.label.set_color("firebrick")
     righty.tick_params(axis='y', colors='firebrick')
-    righty.set(xlabel='', ylabel="Session (min)", ylim=[0,80], xlim=xlims)
+    righty.set(xlabel='', ylabel="Session (min)", ylim=[0,100], xlim=xlims)
 
     righty.grid(False)
     fix_date_axis(righty)
