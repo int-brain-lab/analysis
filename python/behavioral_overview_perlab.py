@@ -29,7 +29,7 @@ path = os.path.join(path, 'per_lab/')
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['mainenlab']
+users = ['churchlandlab', 'mainenlab', 'wittenlab', 'cortexlab']
 sub_batch_size = 5
 
 # ============================================= #

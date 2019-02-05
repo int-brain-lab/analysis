@@ -29,7 +29,7 @@ sns.set_context(context="paper")
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False'))
+subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False&responsible_user=valeria'))
 # subjects     = pd.DataFrame(one.alyx.get('/subjects?nickname=IBL_1'))
 
 # get folder to save plots
