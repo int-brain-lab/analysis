@@ -46,7 +46,7 @@ def get_water_weight(mousename):
 
     wei = get_weights(mousename)
     # avoid duplicates
-    wei.groupby(['date']).mean().reset_index()
+    wei = wei.groupby(['date']).mean().reset_index()
 
     wa = get_water(mousename)
     wa.reset_index(inplace=True)
