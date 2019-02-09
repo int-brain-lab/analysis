@@ -26,7 +26,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 def fit_psychfunc(df):
 
-    choicedat = df.dropna(subset='choice2') # ignore missed trials
+    choicedat = df.dropna(subset=['choice2']) # ignore missed trials
     choicedat = choicedat.groupby('signedContrast').agg({'trial':'count', 'choice2':'mean'}).reset_index()
     pars, L = psy.mle_fit_psycho(choicedat.values.transpose(), P_model='erf_psycho_2gammas', 
         parstart=np.array([choicedat['signedContrast'].mean(), 20., 0.05, 0.05]), 
@@ -47,10 +47,11 @@ def plot_psychometric(df, ax=None, color="black"):
 
     """
     
+    choicedat = df.dropna(subset='choice2') # ignore missed trials
+
     if len(df['signedContrast'].unique()) > 4:
 
-        df2 = df.dropna(subset='choice2') # ignore missed trials
-        df2 = df2.groupby('signedContrast').agg({'trial':'count', 'choice2':'mean'}).reset_index()
+        df2 = choicedat.groupby('signedContrast').agg({'trial':'count', 'choice2':'mean'}).reset_index()
         df2.rename(columns={"choice2": "fraction", "choice": "ntrials"}, inplace=True)
 
         pars, L = psy.mle_fit_psycho(df2.transpose().values, # extract the data from the df
@@ -62,7 +63,7 @@ def plot_psychometric(df, ax=None, color="black"):
 
     # plot datapoints on top
     sns.lineplot(x='signedContrast', y='choice2', err_style="bars", linewidth=0, linestyle='None', mew=0.5,
-        marker='.', ci=68, data=df, color=color, ax=ax)
+        marker='.', ci=68, data=choicedat, color=color, ax=ax)
 
     # Reduce the clutter
     ax.set_xticks([-100, -50, 0, 50, 100])
