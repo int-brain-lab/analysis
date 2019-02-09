@@ -30,6 +30,7 @@ one = ONE() # initialize
 
 # get a list of all mice that are currently training
 subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False'))
+subjects     = pd.DataFrame(one.alyx.get('/subjects?&nickname=IBL_36'))
 
 # get folder to save plots
 path = fig_path()
@@ -96,22 +97,22 @@ for i, mouse in enumerate(subjects['nickname']):
         # ============================================= #
 
         # fit psychfunc on choice fraction, rather than identity
-        pars = behav.groupby(['date', 'probabilityLeft']).apply(fit_psychfunc).reset_index()
+        pars = behav.groupby(['date', 'probabilityLeft_block']).apply(fit_psychfunc).reset_index()
         parsdict = {'threshold': r'Threshold $(\sigma)$', 'bias': r'Bias $(\mu)$',
             'lapselow': r'Lapse low $(\gamma)$', 'lapsehigh': r'Lapse high $(\lambda)$'}
         ylims = [[-5, 105], [-105, 105], [-0.05, 1.05], [-0.05, 1.05]]
         yticks = [[0, 19, 100], [-100, -16, 0, 16, 100], [-0, 0.2, 0.5, 1], [-0, 0.2, 0.5, 1]]
 
         # pick a good-looking diverging colormap (green/blueish to red/orange) with black in the middle
-        cmap = sns.diverging_palette(20, 220, n=len(behav['probabilityLeft'].unique()), center="dark")
-        if len(behav['probabilityLeft'].unique()) == 1:
+        cmap = sns.diverging_palette(20, 220, n=len(behav['probabilityLeft_block'].unique()), center="dark")
+        if len(behav['probabilityLeft_block'].unique()) == 1:
             cmap = "gist_gray"
         sns.set_palette(cmap)
 
         # plot the fitted parameters
         for pidx, (var, labelname) in enumerate(parsdict.items()):
             ax = axes[pidx,1]
-            sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft", linestyle='', lw=0,
+            sns.lineplot(x="date", y=var, marker='o', hue="probabilityLeft_block", linestyle='', lw=0,
                 palette=cmap, data=pars, legend=None, ax=ax)
             ax.set(xlabel='', ylabel=labelname, ylim=ylims[pidx],
                 yticks=yticks[pidx],
@@ -139,21 +140,21 @@ for i, mouse in enumerate(subjects['nickname']):
             didx += 1
 
             # colormap for the asymmetric blocks
-            cmap = sns.diverging_palette(20, 220, n=len(dat['probabilityLeft'].unique()), center="dark")
-            if len(dat['probabilityLeft'].unique()) == 1:
+            cmap = sns.diverging_palette(20, 220, n=len(dat['probabilityLeft_block'].unique()), center="dark")
+            if len(dat['probabilityLeft_block'].unique()) == 1:
                 cmap = [np.array([0,0,0,1])]
 
             # PSYCHOMETRIC FUNCTION
             ax = axes[0, didx]
-            for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
-                plot_psychometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax=ax, color=cmap[ix])
+            for ix, probLeft in enumerate(dat['probabilityLeft_block'].sort_values().unique()):
+                plot_psychometric(dat.loc[dat['probabilityLeft_block'] == probLeft, :], ax=ax, color=cmap[ix])
             ax.set(xlabel="Contrast (%)", ylabel="Choose right (%)")
             ax.set(title=pd.to_datetime(dat['start_time'].unique()[0]).strftime('%b-%d, %A'))
 
             # CHRONOMETRIC FUNCTION
             ax = axes[1, didx]
-            for ix, probLeft in enumerate(dat['probabilityLeft'].sort_values().unique()):
-                plot_chronometric(dat.loc[dat['probabilityLeft'] == probLeft, :], ax, cmap[ix])
+            for ix, probLeft in enumerate(dat['probabilityLeft_block'].sort_values().unique()):
+                plot_chronometric(dat.loc[dat['probabilityLeft_block'] == probLeft, :], ax, cmap[ix])
             ax.set(ylim=[0.1,1.5], yticks=[0.1, 1.5])
             ax.set_yscale("log")
             ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: 
@@ -247,6 +248,12 @@ for i, mouse in enumerate(subjects['nickname']):
     except:
 
         print("%s failed to run" %mouse)
-        pass
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        fig.savefig(os.path.join(path + '%s_overview_test.pdf'%mouse))
+        plt.close(fig)
+
+
+        raise
 
 

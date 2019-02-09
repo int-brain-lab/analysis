@@ -60,10 +60,6 @@ def get_water_weight(mousename):
 
     # only if the mouse is on water restriction, add its baseline weight
     if restr['last_water_restriction']:
-        
-        # remove those weights below current water restriction start
-        if restr['responsible_user'] == 'valeria':
-            combined = combined[combined.date >= pd.to_datetime(restr['last_water_restriction'])]
 
         baseline = pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
             'weight': restr['reference_weight'], 'index':[0]})
@@ -137,7 +133,10 @@ def get_behavior(mousename, **kwargs):
         if 'included' not in tmpdct.keys():
             tmpdct['included'] = np.ones(tmpdct['choice'].shape)
         if 'goCue_times' not in tmpdct.keys():
-            tmpdct['goCue_times'] = tmpdct['stimOn_times']
+            try:
+                tmpdct['goCue_times'] = tmpdct['stimOn_times']
+            except:
+                tmpdct['goCue_times'] = np.full(tmpdct['choice'].shape, np.nan)
 
         # add crucial metadata
         tmpdct['subject']       = details[ix]['subject']
@@ -147,6 +146,7 @@ def get_behavior(mousename, **kwargs):
         tmpdct['start_time']    = details[ix]['start_time']
         tmpdct['end_time']      = details[ix]['end_time']
         tmpdct['trial']         = [i for i in range(len(dat.data[0]))]
+        tmpdct['task_protocol'] = details[ix]['task_protocol']
 
         # append all sessions into one dataFrame
         if not 'df' in locals():
@@ -173,12 +173,15 @@ def get_behavior(mousename, **kwargs):
 
     # flip around choice coding - go from wheel movement to percept
     df['choice'] = -1*df['choice']
-
     df['correct']   = np.where(np.sign(df['signedContrast']) == df['choice'], 1, 0)
     df.loc[df['signedContrast'] == 0, 'correct'] = np.NaN
-
     df['choice2'] = df.choice.replace([-1, 0, 1], [0, np.nan, 1]) # code as 0, 100 for percentages
     df['probabilityLeft'] = df.probabilityLeft.round(decimals=2)
+
+    # for trainingChoiceWorld, make sure all probabilityLeft = 0.5
+    df['probabilityLeft_block'] = df['probabilityLeft']
+    df.fillna({'task_protocol':'unknown'}, inplace=True)
+    df.loc[df['task_protocol'].str.contains("trainingChoiceWorld"), 'probabilityLeft_block'] = 0.5
 
     return df
  
