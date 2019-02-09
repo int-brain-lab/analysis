@@ -30,7 +30,7 @@ one = ONE() # initialize
 
 # get a list of all mice that are currently training
 subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False'))
-subjects     = pd.DataFrame(one.alyx.get('/subjects?&nickname=IBL_36'))
+# subjects     = pd.DataFrame(one.alyx.get('/subjects?&nickname=IBL_36'))
 
 # get folder to save plots
 path = fig_path()
@@ -246,14 +246,11 @@ for i, mouse in enumerate(subjects['nickname']):
         plt.close(fig)
 
     except:
-
         print("%s failed to run" %mouse)
+        pass
+        # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        # fig.savefig(os.path.join(path + '%s_overview_test.pdf'%mouse))
+        # plt.close(fig)
 
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        fig.savefig(os.path.join(path + '%s_overview_test.pdf'%mouse))
-        plt.close(fig)
-
-
-        raise
 
 

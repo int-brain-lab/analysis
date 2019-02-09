@@ -47,9 +47,8 @@ def plot_psychometric(df, ax=None, color="black"):
 
     """
     
-    choicedat = df.dropna(subset='choice2') # ignore missed trials
-
-    if len(df['signedContrast'].unique()) > 4:
+    choicedat = df.dropna(subset=['choice2']) # ignore missed trials
+    if len(choicedat['signedContrast'].unique()) > 4:
 
         df2 = choicedat.groupby('signedContrast').agg({'trial':'count', 'choice2':'mean'}).reset_index()
         df2.rename(columns={"choice2": "fraction", "choice": "ntrials"}, inplace=True)
