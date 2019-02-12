@@ -5,7 +5,6 @@ Created on Tue Sep 11 18:39:52 2018
 @author: Miles
 """
 
-import psychofit as psy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
