@@ -137,8 +137,7 @@ def plot_water_weight_curve(weight_water, baseline, ax):
     
     righty.grid(False)
     righty.set(xlabel='', ylabel="Weight (g)",
-        xlim=[weight_water.days.min()-2, weight_water.days.max()+2],
-               ylim=[baseline.weight.item()*0.70, baseline.weight.item()*1.2])
+        xlim=[weight_water.days.min()-2, weight_water.days.max()+2])
 
     # correct the ticks to show dates, not days
     # also indicate Mondays by grid lines
