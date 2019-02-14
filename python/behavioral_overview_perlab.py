@@ -29,7 +29,7 @@ path = os.path.join(path, 'per_lab/')
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['churchlandlab', 'mainenlab', 'wittenlab', 'cortexlab']
+users = ['churchlandlab', 'mainenlab', 'wittenlab', 'cortexlab', 'angelakilab']
 sub_batch_size = 5
 
 # ============================================= #
@@ -56,8 +56,6 @@ for lidx, lab in enumerate(users):
     
             for i, mouse in enumerate(mice[sub_batch:sub_batch+sub_batch_size]):
                 print(mouse)
-    
-               # try:
     
                 # WEIGHT CURVE AND WATER INTAKE
                 t = time.time()
