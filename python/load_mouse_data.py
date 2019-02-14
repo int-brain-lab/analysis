@@ -166,6 +166,10 @@ def get_behavior(mousename, **kwargs):
     # add some more handy things
     df['rt']        = df['response_times'] - df['goCue_times']
 
+    # fix a bug
+    df['contrastLeft'] = np.abs(df['contrastLeft'])
+    df['contrastRight'] = np.abs(df['contrastRight'])
+
     # make sure there are no NA values in the contrasts
     df.fillna({'contrastLeft': 0, 'contrastRight': 0}, inplace=True)
     df['signedContrast'] = (- df['contrastLeft'] + df['contrastRight']) * 100
