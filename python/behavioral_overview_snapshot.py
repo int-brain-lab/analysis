@@ -58,7 +58,6 @@ for i, mouse in enumerate(subjects['nickname']):
         # GET DATA
         # ============================================= #
 
-        behav = get_behavior(mouse)
         weight_water, baseline = get_water_weight(mouse)   
 
         fig.suptitle('Mouse %s (%s), born %s, user %s (%s) \nstrain %s, cage %s, %s' %(subjects['nickname'][i],
@@ -77,6 +76,7 @@ for i, mouse in enumerate(subjects['nickname']):
         # TRIAL COUNTS AND SESSION DURATION
         # ============================================= #
         
+        behav = get_behavior(mouse)
         xlims = [behav.date.min()-datetime.timedelta(days=1), behav.date.max()+datetime.timedelta(days=1)]
         plot_trialcounts_sessionlength(behav, axes[1,0], xlims)
 
@@ -174,68 +174,6 @@ for i, mouse in enumerate(subjects['nickname']):
             ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos:
                 ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
 
-            # ============================ #
-            # WHEEL ANALYSIS
-            # ============================ #
-
-            plotWheel = False
-            if plotWheel:
-                # FIRST CREATE A PANDAS DATAFRAME WITH THE FULL WHEEL TRACE DURING THE SESSION
-                thisdate = dat.loc[dat.index[0], 'date'].strftime('%Y-%m-%d')
-                eid = one.search(subjects=mouse, date_range=[thisdate, thisdate])
-                t, wheelpos, wheelvel = one.load(eid[0],
-                    dataset_types=['_ibl_wheel.timestamps', '_ibl_wheel.position', '_ibl_wheel.velocity'])
-                wheel = pd.DataFrame.from_dict({'position':wheelpos[0], 'velocity':np.transpose(wheelvel)[0]})
-                wheel['time'] = pd.to_datetime.timedelta(np.linspace(t[0,0], t[1,1], len(wheelpos[0])), unit='s')
-                wheel.set_index(wheel['time'], inplace=True)
-                wheel = wheel.resample('10ms', on='time').mean().reset_index() # to do analyses more quickly, RESAMPLE to 10ms
-
-                # ADD A FEW SECONDS WITH NANS AT THE BEGINNING AND END
-                wheel = pd.concat([ pd.DataFrame.from_dict({'time': pd.to_datetime.timedelta(np.arange(-10, 0, 0.1), 's'), 
-                    'position': np.full((100,), np.nan), 'velocity':  np.full((100,), np.nan)}),
-                     wheel,
-                     pd.DataFrame.from_dict({'time': pd.to_datetime.timedelta(np.arange(wheel.time.max().total_seconds(), 
-                         wheel.time.max().total_seconds()+10, 0.1), 's'), 
-                    'position': np.full((100,), np.nan), 'velocity':  np.full((100,), np.nan)})])
-                wheel.index = wheel['time']
-
-                # round to have the same sampling rate as wheeltimes
-                stimonset_times = pd.to_datetime.timedelta(np.round(dat['stimOn_times'], 2), 's') # express in datetime.timedelta
-
-                # THEN EPOCH BY LOCKING TO THE STIMULUS ONSET TIMES
-                prestim         = pd.to_datetime.timedelta(0.2, 's')
-                poststim         = pd.to_datetime.timedelta(dat.rt.median(), 's') + pd.to_datetime.timedelta(1, 's')
-                
-                signal = []; time = []
-                for i, stimonset in enumerate(stimonset_times):
-                    sliceidx = (wheel.index > (stimonset - prestim)) & (wheel.index < (stimonset + poststim))
-                    signal.append(wheel['position'][sliceidx].values)
-
-                    # also append the time axis to alignment in seaborn plot
-                    if i == 0:
-                        timeaxis = np.linspace(-prestim.total_seconds(), poststim.total_seconds(), len(wheel['position'][sliceidx].values))
-                    time.append(timeaxis)
-
-                # also baseline correct at zero
-                zeroindex = np.argmin(np.abs(timeaxis))
-                signal_blcorr = []
-                for i, item in enumerate(signal):
-                    signal_blcorr.append(item - item[zeroindex])
-
-                # MAKE INTO A PANDAS DATAFRAME AGAIN, append all relevant columns
-                wheel = pd.DataFrame.from_dict({'time': np.hstack(time), 'position': np.hstack(signal), 
-                    'position_blcorr': np.hstack(signal_blcorr), 
-                    'choice': np.repeat(dat['choice'], len(timeaxis)), 
-                    'correct': np.repeat(dat['correct'], len(timeaxis)),
-                    'signedContrast': np.repeat(dat['signedContrast'], len(timeaxis))})
-                
-                ax = axes[3, didx]
-                sns.lineplot(x='time', y='position_blcorr', ci=None, hue='signedContrast', 
-                    style='correct', data=wheel, ax=ax, legend=None)
-                ax.set(xlabel='Time from stim (s)', ylabel='Wheel position (deg)')
-            else:
-                ax = axes[3, didx]
-
         # clean up layout
         for i in range(3):
             axes[i,3].set(ylabel='')
@@ -247,6 +185,10 @@ for i, mouse in enumerate(subjects['nickname']):
 
     except:
         print("%s failed to run" %mouse)
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        fig.savefig(os.path.join(path + '%s_overview_test.pdf'%mouse))
+        plt.close(fig)
         pass
         # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         # fig.savefig(os.path.join(path + '%s_overview_test.pdf'%mouse))
