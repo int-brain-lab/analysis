@@ -115,7 +115,7 @@ def plot_water_weight_curve(weight_water, baseline, ax):
         ncol=2, mode="expand", borderaxespad=0., frameon=False)
     l.set_title('')
     ax.set(ylabel="Water intake (mL)", xlabel='', 
-        xlim=[weight_water.days.min()-2, weight_water.days.max()+2], ylim=[0, 3])
+        xlim=[weight_water.days.min()-2, weight_water.days.max()+2])
     ax.yaxis.label.set_color("#0072B2")
 
     # overlay the weight curve

@@ -61,6 +61,9 @@ def get_water_weight(mousename):
     # only if the mouse is on water restriction, add its baseline weight
     if restr['last_water_restriction']:
 
+        # TODO: add list of water restrictions with start and end dates
+        # see: https://int-brain-lab.slack.com/archives/CBW27C8D7/p1550266382011300
+
         baseline = pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
             'weight': restr['reference_weight'], 'index':[0]})
 
