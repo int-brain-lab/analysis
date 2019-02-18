@@ -17,71 +17,77 @@ def get_weights(mousename):
 
     wei = one.alyx.get('/weighings?nickname=%s' %mousename)
     wei = pd.DataFrame(wei)
-    wei['date_time'] = pd.to_datetime(wei.date_time)
-    wei.sort_values('date_time', inplace=True)
-    wei.reset_index(drop=True, inplace=True)
-    wei['date'] = wei['date_time'].dt.floor('D')  
-    wei['days'] = wei.date - wei.date[0]
-    wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
+
+    if not wei.empty:
+        wei['date_time'] = pd.to_datetime(wei.date_time)
+        wei.sort_values('date_time', inplace=True)
+        wei.reset_index(drop=True, inplace=True)
+        wei['date'] = wei['date_time'].dt.floor('D')  
+        wei['days'] = wei.date - wei.date[0]
+        wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
 
     return wei
 
 def get_water(mousename):
+    
     wei = one.alyx.get('/water-administrations?nickname=%s' %mousename)
     wei = pd.DataFrame(wei)
-    wei['date_time'] = pd.to_datetime(wei.date_time)
 
-    # for w in wei:
-    # wei['date_time'] = isostr2date(wei['date_time'])
-    wei.sort_values('date_time', inplace=True)
-    wei.reset_index(drop=True, inplace=True)
-    wei['date'] = wei['date_time'].dt.floor('D')  
+    if not wei.empty:
+        wei['date_time'] = pd.to_datetime(wei.date_time)
+        wei.sort_values('date_time', inplace=True)
+        wei.reset_index(drop=True, inplace=True)
+        wei['date'] = wei['date_time'].dt.floor('D')  
 
-    wei['days'] = wei.date - wei.date[0]
-    wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
+        wei['days'] = wei.date - wei.date[0]
+        wei['days'] = wei.days.dt.days # convert to number of days from start of the experiment
 
     return wei
 
 def get_water_weight(mousename):
 
     wei = get_weights(mousename)
-    # avoid duplicates
-    wei = wei.groupby(['date']).mean().reset_index()
+    wa  = get_water(mousename)
 
-    wa = get_water(mousename)
-    wa.reset_index(inplace=True)
+    if not (wei.empty or wa.empty):
+        wei = wei.groupby(['date']).mean().reset_index()
+        wa.reset_index(inplace=True)
 
-    # also grab the info about water restriction
-    restr = one.alyx.get('/subjects/%s' %mousename)
-    
-    # make sure that NaNs are entered for days with only water or weight but not both
-    combined = pd.merge(wei, wa, on="date", how='outer')
-    combined = combined[['date', 'weight', 'water_administered', 'water_type']]
+        # make sure that NaNs are entered for days with only water or weight but not both
+        combined = pd.merge(wei, wa, on="date", how='outer')
+        combined = combined[['date', 'weight', 'water_administered', 'water_type']]
 
-    # only if the mouse is on water restriction, add its baseline weight
-    if restr['last_water_restriction']:
+        # also grab the info about water restriction
+        restr = one.alyx.get('/subjects/%s' %mousename)
 
-        # TODO: add list of water restrictions with start and end dates
-        # see: https://int-brain-lab.slack.com/archives/CBW27C8D7/p1550266382011300
+        # only if the mouse is on water restriction, add its baseline weight
+        if restr['last_water_restriction']:
 
-        baseline = pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
-            'weight': restr['reference_weight'], 'index':[0]})
+            # TODO: add list of water restrictions with start and end dates
+            # see: https://int-brain-lab.slack.com/archives/CBW27C8D7/p1550266382011300
 
-        # add the baseline to the combined df
-        combined = combined.append(baseline, sort=False)
+            baseline = pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
+                'weight': restr['reference_weight'], 'index':[0]})
+
+            # add the baseline to the combined df
+            combined = combined.append(baseline, sort=False)
+
+        else:
+            baseline = pd.DataFrame.from_dict({'date': None, 'weight': restr['reference_weight'], 'index':[0]})
+
+        combined = combined.sort_values(by='date')
+        combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
+
+        combined = combined.reset_index()
+        combined = combined.drop(columns='index')
+
+        # also indicate all the dates as days from the start of water restriction (for easier plotting)
+        combined['days'] = combined.date - combined.date[0]
+        combined['days'] = combined.days.dt.days # convert to number of days from start of the experiment
 
     else:
-        baseline = pd.DataFrame.from_dict({'date': None, 'weight': restr['reference_weight'], 'index':[0]})
-
-    combined = combined.sort_values(by='date')
-    combined['date'] = combined['date'].dt.floor("D") # round the time of the baseline weight down to the day
-
-    combined = combined.reset_index()
-    combined = combined.drop(columns='index')
-
-    # also indicate all the dates as days from the start of water restriction (for easier plotting)
-    combined['days'] = combined.date - combined.date[0]
-    combined['days'] = combined.days.dt.days # convert to number of days from start of the experiment
+        combined     = pd.DataFrame()
+        baseline     = pd.DataFrame()
 
     return combined, baseline
 

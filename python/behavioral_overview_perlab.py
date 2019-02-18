@@ -38,7 +38,7 @@ sub_batch_size = 5
 
 for lidx, lab in enumerate(users):
 
-    subjects = pd.DataFrame(one.alyx.get('/subjects?water_restricted=True&alive=True&lab=%s'%lab))
+    subjects = pd.DataFrame(one.alyx.get('/subjects?alive=True&lab=%s'%lab))
 
     # group by batches: mice that were born on the same day
     batches = subjects.birth_date.unique()
@@ -61,33 +61,34 @@ for lidx, lab in enumerate(users):
                 t = time.time()
                 weight_water, baseline = get_water_weight(mouse)
 
-                # determine x limits
-                xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
-                ax = plt.subplot2grid((4, sub_batch_size), (0, i))
-                plot_water_weight_curve(weight_water, baseline, ax)
-                axes.append(ax)
-                
-                try:
-                    # TRIAL COUNTS AND SESSION DURATION
-                    behav = get_behavior(mouse)
-                    xlims = [behav.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)]
-    
-                    ax = plt.subplot2grid((4, sub_batch_size), (1, i))
-                    plot_trialcounts_sessionlength(behav, ax, xlims)
-                    fix_date_axis(ax)
+                if not weight_water.empty:
+                    # determine x limits
+                    xlims = [weight_water.date.min()-timedelta(days=2), weight_water.date.max()+timedelta(days=2)]
+                    ax = plt.subplot2grid((4, sub_batch_size), (0, i))
+                    plot_water_weight_curve(weight_water, baseline, ax)
                     axes.append(ax)
-    
-                    # PERFORMANCE AND MEDIAN RT
-                    ax = plt.subplot2grid((4, sub_batch_size), (2, i))
-                    plot_performance_rt(behav, ax, xlims)
-                    fix_date_axis(ax)
-                    axes.append(ax)
-    
-                    # CONTRAST/CHOICE HEATMAP
-                    ax = plt.subplot2grid((4, sub_batch_size), (3, i))
-                    plot_contrast_heatmap(behav, ax)
-                except:
-                    continue    
+                    
+                    try:
+                        # TRIAL COUNTS AND SESSION DURATION
+                        behav = get_behavior(mouse)
+                        xlims = [behav.date.min()-timedelta(days=2), behav.date.max()+timedelta(days=2)]
+        
+                        ax = plt.subplot2grid((4, sub_batch_size), (1, i))
+                        plot_trialcounts_sessionlength(behav, ax, xlims)
+                        fix_date_axis(ax)
+                        axes.append(ax)
+        
+                        # PERFORMANCE AND MEDIAN RT
+                        ax = plt.subplot2grid((4, sub_batch_size), (2, i))
+                        plot_performance_rt(behav, ax, xlims)
+                        fix_date_axis(ax)
+                        axes.append(ax)
+        
+                        # CONTRAST/CHOICE HEATMAP
+                        ax = plt.subplot2grid((4, sub_batch_size), (3, i))
+                        plot_contrast_heatmap(behav, ax)
+                    except:
+                        continue    
 
                 elapsed = time.time() - t
                 print( "Elapsed time: %f seconds.\n" %elapsed )

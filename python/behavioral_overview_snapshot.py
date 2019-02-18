@@ -50,7 +50,7 @@ for i, mouse in enumerate(subjects['nickname']):
         print(mouse)
 
         # MAKE THE FIGURE, divide subplots using gridspec
-        fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=False,
+        fig, axes = plt.subplots(ncols=5, nrows=4, constrained_layout=True,
             gridspec_kw=dict(width_ratios=[2,2,1,1,1], height_ratios=[1,1,1,1]), figsize=(11.69, 8.27))
         sns.set_palette("colorblind") # palette for water types
 
