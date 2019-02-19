@@ -65,6 +65,7 @@ def get_water_weight(mousename):
 
             # TODO: add list of water restrictions with start and end dates
             # see: https://int-brain-lab.slack.com/archives/CBW27C8D7/p1550266382011300
+            # https://github.com/int-brain-lab/ibllib/issues/52
 
             baseline = pd.DataFrame.from_dict({'date': pd.to_datetime(restr['last_water_restriction']), 
                 'weight': restr['reference_weight'], 'index':[0]})
@@ -106,6 +107,10 @@ def get_behavior(mousename, **kwargs):
     types2      = [item for sublist in types for item in sublist]
     types2      = list(set(types2)) # take unique by converting to a set and back to list
     dataset_types = [s for i, s in enumerate(types2) if '_ibl_trials' in s]
+
+    # load all data in one command, https://github.com/int-brain-lab/ibllib/issues/52
+    dat = one.load(eid, dataset_types=dataset_types, dclass_output=True)
+
     
     # load data over sessions
     for ix, eidx in enumerate(eid):
@@ -163,6 +168,7 @@ def get_behavior(mousename, **kwargs):
         else:
             df = df.append(pd.DataFrame.from_dict(tmpdct), sort=False, ignore_index=True)
 
+    # POST-PROCESSING
     # take care of dates properly
     df['start_time'] = pd.to_datetime(df.start_time)
     df['end_time']   = pd.to_datetime(df.end_time)
