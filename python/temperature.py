@@ -42,15 +42,22 @@ for lidx, lab in enumerate(users):
     print(lab)
 
     # LOAD ALL AMBIENT SENSOR DATA FOR THIS LAB
+    # see https://github.com/int-brain-lab/ibllib/issues/51#event-2148508648
+
     eids = one.search(dataset_types='_iblrig_ambientSensorData.raw', lab=lab)
     for eid in eids:
         asd = one.load(eid, dataset_types=['_iblrig_ambientSensorData.raw'])
+
+        # TODO: add timing information per trial
+        # TODO: average within each session
+
         if not 'ambient' in locals():
-            ambient = pd.DataFrame.from_dict(asd)
+            ambient = pd.DataFrame(asd[0])
         else:
-            ambient = ambient.append(pd.DataFrame.from_dict(asd), sort=False, ignore_index=True)
+            ambient = ambient.append(pd.DataFrame(asd[0]), sort=False, ignore_index=True)
 
     print(ambient.describe())
+    shell()
 
     # fig  = plt.figure(figsize=(11.69, 8.27), constrained_layout=True)
     # axes = []
