@@ -178,9 +178,6 @@ def get_behavior(mousename, **kwargs):
     df['days']       = df.date - df.date[0]
     df['days']       = df.days.dt.days 
 
-    # add some more handy things
-    df['rt']        = df['response_times'] - df['goCue_times']
-
     # fix a bug
     df['contrastLeft'] = np.abs(df['contrastLeft'])
     df['contrastRight'] = np.abs(df['contrastRight'])
@@ -195,9 +192,13 @@ def get_behavior(mousename, **kwargs):
     df['correct']   = np.where(np.sign(df['signedContrast']) == df['choice'], 1, 0)
     df.loc[df['signedContrast'] == 0, 'correct'] = np.NaN
     df['choice2'] = df.choice.replace([-1, 0, 1], [0, np.nan, 1]) # code as 0, 100 for percentages
-    df['probabilityLeft'] = df.probabilityLeft.round(decimals=2)
+
+    # add some more handy things
+    df['rt']        = df['response_times'] - df['goCue_times']
+    df.loc[df.choice == 0, 'rt'] = np.nan # don't count RT if there was no response
 
     # for trainingChoiceWorld, make sure all probabilityLeft = 0.5
+    df['probabilityLeft'] = df.probabilityLeft.round(decimals=2)
     df['probabilityLeft_block'] = df['probabilityLeft']
     df.fillna({'task_protocol':'unknown'}, inplace=True)
     df.loc[df['task_protocol'].str.contains("trainingChoiceWorld"), 'probabilityLeft_block'] = 0.5
