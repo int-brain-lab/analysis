@@ -87,9 +87,9 @@ for lidx, lab in enumerate(users):
     
     # show each rig in its own color
     for color, group in ambient.groupby(['rig']):
-        ax0.plot_date(group['datetime'], group['Temperature_C'], label=color)
-        ax1.plot_date(group['datetime'], group['RelativeHumidity'], label=color)
-        ax2.plot_date(group['datetime'], group['AirPressure_mb'], label=color)
+        ax0.plot_date(group['datetime'], group['Temperature_C'], label=color.replace("_", "-"))
+        ax1.plot_date(group['datetime'], group['RelativeHumidity'], label=color.replace("_", "-"))
+        ax2.plot_date(group['datetime'], group['AirPressure_mb'], label=color.replace("_", "-"))
         
     ax0.set_ylabel('Temperature (C)')
     ax1.set_ylabel('Relative humidity (%)')
