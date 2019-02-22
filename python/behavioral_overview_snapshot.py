@@ -25,12 +25,12 @@ from load_mouse_data import get_water_weight, get_behavior
 sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0 } )
 sns.set_context(context="paper")
 
-## CONNECT TO ONE
+## CONNECT TO ONE   
 one = ONE() # initialize
 
 # get a list of all mice that are currently training
-subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False'))
-# subjects     = pd.DataFrame(one.alyx.get('/subjects?&nickname=IBL_36'))
+subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False&=IBL_1'))
+# subjects     = pd.DataFrame(one.alyx.get('/subjects?&nickname=IBL_1'))
 
 # get folder to save plots
 path = fig_path()
@@ -45,8 +45,9 @@ for i, mouse in enumerate(subjects['nickname']):
     try:
 
         # SKIP IF THIS FIGURE ALREADY EXISTS, DONT OVERWRITE
-        if os.path.exists(os.path.join(path + '%s_overview_test.pdf'%mouse)):
-             pass #continue
+        #if os.path.exists(os.path.join(path + '%s_overview_test.pdf'%mouse)):
+             # pass #continue
+        
         print(mouse)
 
         # MAKE THE FIGURE, divide subplots using gridspec
@@ -184,8 +185,8 @@ for i, mouse in enumerate(subjects['nickname']):
         plt.close(fig)
 
     except:
-        print("%s failed to run" %mouse)
 
+        print("%s failed to run" %mouse)
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         fig.savefig(os.path.join(path + '%s_overview_test.pdf'%mouse))
         plt.close(fig)
