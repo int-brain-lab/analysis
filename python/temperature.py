@@ -31,7 +31,7 @@ path = os.path.join(path, 'per_lab/')
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['angelakilab', 'wittenlab', 'churchlandlab', 'mainenlab']
+users = ['danlab', 'angelakilab', 'wittenlab', 'churchlandlab', 'mainenlab']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -90,13 +90,23 @@ for lidx, lab in enumerate(users):
         ax0.plot_date(group['datetime'], group['Temperature_C'], label=color.replace("_", "-"))
         ax1.plot_date(group['datetime'], group['RelativeHumidity'], label=color.replace("_", "-"))
         ax2.plot_date(group['datetime'], group['AirPressure_mb'], label=color.replace("_", "-"))
-        
-    ax0.set_ylabel('Temperature (C)')
-    ax1.set_ylabel('Relative humidity (%)')
-    ax2.set_ylabel('Air pressure (mb)')
-
+       
     # INDICATE RECOMMENDATIONS FROM JAX
     # Temperature and humidity:  Temperatures of 65-75°F (~18-23°C) with 40-60% humidity are recommended.
+ 
+    ax0.set_ylabel('Temperature (C)')
+    ax0.set_ylim([18, 35])
+    ax0.axhline(y=18, color='k', linestyle='--', zorder=0)
+    ax0.axhline(y=23, color='k', linestyle='--', zorder=0)
+
+    ax1.set_ylabel('Relative humidity (%)')
+    ax1.set_ylim([0, 80])
+    ax1.axhline(y=40, color='k', linestyle='--', zorder=0)
+    ax1.axhline(y=60, color='k', linestyle='--', zorder=0)
+
+    ax2.set_ylabel('Air pressure (mb)')
+    ax2.set_ylim([950, 1050])
+
     ax2.legend()
 
     # deal with date axis and make nice looking 

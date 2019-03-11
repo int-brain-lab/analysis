@@ -30,7 +30,7 @@ one = ONE() # initialize
 
 # get a list of all mice that are currently training
 subjects     = pd.DataFrame(one.alyx.get('/subjects?&alive=True&stock=False&=IBL_1'))
-# subjects     = pd.DataFrame(one.alyx.get('/subjects?&nickname=IBL_1'))
+subjects     = pd.DataFrame(one.alyx.get('/subjects?&nickname=IBL_1'))
 
 # get folder to save plots
 path = fig_path()

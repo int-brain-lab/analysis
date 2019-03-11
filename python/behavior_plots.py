@@ -126,6 +126,7 @@ def plot_water_weight_curve(weight_water, baseline, ax):
     # add a line for 85% of baseline weight
     if baseline['date'].item() is not None:
         righty.axhline(y=baseline.weight.item()*0.85, color='k', linestyle='--', linewidth=0.5)
+        righty.axhline(y=baseline.weight.item()*0.75, color='k', linestyle='--', linewidth=0.5)
 
     # plot weight curve
     sns.lineplot(x=weight_water2.days, y=weight_water2.weight, ax=righty, color='.15', marker='o')
