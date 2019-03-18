@@ -18,8 +18,10 @@ import pandas as pd
 from IPython import embed as shell
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-# from . import psychofit as psy # https://github.com/cortex-lab/psychofit
-import psychofit as psy # https://github.com/cortex-lab/psychofit
+try:
+    from . import psychofit as psy # https://github.com/cortex-lab/psychofit
+except:
+    import psychofit as psy # https://github.com/cortex-lab/psychofit
 
 def fit_psychfunc(df):
 

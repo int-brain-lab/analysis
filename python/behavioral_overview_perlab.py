@@ -30,6 +30,8 @@ if not os.path.exists(path):
     os.mkdir(path)
 
 users = ['churchlandlab', 'mainenlab', 'wittenlab', 'cortexlab', 'angelakilab']
+# users = ['churchlandlab']
+
 sub_batch_size = 5
 
 # ============================================= #
