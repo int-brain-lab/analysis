@@ -102,9 +102,15 @@ def get_behavior(mousename, **kwargs):
     eid          = [x for _,x in sorted(zip(start_times, eid))]
     details      = [x for _,x in sorted(zip(start_times, details))]
 
+    # grab only behavioral datatypes, all start with _ibl_trials
+    types       = one.list(eid)
+    types2      = [item for sublist in types for item in sublist]
+    types2      = list(set(types2)) # take unique by converting to a set and back to list
+    dataset_types = [s for i, s in enumerate(types2) if '_ibl_trials' in s]
+
     # load data over sessions
     for ix, eidx in enumerate(eid):
-        dat = one.load(eidx, dataset_types=['_iblrig_taskData.raw'], dclass_output=True)
+        dat = one.load(eidx, dataset_types=dataset_types, dclass_output=True)
 
         # skip if no data, or if there are fewer than 10 trials in this session
         if len(dat.data) == 0:
