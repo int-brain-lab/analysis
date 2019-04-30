@@ -31,7 +31,7 @@ path = os.path.join(path, 'per_lab/')
 if not os.path.exists(path):
     os.mkdir(path)
 
-users = ['danlab', 'angelakilab', 'wittenlab', 'churchlandlab', 'mainenlab']
+users = ['danlab', 'angelakilab', 'wittenlab', 'churchlandlab', 'mainenlab', 'mrsicflogellab']
 
 # ============================================= #
 # START BIG OVERVIEW PLOT
@@ -122,4 +122,6 @@ for lidx, lab in enumerate(users):
     fig.savefig(os.path.join(path + '%s_ambientsensor.pdf'%lab))
     plt.close(fig)
     del ambient
+
+    
 

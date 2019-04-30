@@ -1,3 +1,14 @@
+"""Usage:
+
+source activate ibllibenv
+python post_weekend_water_alyx.py 'today'
+python post_weekend_water_alyx.py 'tomorrow'
+python post_weekend_water_alyx.py '3days'
+python post_weekend_water_alyx.py '2019-04-30T13:00'
+
+Anne Urai, CSHL, 2019
+"""
+
 from oneibl.one import ONE
 import datetime
 import pandas as pd
@@ -13,19 +24,19 @@ print(days)
 # we can add more dates here, or use 'YY-MM-DDTHH:MM'
 if days == 'today':
 	dates = [datetime.datetime.today().strftime('%Y-%m-%dT%H:%M')]
-if days == 'tomorrow':
+elif days == 'tomorrow':
 	dates = datetime.datetime.today() + datetime.timedelta(days=1)
 	dates = [dates.strftime('%Y-%m-%dT%H:%M')]
-if days == '3days':
-	today = datetime.datetime.today().strftime('%Y-%m-%dT%H:%M')
+elif days == '3days':
+	today 	 = datetime.datetime.today().strftime('%Y-%m-%dT%H:%M')
 	tomorrow = datetime.datetime.today() + datetime.timedelta(days=1)
 	tomorrow = tomorrow.strftime('%Y-%m-%dT%H:%M')
 	dayaftertomorrow = datetime.datetime.today() + datetime.timedelta(days=2)
 	dayaftertomorrow = dayaftertomorrow.strftime('%Y-%m-%dT%H:%M')
 	dates = [today, tomorrow, dayaftertomorrow]
 else:
-	print('please indicate for which days to log water: e.g. python post_weekend_water_alyx.py today')
-	dates = days
+	# print('invalid date. correct syntax: python post_weekend_water_alyx.py ''today'', or ''2019-04-30T13:00''')
+	dates = [days]
 
 print(dates)
 subjects = pd.DataFrame(one.alyx.get('/subjects?&alive=True&responsible_user=valeria'))
