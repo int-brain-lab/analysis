@@ -12,4 +12,7 @@ Make sure you can run Jupyter notebook within conda: `conda install nb_conda_ker
 Then go to the Snapshot viewer, User Guide, and follow the steps under 'Instructions for Users' to setup the IBL-specific packages you'll need. Specifically, it's useful to add your personal login configuration so you're not prompted for your username and password each time you run the code.
 
 ### 3. open Jupyter notebook
-Notebooks are a nice way to run your code piece by piece and see the results. 
+Notebooks are a nice way to run your code piece by piece and see the results. `source activate djenv`, `jupyter notebook`, then open the citricAcid_datajoint.ipynb file.
+
+### 4. Check that you can load data
+Run the first few cells, and check that you get DataJoint tables as output.
