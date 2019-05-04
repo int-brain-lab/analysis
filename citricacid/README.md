@@ -16,3 +16,13 @@ Notebooks are a nice way to run your code piece by piece and see the results. `s
 
 ### 4. Check that you can load data
 Run the first few cells, and check that you get DataJoint tables as output.
+
+### 5. Analyze your data
+See tutorials and documentation on pandas, seaborn (nice for visualization) and matplotlib.
+
+When you have something you like, save the notebook, close the Jupyter kernel and then commit your new analysis:
+```
+git add *
+git commit -m "describe your changes"
+git push
+```
