@@ -18,7 +18,7 @@ Notebooks are a nice way to run your code piece by piece and see the results. `s
 Run the first few cells, and check that you get DataJoint tables as output.
 
 ### 5. Analyze your data
-See tutorials and documentation on pandas, seaborn (nice for visualization) and matplotlib.
+See tutorials and documentation on pandas, seaborn (nice for visualization) and matplotlib. See the old weightmonitoring_citricacid notebook for some examples.
 
 When you have something you like, save the notebook, close the Jupyter kernel and then commit your new analysis:
 ```
