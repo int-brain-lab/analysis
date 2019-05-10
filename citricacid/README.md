@@ -23,6 +23,7 @@ See tutorials and documentation on pandas, seaborn (nice for visualization) and 
 When you have something you like, save the notebook, close the Jupyter kernel and then commit your new analysis:
 ```
 git add *
+git status 
 git commit -m "describe your changes"
 git push
 ```
