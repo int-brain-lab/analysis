@@ -240,7 +240,7 @@ plt.close("all")
 # biased blocks - plot curves
 # ================================= #
 
-shell()
+#shell()
 print('fitting psychometric per session...')
 
 pars = behav.groupby(['lab_name', 'subject_nickname', 
@@ -303,7 +303,7 @@ print('fitting psychometric per session...')
 # TODO: GET THESE FROM PSYCHRESULTS??
 
 pars = behav.groupby(['lab_name', 'subject_nickname', 'init_unbiased',
-	'probabilityLeft']).apply(behavior_plots.fit_psychfunc).reset_index()
+	'probabilityLeft']).apply(fit_psychfunc).reset_index()
 # check if these fits worked as expected
 print(pars.describe())
 # parameters should be within reasonable bounds...
@@ -365,13 +365,13 @@ behav['trials_early'] = behav.groupby(['subject_nickname', 'lab_name', 'probabil
 
 # plot
 fig = sns.FacetGrid(behav, hue="probabilityLeft", row="trials_early", col="init_unbiased", palette=cmap)
-fig.map(plot_psychometric, "signed_contrast", "choice_right").add_legend()
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "biased_blocks_shortlong.pdf"))
 
 # recompute fits
 pars = behav.groupby(['lab_name', 'subject_nickname', 'init_unbiased',
-	'probabilityLeft', 'trials_early']).apply(behavior_plots.fit_psychfunc).reset_index()
+	'probabilityLeft', 'trials_early']).apply(fit_psychfunc).reset_index()
 
 # compute a 'bias shift' per animal
 biasshift = pars.groupby(['lab_name', 'subject_nickname', 'init_unbiased', 'trials_early']).apply(compute_biasshift)
