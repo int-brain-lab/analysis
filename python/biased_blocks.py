@@ -23,7 +23,7 @@ from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
 
-figpath  = os.path.join(os.path.expanduser('~'), 'Documents/IBL/analysis/Figures/')
+figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
 # ================================= #
 # GRAB ALL DATA FROM DATAJOINT
