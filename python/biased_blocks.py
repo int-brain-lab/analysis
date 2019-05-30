@@ -240,7 +240,7 @@ plt.close("all")
 # biased blocks - plot curves
 # ================================= #
 
-shell()
+#shell()
 print('fitting psychometric per session...')
 
 pars = behav.groupby(['lab_name', 'subject_nickname', 
@@ -303,7 +303,7 @@ print('fitting psychometric per session...')
 # TODO: GET THESE FROM PSYCHRESULTS??
 
 pars = behav.groupby(['lab_name', 'subject_nickname', 'init_unbiased',
-	'probabilityLeft']).apply(behavior_plots.fit_psychfunc).reset_index()
+	'probabilityLeft']).apply(fit_psychfunc).reset_index()
 # check if these fits worked as expected
 print(pars.describe())
 # parameters should be within reasonable bounds...
@@ -330,29 +330,6 @@ ax.legend(handles[-2:], labels[-2:], frameon=True)
 sns.despine(trim=True)
 fig.savefig(os.path.join(figpath, "biased_blocks_stats.pdf"))
 
-# ================================= #
-# re-express in % response
-# ================================= #
-
-zerotrials = behav.loc[behav.signed_contrast == 0, :]
-choicebias = zerotrials.groupby(['lab_name', 'subject_nickname', 
-	'probabilityLeft'])['choice_right'].mean().reset_index()
-
-# make an overview plot of all bias shifts, one line for each subject
-plt.close("all")
-fig, ax = plt.subplots()
-sns.pointplot(x="probabilityLeft", y="choice_right", hue='subject_nickname', 
-	markers='None', color="0.9", join=True, data=choicebias, legend=False)
-ax = sns.pointplot(x="probabilityLeft", y="choice_right", dodge=True,
- 	join=True, data=choicebias, legend=False)
-ax.set_ylabel('Bias shift (P(choice == "right") at 0% contrast)')
-# improve the legend
-handles, labels = ax.get_legend_handles_labels()
-ax.legend(handles[-1:], labels[-1:], frameon=True)
-sns.despine(trim=True)
-ax.set_yticks([0, 0.25, 0.5, 0.75, 1])
-fig.savefig(os.path.join(figpath, "biased_blocks_response_stats.pdf"))
-
 # ================================================================== #
 # SEPARATELY FOR LONG AND SHORT BIAS BLOCKS
 # ================================================================== #
@@ -365,13 +342,13 @@ behav['trials_early'] = behav.groupby(['subject_nickname', 'lab_name', 'probabil
 
 # plot
 fig = sns.FacetGrid(behav, hue="probabilityLeft", row="trials_early", col="init_unbiased", palette=cmap)
-fig.map(plot_psychometric, "signed_contrast", "choice_right").add_legend()
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "biased_blocks_shortlong.pdf"))
 
 # recompute fits
 pars = behav.groupby(['lab_name', 'subject_nickname', 'init_unbiased',
-	'probabilityLeft', 'trials_early']).apply(behavior_plots.fit_psychfunc).reset_index()
+	'probabilityLeft', 'trials_early']).apply(fit_psychfunc).reset_index()
 
 # compute a 'bias shift' per animal
 biasshift = pars.groupby(['lab_name', 'subject_nickname', 'init_unbiased', 'trials_early']).apply(compute_biasshift)
