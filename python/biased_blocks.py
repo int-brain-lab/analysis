@@ -23,7 +23,7 @@ from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
 
-figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
+figpath  = os.path.join(os.path.expanduser('~'), 'Documents/IBL/analysis/Figures/')
 
 # ================================= #
 # GRAB ALL DATA FROM DATAJOINT
@@ -329,6 +329,29 @@ handles, labels = ax.get_legend_handles_labels()
 ax.legend(handles[-2:], labels[-2:], frameon=True)
 sns.despine(trim=True)
 fig.savefig(os.path.join(figpath, "biased_blocks_stats.pdf"))
+
+# ================================= #
+# re-express in % response
+# ================================= #
+
+zerotrials = behav.loc[behav.signed_contrast == 0, :]
+choicebias = zerotrials.groupby(['lab_name', 'subject_nickname', 
+	'probabilityLeft'])['choice_right'].mean().reset_index()
+
+# make an overview plot of all bias shifts, one line for each subject
+plt.close("all")
+fig, ax = plt.subplots()
+sns.pointplot(x="probabilityLeft", y="choice_right", hue='subject_nickname', 
+	markers='None', color="0.9", join=True, data=choicebias, legend=False)
+ax = sns.pointplot(x="probabilityLeft", y="choice_right", dodge=True,
+ 	join=True, data=choicebias, legend=False)
+ax.set_ylabel('Bias shift (P(choice == "right") at 0% contrast)')
+# improve the legend
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles[-1:], labels[-1:], frameon=True)
+sns.despine(trim=True)
+ax.set_yticks([0, 0.25, 0.5, 0.75, 1])
+fig.savefig(os.path.join(figpath, "biased_blocks_response_stats.pdf"))
 
 # ================================================================== #
 # SEPARATELY FOR LONG AND SHORT BIAS BLOCKS
