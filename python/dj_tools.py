@@ -109,8 +109,8 @@ def plot_chronometric(x, y, subj, **kwargs):
 	df = pd.DataFrame({'signed_contrast':x, 'rt':y, 'subject_nickname':subj})
 
 	df2 = df.groupby(['signed_contrast', 'subject_nickname']).agg({'rt':'median'}).reset_index()
-	df2 = df2.groupby(['signed_contrast']).mean().reset_index()
-	df2 = df2[['signed_contrast', 'rt']]
+	# df2 = df2.groupby(['signed_contrast']).mean().reset_index()
+	df2 = df2[['signed_contrast', 'rt', 'subject_nickname']]
 
 	# if 100 in df.signed_contrast.values and not 50 in df.signed_contrast.values:
 	df2['signed_contrast'] = df2['signed_contrast'].replace(-100, -35)
@@ -178,11 +178,11 @@ def dj2pandas(behav):
 	behav.loc[behav.choice == 0, 'rt'] = np.nan # don't count RT if there was no response
 	behav.loc[behav.choice == 0, 'trial_feedback_type'] = np.nan # don't count RT if there was no response
 
-	# indicate, for each session, whether there was an unbiased initial block or not
-	behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time', 
-		'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
+	# # indicate, for each session, whether there was an unbiased initial block or not
+	# behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time', 
+	# 	'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
 
-	# replace cortexlab name for now
-	# behav['lab_name'] = behav['lab_name'].str.replace('cortexlab', 'Carandini-Harrislab')
+	# # replace cortexlab name for now
+	# # behav['lab_name'] = behav['lab_name'].str.replace('cortexlab', 'Carandini-Harrislab')
 
 	return behav

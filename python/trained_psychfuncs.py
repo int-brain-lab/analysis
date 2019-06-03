@@ -61,26 +61,27 @@ for lidx, lab in enumerate(labs):
 # for now, manually add the cortexlab matlab animals
 # ================================= #
 
-ucl_mice = ['KS001', 'MW003', 'MW001', 'MW002', 'LEW008', 'LEW009', 'LEW010']
-ucl_trained_dates = ['2019-02-25', '2018-12-10', '2019-02-11', '2019-01-14', '2018-10-04', '2018-10-04', 'LEW010']
+# ucl_mice = ['KS001', 'MW003', 'MW001', 'MW002', 'LEW008', 'LEW009', 'LEW010']
+# ucl_trained_dates = ['2019-02-25', '2018-12-10', '2019-02-11', '2019-01-14', '2018-10-04', '2018-10-04', 'LEW010']
 
-for midx, mouse in enumerate(ucl_mice):
+# for midx, mouse in enumerate(ucl_mice):
 
-	print(mouse)
-	sess = (acquisition.Session.proj('session_start_time', 'task_protocol', 'session_uuid', session_date='DATE(session_start_time)') & \
-		'session_date > "%s"'%ucl_trained_dates[midx]) * behavioral_analyses.SessionTrainingStatus()
-	b = ((behavior.TrialSet.Trial & (subject.SubjectLab() & 'lab_name="cortexlab"')) \
-		* subject.SubjectLab.proj('lab_name') \
-		* subject.Subject() & 'subject_nickname="%s"'%mouse) \
-		* sess
+# 	print(mouse)
+# 	sess = (acquisition.Session.proj('session_start_time', 'task_protocol', 'session_uuid', session_date='DATE(session_start_time)') & \
+# 		'session_date > "%s"'%ucl_trained_dates[midx]) * behavioral_analyses.SessionTrainingStatus()
+# 	b = ((behavior.TrialSet.Trial & (subject.SubjectLab() & 'lab_name="cortexlab"')) \
+# 		* subject.SubjectLab.proj('lab_name') \
+# 		* subject.Subject() & 'subject_nickname="%s"'%mouse) \
+# 		* sess
 
-	bdat  = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
-	behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
+# 	bdat  = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
+# 	behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
 
 # ================================= #
 # convert
 # ================================= #
 
+shell()
 behav = dj2pandas(behav)
 behav['lab_name'] = behav['lab_name'].str.replace('zadorlab', 'churchlandlab')
 
@@ -185,3 +186,13 @@ for ax, title in zip(fig.axes.flat, titles2):
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "chrono_abs.pdf"))
 
+
+# RT ACROSS ALL CONTRASTS, PER LAB
+shell()
+median_rt = behav.groupby(['subj_idx', 'lab_name'])['rt'].median()
+fig = sns.swarmplot(x="lab_name", y="rt", data=median_rt)
+fig.savefig(os.path.join(figpath, "rt_median.pdf"))
+
+mean_rt = behav.groupby(['subj_idx', 'lab_name'])['rt'].mean()
+fig = sns.swarmplot(x="lab_name", y="rt", data=mean_rt)
+fig.savefig(os.path.join(figpath, "rt_mean.pdf"))
