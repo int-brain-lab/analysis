@@ -144,10 +144,11 @@ plt.close('all')
 # RT DISTRIBUTIONS - ONE PANEL PER MOUSE
 fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
 	col="subject_nickname", col_wrap=7, 
-	palette="gist_gray", sharex=False, sharey=False)
-fig.map(sns.distplot, "rt").add_legend()
+	palette="gist_gray", sharex=False, sharey=False, xlim=[-1, 1])
+fig.map(sns.distplot, "rt", bins=100).add_legend()
 # fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.set_titles("{col_name}")
+#fig.set_xlim([-0.1, 3])
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "rt_dist_permouse.pdf"))
 plt.close('all')
@@ -218,9 +219,10 @@ fig.set_titles("{col_name}")
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "chrono_permouse_black.pdf"))
 
-
 # ================================= #
 # ALSO CHRONOMETRIC FUNCTIONS
+# ================================= #
+
 behav['abs_contrast'] = np.abs(behav.signed_contrast)
 fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
 	col="subject_nickname", col_wrap=7, 
@@ -231,7 +233,6 @@ fig.set_titles("{col_name}")
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "chrono_abs_permouse_black.pdf"))
 
-
 fig = sns.FacetGrid(behav, hue='subject_nickname',
 	col="lab_name", col_order=sorted(behav.lab_name.unique()), col_wrap=2,
 	palette="colorblind", sharex=True, sharey=True, aspect=.8)
@@ -240,7 +241,6 @@ fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 fig.add_legend()
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "chrono_summary_permouse.pdf"))
-
 
 # ABSOLUTE CHRONO, PER LAB
 fig = sns.FacetGrid(behav, 

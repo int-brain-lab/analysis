@@ -107,7 +107,7 @@ def plot_psychometric(x, y, subj, **kwargs):
 def plot_chronometric(x, y, subj, **kwargs):
 
 	df = pd.DataFrame({'signed_contrast':x, 'rt':y, 'subject_nickname':subj})
-
+	df.dropna(inplace=True) # ignore NaN RTs
 	df2 = df.groupby(['signed_contrast', 'subject_nickname']).agg({'rt':'median'}).reset_index()
 	# df2 = df2.groupby(['signed_contrast']).mean().reset_index()
 	df2 = df2[['signed_contrast', 'rt', 'subject_nickname']]
@@ -134,7 +134,7 @@ def plot_chronometric(x, y, subj, **kwargs):
 	ax.set_xticks([-35, -25, -12.5, -6, 0, 6, 12.5, 25, 35])
 	ax.set_xticklabels(['-100', '-25', '-12.5', '-6.25', '0', '6.25', '12.5', '25', '100'], 
 		size='small', rotation=45) 
-	if min(x) >= 0:
+	if df['signed_contrast'].min() >= 0:
 		ax.set_xlim([-5, 40])
 		ax.set_xticks([0, 6, 12.5, 25, 35])
 		ax.set_xticklabels(['0', '6.25', '12.5', '25', '100'], 
