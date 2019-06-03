@@ -11,6 +11,7 @@ import seaborn as sns
 import datajoint as dj
 from IPython import embed as shell # for debugging
 from scipy.special import erf # for psychometric functions
+import datetime
 
 ## INITIALIZE A FEW THINGS
 sns.set(style="darkgrid", context="paper", font='Arial')
@@ -32,30 +33,68 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 sess = ((acquisition.Session & 'task_protocol LIKE "%trainingchoice%"') * \
  (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"'))
 
+sess = ((acquisition.Session) * \
+ (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"')) * \
+subject.Subject() * subject.SubjectLab() & 'session_lab IS NOT NULL'
+
 # sess = (acquisition.Session * \
 #  (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"'))
 
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
 labs = list(s['session_lab'].unique())
-labs.append('zadorlab')
+labs = list(filter(None, labs)) # remove None lab
+
+# labs.append('zadorlab')
 print(labs)
 
 # hack to get around SQL limit
 for lidx, lab in enumerate(labs):
 
 	print(lab)
-	b = (behavior.TrialSet.Trial & (subject.SubjectLab() & 'lab_name="%s"'%lab)) \
-		* sess.proj('session_uuid','task_protocol') \
-		* subject.SubjectLab.proj('lab_name') \
-		* subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
+	subjects = s[s['session_lab'].str.contains(lab)].reset_index()
 
-	bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
-	print(bdat['subject_nickname'].unique())
+	for midx, mousename in enumerate(subjects['subject_nickname'].unique()):
 
-	if lidx == 0:
-		behav = bdat.copy()
-	else:
-		behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
+
+        # ============================================= #
+        # check whether the subject is trained based the the lastest session
+        # ============================================= #
+
+		subj = subject.Subject & 'subject_nickname="{}"'.format(mousename)
+		last_session = subj.aggr(
+		behavior.TrialSet, session_start_time='max(session_start_time)')
+		training_status = \
+		(behavioral_analyses.SessionTrainingStatus & last_session).fetch1(
+		'training_status')
+
+		if training_status in ['trained', 'ready for ephys']:
+			first_trained_session = subj.aggr(
+			behavioral_analyses.SessionTrainingStatus &
+			'training_status="trained"',
+			first_trained='min(session_start_time)')
+			first_trained_session_time = first_trained_session.fetch1(
+			'first_trained')
+			# convert to timestamp
+			trained_date = pd.DatetimeIndex([first_trained_session_time])[0]
+		else:
+			print('WARNING: THIS MOUSE WAS NOT TRAINED!')
+
+		# restrict to date range
+		first_date = trained_date - datetime.timedelta(days=3)                         
+		trained_date = trained_date + datetime.timedelta(days=1)                         
+
+		b = (behavior.TrialSet.Trial & 'session_start_time between "%s" and "%s"'%(first_date.strftime('%Y-%m-%d'), trained_date.strftime('%Y-%m-%d'))) \
+			* (subject.SubjectLab & 'lab_name="%s"'%lab) \
+			* (subject.Subject & 'subject_nickname="%s"'%mousename)
+
+		bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
+		print(bdat['subject_nickname'].unique())
+
+		# APPEND
+		if not 'behav' in locals():
+			behav = bdat.copy()
+		else:
+			behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
 
 # ================================= #
 # for now, manually add the cortexlab matlab animals
@@ -81,9 +120,37 @@ for lidx, lab in enumerate(labs):
 # convert
 # ================================= #
 
-shell()
+print(behav.describe())
 behav = dj2pandas(behav)
 behav['lab_name'] = behav['lab_name'].str.replace('zadorlab', 'churchlandlab')
+print(behav.describe())
+
+# ================================= #
+# RT ACROSS ALL CONTRASTS, PER LAB
+# ================================= #
+
+median_rt = behav.groupby(['subject_nickname', 'lab_name'])['rt'].median().reset_index()
+fig = sns.swarmplot(x="lab_name", y="rt", data=median_rt)
+fig.set_title('RT median')
+plt.savefig(os.path.join(figpath, "rt_median.pdf"))
+plt.close('all')
+
+mean_rt = behav.groupby(['subject_nickname', 'lab_name'])['rt'].mean().reset_index()
+fig = sns.swarmplot(x="lab_name", y="rt", data=mean_rt)
+fig.set_title('RT mean')
+plt.savefig(os.path.join(figpath, "rt_mean.pdf"))
+plt.close('all')
+
+# RT DISTRIBUTIONS - ONE PANEL PER MOUSE
+fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
+	col="subject_nickname", col_wrap=7, 
+	palette="gist_gray", sharex=False, sharey=False)
+fig.map(sns.distplot, "rt").add_legend()
+# fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
+fig.set_titles("{col_name}")
+fig.despine(trim=True)
+fig.savefig(os.path.join(figpath, "rt_dist_permouse.pdf"))
+plt.close('all')
 
 # ================================= #
 # ONLY BLACK/neutral CURVES!
@@ -185,14 +252,3 @@ for ax, title in zip(fig.axes.flat, titles2):
     ax.set_title(title)
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "chrono_abs.pdf"))
-
-
-# RT ACROSS ALL CONTRASTS, PER LAB
-shell()
-median_rt = behav.groupby(['subj_idx', 'lab_name'])['rt'].median()
-fig = sns.swarmplot(x="lab_name", y="rt", data=median_rt)
-fig.savefig(os.path.join(figpath, "rt_median.pdf"))
-
-mean_rt = behav.groupby(['subj_idx', 'lab_name'])['rt'].mean()
-fig = sns.swarmplot(x="lab_name", y="rt", data=mean_rt)
-fig.savefig(os.path.join(figpath, "rt_mean.pdf"))

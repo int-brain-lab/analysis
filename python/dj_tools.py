@@ -178,9 +178,9 @@ def dj2pandas(behav):
 	behav.loc[behav.choice == 0, 'rt'] = np.nan # don't count RT if there was no response
 	behav.loc[behav.choice == 0, 'trial_feedback_type'] = np.nan # don't count RT if there was no response
 
-	# # indicate, for each session, whether there was an unbiased initial block or not
-	# behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time', 
-	# 	'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
+	# indicate, for each session, whether there was an unbiased initial block or not
+	behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time', 
+		'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
 
 	# # replace cortexlab name for now
 	# # behav['lab_name'] = behav['lab_name'].str.replace('cortexlab', 'Carandini-Harrislab')
