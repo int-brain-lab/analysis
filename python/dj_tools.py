@@ -24,8 +24,24 @@ def fit_psychfunc(df):
         parmin=np.array([choicedat['signed_contrast'].min(), 0., 0., 0.]),
         parmax=np.array([choicedat['signed_contrast'].max(), 100., 1, 1]))
     df2 = {'bias':pars[0],'threshold':pars[1], 'lapselow':pars[2], 'lapsehigh':pars[3]}
+    df2 = pd.DataFrame(df2, index=[0])
 
-    return pd.DataFrame(df2, index=[0])
+    # add some stuff
+    df2['easy_correct']  = df.loc[np.abs(df['signed_contrast'] > 50), 'correct'].mean(skipna=True)
+    df2['zero_contrast'] = df.loc[np.abs(df['signed_contrast'] == 0), 'choice2'].mean(skipna=True)
+    df2['median_rt']	 = df['rt'].median(skipna=True)
+    df2['mean_rt']	     = df['rt'].mean(skipna=True)
+
+    # some stuff per session
+    df['abs_contrast'] = np.abs(df['signed_contrast'])
+    df3 = df.groupby(['session_start_time', 'abs_contrast'])['correct'].mean().reset_index()
+    df2['easy_correct_perday'] = [df3.loc[df3['abs_contrast'] == 100, 'correct'].values]
+
+    # number of trials per day
+    df4 = df.groupby(['session_start_time'])['correct'].count().reset_index()
+    df2['ntrials_perday'] = [df4['correct'].values]
+
+    return df2
 
 def plot_psychometric(x, y, subj, **kwargs):
 
@@ -62,8 +78,8 @@ def plot_psychometric(x, y, subj, **kwargs):
 		marker='o', ci=68, **kwargs)
 	g.set_yticks([0, 0.25, 0.5, 0.75, 1])
 
-	# # ADD TEXT WITH THE PSYCHOMETRIC FUNCTION PARAMETERS
-	# try:
+	# ADD TEXT WITH THE PSYCHOMETRIC FUNCTION PARAMETERS
+	if len(df['subject_nickname'].unique()) == 1:
 	# 	# add text with parameters into the plot
 	# 	if kwargs['label'] == '50':
 	# 		ypos = 0.5
@@ -84,15 +100,16 @@ def plot_psychometric(x, y, subj, **kwargs):
 	# 		fontweight='normal', fontsize=5, color=kwargs['color'])
 	# except: # when there is no label
 	# 	pass
-		# ypos = 0.5
-		# # ADD PSYCHOMETRIC FUNCTION PARAMS
-		# plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]), 
-		# fontweight='normal', fontsize=5, color=kwargs['color'])
-
-	# print the number of mice
-	if df['subject_nickname'].nunique() == 1:
-		plt.text(12, 0.1, '1 mouse', fontsize=10, color='k')
+		ypos = 0.5
+		# ADD PSYCHOMETRIC FUNCTION PARAMS
+		plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]), 
+		fontweight='normal', fontsize=5, color=kwargs['color'])
 	else:
+
+		# # print the number of mice
+		# if df['subject_nickname'].nunique() == 1:
+		# 	plt.text(12, 0.1, '1 mouse', fontsize=10, color='k')
+		# else:
 		plt.text(12, 0.1, '%d mice'%(df['subject_nickname'].nunique()), fontsize=10, color='k')
 
 	#if brokenXaxis:

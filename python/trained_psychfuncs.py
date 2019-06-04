@@ -31,21 +31,13 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # ================================= #
 
 sess = ((acquisition.Session & 'task_protocol LIKE "%trainingchoice%"') * \
- (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"'))
-
-sess = ((acquisition.Session) * \
- (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"')) * \
-subject.Subject() * subject.SubjectLab() & 'session_lab IS NOT NULL'
-
-# sess = (acquisition.Session * \
-#  (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"'))
+ (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"')) \
+ * subject.SubjectLab * subject.Subject
 
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
-labs = list(s['session_lab'].unique())
-labs = list(filter(None, labs)) # remove None lab
-
-# labs.append('zadorlab')
+labs = list(s['lab_name'].unique())
 print(labs)
+# labs = list(filter(None, labs)) # remove None lab
 
 # hack to get around SQL limit
 for lidx, lab in enumerate(labs):
@@ -54,7 +46,6 @@ for lidx, lab in enumerate(labs):
 	subjects = s[s['session_lab'].str.contains(lab)].reset_index()
 
 	for midx, mousename in enumerate(subjects['subject_nickname'].unique()):
-
 
         # ============================================= #
         # check whether the subject is trained based the the lastest session
@@ -79,11 +70,19 @@ for lidx, lab in enumerate(labs):
 		else:
 			print('WARNING: THIS MOUSE WAS NOT TRAINED!')
 
-		# restrict to date range
-		first_date = trained_date - datetime.timedelta(days=3)                         
-		trained_date = trained_date + datetime.timedelta(days=1)                         
+		# now get the sessions that went into this
+		# https://github.com/shenshan/IBL-pipeline/blob/master/ibl_pipeline/analyses/behavior.py#L390
+		sessions = (behavior.TrialSet & subj &
+			(acquisition.Session) &
+			'session_start_time <= "{}"'.format(
+			trained_date.strftime(
+			'%Y-%m-%d %H:%M:%S')
+			)).fetch('KEY')
 
-		b = (behavior.TrialSet.Trial & 'session_start_time between "%s" and "%s"'%(first_date.strftime('%Y-%m-%d'), trained_date.strftime('%Y-%m-%d'))) \
+		# if not more than 3 biased sessions, keep status trained
+		sessions_rel = sessions[-3:]
+
+		b = (behavior.TrialSet.Trial & sessions_rel) \
 			* (subject.SubjectLab & 'lab_name="%s"'%lab) \
 			* (subject.Subject & 'subject_nickname="%s"'%mousename)
 
@@ -96,9 +95,9 @@ for lidx, lab in enumerate(labs):
 		else:
 			behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
 
-# ================================= #
+# ================================================================== #
 # for now, manually add the cortexlab matlab animals
-# ================================= #
+# ================================================================== #
 
 # ucl_mice = ['KS001', 'MW003', 'MW001', 'MW002', 'LEW008', 'LEW009', 'LEW010']
 # ucl_trained_dates = ['2019-02-25', '2018-12-10', '2019-02-11', '2019-01-14', '2018-10-04', '2018-10-04', 'LEW010']
@@ -120,10 +119,36 @@ for lidx, lab in enumerate(labs):
 # convert
 # ================================= #
 
-print(behav.describe())
 behav = dj2pandas(behav)
 behav['lab_name'] = behav['lab_name'].str.replace('zadorlab', 'churchlandlab')
 print(behav.describe())
+
+# ================================= #
+# ONE PANEL PER MOUSE
+# ================================= #
+
+fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
+	col="subject_nickname", col_wrap=7, 
+	palette="gist_gray", sharex=True, sharey=True)
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
+fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
+fig.set_titles("{col_name}")
+fig.despine(trim=True)
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.pdf"))
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.png"), dpi=600)
+plt.close('all')
+
+# ALSO CHRONOMETRIC FUNCTIONS
+sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0})
+fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
+	col="subject_nickname", col_wrap=7, 
+	palette="gist_gray", sharex=True, sharey=True)
+fig.map(plot_chronometric, "signed_contrast", "rt", "subject_nickname").add_legend()
+fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
+fig.set_titles("{col_name}")
+fig.despine(trim=True)
+fig.savefig(os.path.join(figpath, "chrono_permouse_black.pdf"))
+shell()
 
 # ================================= #
 # RT ACROSS ALL CONTRASTS, PER LAB
@@ -195,29 +220,6 @@ fig.add_legend()
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "psychfuncs_summary_permouse.pdf"))
 fig.savefig(os.path.join(figpath, "psychfuncs_summary_permouse.png"), dpi=600)
-
-# ONE PANEL PER MOUSE
-fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
-	col="subject_nickname", col_wrap=7, 
-	palette="gist_gray", sharex=True, sharey=True)
-fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
-fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
-fig.set_titles("{col_name}")
-fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.pdf"))
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.png"), dpi=600)
-plt.close('all')
-
-# ALSO CHRONOMETRIC FUNCTIONS
-sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0})
-fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
-	col="subject_nickname", col_wrap=7, 
-	palette="gist_gray", sharex=True, sharey=True)
-fig.map(plot_chronometric, "signed_contrast", "rt", "subject_nickname").add_legend()
-fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
-fig.set_titles("{col_name}")
-fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "chrono_permouse_black.pdf"))
 
 # ================================= #
 # ALSO CHRONOMETRIC FUNCTIONS
