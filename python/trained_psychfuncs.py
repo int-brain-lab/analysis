@@ -144,8 +144,8 @@ plt.close('all')
 # RT DISTRIBUTIONS - ONE PANEL PER MOUSE
 fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
 	col="subject_nickname", col_wrap=7, 
-	palette="gist_gray", sharex=False, sharey=False, xlim=[-1, 1])
-fig.map(sns.distplot, "rt").add_legend()
+	palette="gist_gray", sharex=False, sharey=False, xlim=[-1, 5])
+fig.map(sns.distplot, "rt", bins=500).add_legend()
 # fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.set_titles("{col_name}")
 #fig.set_xlim([-0.1, 3])
