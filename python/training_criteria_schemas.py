@@ -23,6 +23,7 @@ from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
+from ibl_pipeline.analyses import analysis_utils as utils
 
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
@@ -31,17 +32,6 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # =========================================================
 
 schema = dj.schema('user_anneurai_analyses')
-
-
-@schema
-class CriterionVersion(dj.Lookup):
-definition = """
-criterion_version:   int
----
-threshold_lower_bound:    float
-(define all other specifications here)
-"""
-
 
 @schema
 class TrainingStatus(dj.Lookup):
@@ -55,11 +45,11 @@ class TrainingStatus(dj.Lookup):
 
 
 @schema
-class SessionTrainingStatus_v1(dj.Computed):
+class SessionTrainingStatus(dj.Computed):
     definition = """
     -> behavioral_analyses.PsychResults
     ---
-    -> TrainingStatus
+    -> TrainingStatus_v1
     """
 
     def make(self, key):
@@ -87,9 +77,10 @@ class SessionTrainingStatus_v1(dj.Computed):
 
             sessions_rel = sessions[-3:]
             n_trials = (behavior.TrialSet & sessions_rel).fetch('n_trials')
-            performance_easy = (PsychResults & sessions_rel).fetch(
+            performance_easy = (behavioral_analyses.PsychResults & sessions_rel).fetch(
                 'performance_easy')
-            if np.all(n_trials > 200) and np.all(performance_easy > 0.8):
+
+            if np.all(n_trials > 200) and np.all(performance_easy > 0.9):
                 trials = behavior.TrialSet.Trial & sessions_rel
                 prob_lefts = (dj.U('trial_stim_prob_left') & trials).fetch(
                     'trial_stim_prob_left')
@@ -139,14 +130,14 @@ class SessionTrainingStatus_v1(dj.Computed):
         # < 200 trials or performance of easy trials < 0.8
         sessions_rel = sessions[-3:]
         n_trials = (behavior.TrialSet & sessions_rel).fetch('n_trials')
-        performance_easy = (PsychResults & sessions_rel).fetch(
+        performance_easy = (behavioral_analyses.PsychResults & sessions_rel).fetch(
             'performance_easy')
 
-        if np.all(n_trials > 200) and np.all(performance_easy > 0.8):
+        if np.all(n_trials > 200) and np.all(performance_easy > 0.9):
             # training in progress if the current session does not
             # have low contrasts
             contrasts = np.absolute(
-                (PsychResults & key).fetch1('signed_contrasts'))
+                (behavioral_analyses.PsychResults & key).fetch1('signed_contrasts'))
             if 0 in contrasts and \
                np.sum((contrasts < 0.065) & (contrasts > 0.001)):
                 # compute psych results of last three sessions
@@ -191,11 +182,31 @@ class SessionTrainingStatus_v1(dj.Computed):
         self.insert1(key)
 
 
+    class CumulativePsychResults(dj.Part):
+        definition = """
+        # cumulative psych results from the last three sessions
+        -> master
+        ---
+        cum_performance:            float   # percentage correct in this session
+        cum_performance_easy=null:  float   # percentage correct on easy trials 0.5 and 1
+        cum_signed_contrasts:       blob    # contrasts used in this session, negative when on the left
+        cum_n_trials_stim:          blob    # number of trials for each contrast
+        cum_n_trials_stim_right:    blob    # number of reporting "right" trials for each contrast
+        cum_prob_choose_right:      blob    # probability of choosing right, same size as contrasts
+        cum_threshold:              float
+        cum_bias:                   float
+        cum_lapse_low:              float
+        cum_lapse_high:             float
+        """
+
 # =================
 # populate
 # =================
 
+print('starting to populate')
 SessionTrainingStatus.populate()
+
+
 
 
 
