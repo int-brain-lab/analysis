@@ -49,7 +49,7 @@ class SessionTrainingStatus(dj.Computed):
     definition = """
     -> behavioral_analyses.PsychResults
     ---
-    -> TrainingStatus_v1
+    -> TrainingStatus
     """
 
     def make(self, key):
@@ -80,7 +80,7 @@ class SessionTrainingStatus(dj.Computed):
             performance_easy = (behavioral_analyses.PsychResults & sessions_rel).fetch(
                 'performance_easy')
 
-            if np.all(n_trials > 200) and np.all(performance_easy > 0.9):
+            if np.all(n_trials > 400) and np.all(performance_easy > 0.9):
                 trials = behavior.TrialSet.Trial & sessions_rel
                 prob_lefts = (dj.U('trial_stim_prob_left') & trials).fetch(
                     'trial_stim_prob_left')
@@ -102,11 +102,12 @@ class SessionTrainingStatus(dj.Computed):
                 psych_unbiased = utils.compute_psych_pars(trials_unbiased)
                 psych_80 = utils.compute_psych_pars(trials_80)
                 psych_20 = utils.compute_psych_pars(trials_20)
+                psych_all = utils.compute_psych_pars(trials)
 
-                criterion = np.abs(psych_unbiased['bias']) < 16 and \
-                    psych_unbiased['threshold'] < 19 and \
-                    psych_unbiased['lapse_low'] < 0.2 and \
-                    psych_unbiased['lapse_high'] < 0.2 and \
+                criterion = np.abs(psych_all['bias']) < 10 and \
+                    psych_all['threshold'] < 20 and \
+                    psych_all['lapse_low'] < 0.1 and \
+                    psych_all['lapse_high'] < 0.1 and \
                     psych_20['bias'] - psych_80['bias'] > 5
 
                 if criterion:
@@ -133,7 +134,7 @@ class SessionTrainingStatus(dj.Computed):
         performance_easy = (behavioral_analyses.PsychResults & sessions_rel).fetch(
             'performance_easy')
 
-        if np.all(n_trials > 200) and np.all(performance_easy > 0.9):
+        if np.all(n_trials > 400) and np.all(performance_easy > 0.9):
             # training in progress if the current session does not
             # have low contrasts
             contrasts = np.absolute(
@@ -144,11 +145,13 @@ class SessionTrainingStatus(dj.Computed):
                 trials = behavior.TrialSet.Trial & sessions_rel
                 psych = utils.compute_psych_pars(trials)
                 cum_perform_easy = utils.compute_performance_easy(trials)
+                medRT = np.median(trials.loc[trials.signed_contrasts == 0, 'rt'])
 
-                criterion = np.abs(psych['bias']) < 16 and \
-                    psych['threshold'] < 19 and \
-                    psych['lapse_low'] < 0.2 and \
-                    psych['lapse_high'] < 0.2
+                criterion = np.abs(psych['bias']) < 10 and \
+                    psych['threshold'] < 20 and \
+                    psych['lapse_low'] < 0.1 and \
+                    psych['lapse_high'] < 0.1 and \
+                    medRT < 2
 
                 if criterion:
                     key['training_status'] = 'trained'
@@ -203,11 +206,19 @@ class SessionTrainingStatus(dj.Computed):
 # populate
 # =================
 
-print('starting to populate')
-SessionTrainingStatus.populate()
+SessionTrainingStatus.drop() # remove old definition
 
+SessionTrainingStatus.populate(display_progress=True)
+shell()
 
+# =================
+# now retrieve!
+# =================
 
+import user_anneurai_analyses
+
+sess = acquisition.Session * schema.SessionTrainingStatus() \
+* subject.SubjectLab * subject.Subject
 
 
 
