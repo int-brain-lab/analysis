@@ -31,6 +31,20 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # https://github.com/anne-urai/IBL-pipeline/blob/master/ibl_pipeline/analyses/behavior.py#L195
 # =========================================================
 
+def compute_reaction_time(trials):
+    # median reaction time
+    trials_rt = trials.proj(
+            signed_contrast='trial_stim_contrast_left- \
+                             trial_stim_contrast_right',
+            rt='trial_response_time-trial_stim_on_time')
+
+    rt = trials_rt.fetch(as_dict=True)
+    rt = pd.DataFrame(rt)
+    rt = rt[['signed_contrast', 'rt']]
+    median_rt = rt.groupby('signed_contrast').median().reset_index()
+
+    return median_rt
+
 schema = dj.schema('user_anneurai_analyses')
 print('defining table')
 
@@ -76,7 +90,7 @@ class SessionTrainingStatus(dj.Computed):
                             )).fetch('KEY')
             # if not more than 3 biased sessions, keep status trained
             if len(sessions) < 3:
-                print(key)
+                # print(key)
                 self.insert1(key)
                 return
 
@@ -110,16 +124,16 @@ class SessionTrainingStatus(dj.Computed):
                 psych_20 = utils.compute_psych_pars(trials_20)
                 psych_all = utils.compute_psych_pars(trials)
 
-                criterion = np.abs(psych_all['bias']) < 10 and \
-                    psych_all['threshold'] < 20 and \
-                    psych_all['lapse_low'] < 0.1 and \
-                    psych_all['lapse_high'] < 0.1 and \
+                criterion = psych_80['lapse_low'] < 0.1 and \
+                    psych_80['lapse_high'] < 0.1 and \
+                    psych_20['lapse_low'] < 0.1 and \
+                    psych_20['lapse_high'] < 0.1 and \
                     psych_20['bias'] - psych_80['bias'] > 5
 
                 if criterion:
                     key['training_status'] = 'ready for ephys'
                     # if this mouse is ready for ephys, no need to do the rest
-                    print(key)
+                    # print(key)
                     self.insert1(key)
                     return
 
@@ -156,19 +170,13 @@ class SessionTrainingStatus(dj.Computed):
                 trials = behavior.TrialSet.Trial & sessions_rel
                 psych = utils.compute_psych_pars(trials)
                 cum_perform_easy = utils.compute_performance_easy(trials)
-
-                #TODO: how to know which value is 0 contrast?
-                medRT = utils.compute_reaction_time(trials)
-                signed_contrasts = (behavioral_analyses.PsychResults & key).fetch1('signed_contrasts')
-                shell()
-
-                # medRT = rt[:]
-                # medRT = np.median(trials.loc[trials.signed_contrasts == 0, 'rt'])
+                medRT = compute_reaction_time(trials)
 
                 criterion = np.abs(psych['bias']) < 10 and \
                     psych['threshold'] < 20 and \
                     psych['lapse_low'] < 0.1 and \
-                    psych['lapse_high'] < 0.1
+                    psych['lapse_high'] < 0.1 and \
+                    medRT.loc[medRT['signed_contrast'] == 0, 'rt'] < 2
 
                 if criterion:
                     key['training_status'] = 'trained'
@@ -224,14 +232,14 @@ class SessionTrainingStatus(dj.Computed):
 # populate
 # =================
 
-# print('dropping table')
-# try:
-#     SessionTrainingStatus.drop() # remove old definition
-#     print('table dropped')
-# except:
-#     print('could not drop table')
+print('dropping table')
+try:
+    SessionTrainingStatus.drop() # remove old definition
+    print('table dropped')
+except:
+    print('could not drop table')
 
 print('populating table')
-SessionTrainingStatus.populate(display_progress=True)
+# SessionTrainingStatus.populate(display_progress=True)
 
 
