@@ -37,7 +37,7 @@ sess = behavioral_analyses.SessionTrainingStatus() \
 
 df = pd.DataFrame(sess.fetch(as_dict=True))
 df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
-# remove the erroneous mice
+# remove the erroneous mice that were wrongly trained on biasedChoiceWorld already
 df2 = df2[~df2.training_status.str.contains("wrong session type run")]
 df2 = df2.replace({'over40days': 'untrainable'})
 df2 = df2.sort_values('training_status')

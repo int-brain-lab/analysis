@@ -30,11 +30,11 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # ================================= #
 
 sess = ((acquisition.Session & 'task_protocol LIKE "%trainingchoice%"') * \
- (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"'))
+ (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"')) * \
+ subject.SubjectLab()
 
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
-labs = list(s['session_lab'].unique())
-labs.append('zadorlab')
+labs = list(s['lab_name'].unique())
 print(labs)
 
 # hack to get around SQL limit
@@ -83,7 +83,7 @@ behav['lab_name'] = behav['lab_name'].str.replace('zadorlab', 'churchlandlab')
 
 sns.set_palette("gist_gray")  # palette for water types
 fig = sns.FacetGrid(behav, 
-	col="lab_name", col_order=['cortexlab', 'churchlandlab', 'mainenlab', 'angelakilab', 'danlab', 'wittenlab'], col_wrap=3,
+	col="lab_name", col_order=['carandinilab', 'churchlandlab', 'mainenlab', 'angelakilab', 'danlab', 'wittenlab', 'mrsicflogellab'], col_wrap=4,
 	palette="gist_gray", sharex=True, sharey=True, aspect=1)
 fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname")
 
@@ -97,7 +97,7 @@ fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 # titles2 = ['%s lab'%(str.title(df['lab_name'][:-3])) for i, df in titles.iterrows()]
 # # titles2 = [t.replace('Churchland lab', 'Churchland & Zador labs') for t in titles2]
 # titles2 = [t.replace('Cortex lab', 'Carandini-Harris lab') for t in titles2]
-titles2 = ['Carandini-Harris lab', 'Churchland & Zador labs', 'Mainen lab', 'Angelaki lab', 'Dan lab', 'Witten lab']
+titles2 = ['Carandini-Harris lab', 'Churchland & Zador labs', 'Mainen lab', 'Angelaki lab', 'Dan lab', 'Witten lab', 'Mrsic-Flogel lab']
 
 for ax, title in zip(fig.axes.flat, titles2):
     ax.set_title(title)
@@ -114,10 +114,9 @@ plt.close('all')
 # GRAB ALL DATA FROM DATAJOINT
 # ================================= #
 
-sess = (acquisition.Session & 'task_protocol LIKE "%biased%"')
+sess = (acquisition.Session & 'task_protocol LIKE "%biased%"') * subject.SubjectLab()
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
-labs = list(s['session_lab'].unique())
-labs.append('zadorlab')
+labs = list(s['lab_name'].unique())
 print(labs)
 
 # hack to get around SQL limit
@@ -148,14 +147,12 @@ behav['lab_name'] = behav['lab_name'].str.replace('zadorlab', 'churchlandlab')
 cmap = sns.diverging_palette(220, 20, n=len(behav['probabilityLeft'].unique()), center="dark")
 behav['prob_left_flip'] = 100 - behav.probabilityLeft
 fig = sns.FacetGrid(behav[behav.init_unbiased == True], hue="prob_left_flip",
-	col="lab_name", col_wrap=3, col_order=['cortexlab', 'churchlandlab', 'mainenlab', 'angelakilab', 'danlab', 'wittenlab'],
+	col="lab_name", col_wrap=3, col_order=['carandinilab', 'churchlandlab', 'mainenlab', 'angelakilab', 'danlab', 'wittenlab', 'mrsicflogellab'],
 	palette=cmap, sharex=True, sharey=True, aspect=1)
 fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.despine(trim=True)
 fig._legend.set_title('P(Right) (%)')
-titles2 = ['Carandini-Harris lab', 'Churchland & Zador labs', 'Mainen lab', 'Angelaki lab', 'Dan lab', 'Witten lab']
-
 for ax, title in zip(fig.axes.flat, titles2):
     ax.set_title(title)
 fig.savefig(os.path.join(figpath, "psychfuncs_biased_blocks_summary.pdf"))
@@ -197,19 +194,22 @@ biasshift = biasshift.reset_index()
 biasshift = biasshift.rename(columns={0: 'bias_shift'})
 
 print(biasshift.describe())
-biasshift = biasshift[biasshift['subject_nickname'].str.contains("DY_002")==False]
+#biasshift = biasshift[biasshift['subject_nickname'].str.contains("DY_002")==False]
+biasshift = biasshift[biasshift['lab_name'].str.contains("mrsicflogellab")==False]
 
 # make an overview plot of all bias shifts, one line for each subject
 plt.close("all")
-fig, ax = plt.subplots(figsize=(2,3))
+fig, ax = plt.subplots(figsize=(2,4))
 # sns.swarmplot(x="lab_name", y="bias_shift", hue="lab_name", data=biasshift, ax=ax, zorder=0)
-sns.pointplot(x=biasshift.lab_name, y=100 * biasshift.bias_shift, legend=False, join=False, ax=ax, color='k')
-ax.set_ylim([50, 75])
+sns.pointplot(x=biasshift.lab_name, y=100 * biasshift.bias_shift, 
+	legend=False, join=False, ax=ax, color='k', ci=95)
+ax.set_ylim([50, 80])
 ax.set_xlabel('')
 ax.set_ylabel('P(match) (%)')
-ax.set_xticklabels(titles2, rotation=90)
+ax.set_xticklabels(sorted(['Carandini-Harris lab', 'Churchland & Zador labs', 
+	'Mainen lab', 'Angelaki lab', 'Dan lab', 'Witten lab']), rotation=90)
 fig.tight_layout()
-fig.savefig(os.path.join(figpath, "pmatch_stats.pdf"))
-fig.savefig(os.path.join(figpath, "pmatch_stats.png"), dpi=600)
+fig.savefig(os.path.join(figpath, "pmatch_stats_CI95.pdf"))
+# fig.savefig(os.path.join(figpath, "pmatch_stats.png"), dpi=600)
 print(biasshift['bias_shift'].mean())
 

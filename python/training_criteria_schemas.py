@@ -31,7 +31,6 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # https://github.com/anne-urai/IBL-pipeline/blob/master/ibl_pipeline/analyses/behavior.py#L195
 # =========================================================
 
-
 schema = dj.schema('user_anneurai_analyses')
 print('defining table')
 
@@ -59,9 +58,12 @@ class SessionTrainingStatus(dj.Computed):
         subject_key = key.copy()
         subject_key.pop('session_start_time')
 
+        # =========================================================
         # if the protocol for the current session is a biased session,
         # set the status to be "trained" and check up the criteria for
         # "read for ephys"
+        # =========================================================
+
         task_protocol = (acquisition.Session & key).fetch1('task_protocol')
         if task_protocol and 'biased' in task_protocol:
             key['training_status'] = 'trained'
@@ -74,6 +76,7 @@ class SessionTrainingStatus(dj.Computed):
                             )).fetch('KEY')
             # if not more than 3 biased sessions, keep status trained
             if len(sessions) < 3:
+                print(key)
                 self.insert1(key)
                 return
 
@@ -89,6 +92,7 @@ class SessionTrainingStatus(dj.Computed):
 
                 # if no 0.5 of prob_left, keep trained
                 if np.all(np.absolute(prob_lefts - 0.5) > 0.001):
+                    print(key)
                     self.insert1(key)
                     return
 
@@ -114,11 +118,15 @@ class SessionTrainingStatus(dj.Computed):
 
                 if criterion:
                     key['training_status'] = 'ready for ephys'
+                    # if this mouse is ready for ephys, no need to do the rest
+                    print(key)
+                    self.insert1(key)
+                    return
 
-            self.insert1(key)
-            return
-
+        # =========================================================
         # if the current session is not a biased session
+        # =========================================================
+
         key['training_status'] = 'training in progress'
         # training in progress if the animals was trained in < 3 sessions
         sessions = (behavior.TrialSet & subject_key &
@@ -126,6 +134,7 @@ class SessionTrainingStatus(dj.Computed):
                         key['session_start_time'].strftime('%Y-%m-%d %H:%M:%S')
                         )).fetch('KEY')
         if len(sessions) < 3:
+            # print(key)
             self.insert1(key)
             return
 
@@ -149,11 +158,10 @@ class SessionTrainingStatus(dj.Computed):
                 cum_perform_easy = utils.compute_performance_easy(trials)
 
                 #TODO: how to know which value is 0 contrast?
-                # medRT = utils.compute_reaction_time(trials)
+                medRT = utils.compute_reaction_time(trials)
+                signed_contrasts = (behavioral_analyses.PsychResults & key).fetch1('signed_contrasts')
+                shell()
 
-                # rt = pd.DataFrame((trials).fetch('trial_response_time', 'trial_stim_on_time', \
-                #     'trial_stim_contrast_left', 'trial_stim_contrast_right', as_dict=True))
-                    
                 # medRT = rt[:]
                 # medRT = np.median(trials.loc[trials.signed_contrasts == 0, 'rt'])
 
@@ -191,6 +199,7 @@ class SessionTrainingStatus(dj.Computed):
         if len(sessions) >= 40:
             key['training_status'] = 'untrainable'
 
+        print(key)
         self.insert1(key)
 
 
@@ -223,6 +232,6 @@ class SessionTrainingStatus(dj.Computed):
 #     print('could not drop table')
 
 print('populating table')
-SessionTrainingStatus.populate(display_progress=True, limit=5)
+SessionTrainingStatus.populate(display_progress=True)
 
 

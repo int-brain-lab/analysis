@@ -75,7 +75,7 @@ def plot_psychometric(x, y, subj, **kwargs):
 
 	# plot datapoints with errorbars on top
 	g = sns.lineplot(df3['signed_contrast'], df3['choice'], err_style="bars", linewidth=0, linestyle='None', mew=0.5,
-		marker='o', ci=95, **kwargs)
+		marker='o', ci=68, **kwargs)
 	g.set_yticks([0, 0.25, 0.5, 0.75, 1])
 
 	# ADD TEXT WITH THE PSYCHOMETRIC FUNCTION PARAMETERS
@@ -100,11 +100,12 @@ def plot_psychometric(x, y, subj, **kwargs):
 	# 		fontweight='normal', fontsize=5, color=kwargs['color'])
 	# except: # when there is no label
 	# 	pass
-		ypos = 0.5
-		# ADD PSYCHOMETRIC FUNCTION PARAMS
-		plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]), 
-		fontweight='normal', fontsize=5, color=kwargs['color'])
-		
+		# ypos = 0.5
+		# # ADD PSYCHOMETRIC FUNCTION PARAMS
+		# plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]), 
+		# fontweight='normal', fontsize=5, color=kwargs['color'])
+		plt.text(12, 0.1, '1 mouse', fontsize=10, color='k')
+
 	else:
 
 		# # print the number of mice
@@ -201,6 +202,6 @@ def dj2pandas(behav):
 		'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
 
 	# # replace cortexlab name for now
-	# # behav['lab_name'] = behav['lab_name'].str.replace('cortexlab', 'Carandini-Harrislab')
+	behav['lab_name'] = behav['lab_name'].str.replace('cortexlab', 'carandinilab')
 
 	return behav
