@@ -38,29 +38,61 @@ sess = behavioral_analyses.SessionTrainingStatus() \
 df = pd.DataFrame(sess.fetch(as_dict=True))
 df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
 # remove the erroneous mice that were wrongly trained on biasedChoiceWorld already
-df2 = df2[~df2.training_status.str.contains("wrong session type run")]
+# df2 = df2[~df2.training_status.str.contains("wrong session type run")]
 df2 = df2.replace({'over40days': 'untrainable'})
 df2 = df2.sort_values('training_status')
 print(df2)
 
 # QUICK PIE PLOT
-plt.pie(df2['subject_uuid'], labels=df2['training_status'], autopct='%1.2f%%')
-plt.suptitle('Total n = %d'%df2['subject_uuid'].sum())
-plt.savefig(os.path.join(figpath, "training_success_original.pdf"))
-plt.close('all')
+fig, ax = plt.subplots(2, 2, figsize=(13,13))
+# ax[0,0].pie(df2['subject_uuid'], labels=df2['training_status'], autopct='%1.2f%%')
+# ax[0,0].set_title('Original criteria, n = %d'%df2['subject_uuid'].sum())
 
 # ================================= #
-# 2. now do the same for my newly defined table
+# v0
 # ================================= #
 
-sess = criteria_urai.SessionTrainingStatus() \
+sess = criteria_urai.SessionTrainingStatus_v0() \
  * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
 df = pd.DataFrame(sess.fetch(as_dict=True))
 df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
 df2 = df2.sort_values('training_status')
 print(df2)
 
-plt.pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
-plt.suptitle('Total n = %d'%df2['subject_uuid'].sum())
-plt.savefig(os.path.join(figpath, "training_success_urai.pdf"))
+ax[0,0].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
+ax[0,0].set_title('Original criteria, n = %d'%df2['subject_uuid'].sum())
+ax[0,1].set_visible(False)
+
+# ================================= #
+# v1
+# ================================= #
+
+sess = criteria_urai.SessionTrainingStatus_v1() \
+ * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
+df = pd.DataFrame(sess.fetch(as_dict=True))
+df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
+df2 = df2.sort_values('training_status')
+print(df2)
+
+ax[1,0].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
+ax[1,0].set_title('Pouget criteria, n = %d'%df2['subject_uuid'].sum())
+
+# ================================= #
+# v2
+# ================================= #
+
+sess = criteria_urai.SessionTrainingStatus_v2() \
+ * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
+df = pd.DataFrame(sess.fetch(as_dict=True))
+df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
+df2 = df2.sort_values('training_status')
+print(df2)
+
+ax[1,1].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
+ax[1,1].set_title('Churchland criteria, n = %d'%df2['subject_uuid'].sum())
+
+# ================================= #
+
+fig.savefig(os.path.join(figpath, "training_success_urai.pdf"))
+fig.savefig(os.path.join(figpath, "training_success_urai.png"), dpi=600)
 plt.close('all')
