@@ -31,7 +31,7 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # GRAB ALL DATA FROM DATAJOINT
 # ================================= #
 
-criterion = criteria_urai.SessionTrainingStatus_v1()
+criterion = criteria_urai.SessionTrainingStatus_v0()
 sess = ((acquisition.Session) * \
  (criterion & 'training_status="trained"')) \
  * subject.SubjectLab * subject.Subject
@@ -132,14 +132,14 @@ print(behav.describe())
 # ONE PANEL PER MOUSE
 # ================================= #
 
-fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
+fig = sns.FacetGrid(behav, 
 	col="subject_nickname", col_wrap=7, 
 	palette="gist_gray", sharex=True, sharey=True)
-fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname", color='k').add_legend()
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black_v2.pdf"))
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black_v0.pdf"))
 
 shell()
 
@@ -148,7 +148,7 @@ plt.close('all')
 
 # ALSO CHRONOMETRIC FUNCTIONS
 sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0})
-fig = sns.FacetGrid(behav[behav.init_unbiased == True], 
+fig = sns.FacetGrid(behav, 
 	col="subject_nickname", col_wrap=7, 
 	palette="gist_gray", sharex=True, sharey=True)
 fig.map(plot_chronometric, "signed_contrast", "rt", "subject_nickname").add_legend()
