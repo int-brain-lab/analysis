@@ -340,14 +340,14 @@ class SessionTrainingStatus_v1(dj.Computed):
                     self.insert1(key)
                     return
 
-        # if the current session is not a biased session
-        key['training_status'] = 'training in progress'
-
         # if has reached 'trained' before, mark the current session 'trained as well'
         if len(status) and np.any(status == 'trained'):
             key['training_status'] = 'trained'
             self.insert1(key)
             return
+
+        # if the current session is not a biased session
+        key['training_status'] = 'training in progress'
 
         # training in progress if the animals was trained in < 3 sessions
         sessions = (behavior.TrialSet & subject_key &

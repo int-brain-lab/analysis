@@ -23,6 +23,7 @@ from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
+import training_criteria_schemas as criteria_urai 
 
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
@@ -30,8 +31,9 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # GRAB ALL DATA FROM DATAJOINT
 # ================================= #
 
-sess = ((acquisition.Session & 'task_protocol LIKE "%trainingchoice%"') * \
- (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"')) \
+criterion = criteria_urai.SessionTrainingStatus_v1()
+sess = ((acquisition.Session) * \
+ (criterion & 'training_status="trained"')) \
  * subject.SubjectLab * subject.Subject
 
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
@@ -43,7 +45,7 @@ print(labs)
 for lidx, lab in enumerate(labs):
 
 	print(lab)
-	subjects = s[s['session_lab'].str.contains(lab)].reset_index()
+	subjects = s[s['lab_name'].str.contains(lab)].reset_index()
 
 	for midx, mousename in enumerate(subjects['subject_nickname'].unique()):
 
@@ -55,12 +57,12 @@ for lidx, lab in enumerate(labs):
 		last_session = subj.aggr(
 		behavior.TrialSet, session_start_time='max(session_start_time)')
 		training_status = \
-		(behavioral_analyses.SessionTrainingStatus & last_session).fetch1(
+		(criterion & last_session).fetch1(
 		'training_status')
 
 		if training_status in ['trained', 'ready for ephys']:
 			first_trained_session = subj.aggr(
-			behavioral_analyses.SessionTrainingStatus &
+			criterion &
 			'training_status="trained"',
 			first_trained='min(session_start_time)')
 			first_trained_session_time = first_trained_session.fetch1(
@@ -69,6 +71,7 @@ for lidx, lab in enumerate(labs):
 			trained_date = pd.DatetimeIndex([first_trained_session_time])[0]
 		else:
 			print('WARNING: THIS MOUSE WAS NOT TRAINED!')
+			continue
 
 		# now get the sessions that went into this
 		# https://github.com/shenshan/IBL-pipeline/blob/master/ibl_pipeline/analyses/behavior.py#L390
@@ -88,6 +91,8 @@ for lidx, lab in enumerate(labs):
 
 		bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 		print(bdat['subject_nickname'].unique())
+		print(trained_date)
+		print(bdat['session_start_time'].unique())
 
 		# APPEND
 		if not 'behav' in locals():
@@ -134,7 +139,10 @@ fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname"
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.pdf"))
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black_v2.pdf"))
+
+shell()
+
 fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.png"), dpi=600)
 plt.close('all')
 

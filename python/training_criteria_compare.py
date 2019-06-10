@@ -94,5 +94,5 @@ ax[1,1].set_title('Churchland criteria, n = %d'%df2['subject_uuid'].sum())
 # ================================= #
 
 fig.savefig(os.path.join(figpath, "training_success_urai.pdf"))
-fig.savefig(os.path.join(figpath, "training_success_urai.png"), dpi=600)
+fig.savefig(os.path.join(figpath, "training_success_urai.png"), dpi=300)
 plt.close('all')
