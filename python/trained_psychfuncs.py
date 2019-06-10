@@ -139,11 +139,9 @@ fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname"
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black_v0.pdf"))
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black_original.pdf"))
 
-shell()
-
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.png"), dpi=600)
+#fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.png"), dpi=600)
 plt.close('all')
 
 # ALSO CHRONOMETRIC FUNCTIONS
@@ -155,7 +153,7 @@ fig.map(plot_chronometric, "signed_contrast", "rt", "subject_nickname").add_lege
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "chrono_permouse_black.pdf"))
+fig.savefig(os.path.join(figpath, "chrono_permouse_black_original.pdf"))
 shell()
 
 # ================================= #
