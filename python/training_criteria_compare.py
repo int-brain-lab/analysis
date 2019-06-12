@@ -44,7 +44,7 @@ df2 = df2.sort_values('training_status')
 print(df2)
 
 # QUICK PIE PLOT
-fig, ax = plt.subplots(2, 2, figsize=(13,13))
+fig, ax = plt.subplots(1, 2, figsize=(13,13))
 # ax[0,0].pie(df2['subject_uuid'], labels=df2['training_status'], autopct='%1.2f%%')
 # ax[0,0].set_title('Original criteria, n = %d'%df2['subject_uuid'].sum())
 
@@ -59,9 +59,8 @@ df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
 df2 = df2.sort_values('training_status')
 print(df2)
 
-ax[0,0].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
-ax[0,0].set_title('Original criteria, n = %d'%df2['subject_uuid'].sum())
-ax[0,1].set_visible(False)
+ax[0].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
+ax[0].set_title('Original criteria (v0), n = %d'%df2['subject_uuid'].sum())
 
 # ================================= #
 # v1
@@ -74,25 +73,25 @@ df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
 df2 = df2.sort_values('training_status')
 print(df2)
 
-ax[1,0].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
-ax[1,0].set_title('Pouget criteria, n = %d'%df2['subject_uuid'].sum())
+ax[1].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
+ax[1].set_title('Alternative criteria (v1), n = %d'%df2['subject_uuid'].sum())
 
 # ================================= #
 # v2
 # ================================= #
 
-sess = criteria_urai.SessionTrainingStatus_v2() \
- * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
-df = pd.DataFrame(sess.fetch(as_dict=True))
-df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
-df2 = df2.sort_values('training_status')
-print(df2)
+# sess = criteria_urai.SessionTrainingStatus_v2() \
+#  * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
+# df = pd.DataFrame(sess.fetch(as_dict=True))
+# df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
+# df2 = df2.sort_values('training_status')
+# print(df2)
 
-ax[1,1].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
-ax[1,1].set_title('Churchland criteria, n = %d'%df2['subject_uuid'].sum())
+# ax[1,1].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
+# ax[1,1].set_title('Compromise criteria (v2), n = %d'%df2['subject_uuid'].sum())
 
 # ================================= #
 
-fig.savefig(os.path.join(figpath, "training_success_urai.pdf"))
-fig.savefig(os.path.join(figpath, "training_success_urai.png"), dpi=300)
+fig.savefig(os.path.join(figpath, "training_success.pdf"))
+fig.savefig(os.path.join(figpath, "training_success.png"), dpi=300)
 plt.close('all')

@@ -22,6 +22,7 @@ from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
+import training_criteria_schemas as criteria_urai 
 
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
@@ -29,32 +30,112 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # GRAB ALL DATA FROM DATAJOINT
 # ================================= #
 
-sess = (acquisition.Session & 'task_protocol LIKE "%biased%"')
+use_subjects = subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
+criterion = criteria_urai.SessionTrainingStatus_v1()
+sess = ((acquisition.Session & 'task_protocol LIKE "%biased%"') * \
+ (criterion & 'training_status="ready for ephys"')) \
+ * subject.SubjectLab * use_subjects
+
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
-labs = list(s['session_lab'].unique())
-labs.append('zadorlab')
+labs = list(s['lab_name'].unique())
 print(labs)
 
 # hack to get around SQL limit
 for lidx, lab in enumerate(labs):
 
 	print(lab)
-	b = (behavior.TrialSet.Trial & (subject.SubjectLab() & 'lab_name="%s"'%lab)) \
-		* sess.proj('session_uuid','task_protocol') \
-		* subject.SubjectLab.proj('lab_name') \
-		* subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
-		# * subject.Subject() & 'subject_line IS NULL OR subject_line="C57BL/6J"'
+	subjects = s[s['lab_name'].str.contains(lab)].reset_index()
 
-	bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
-	print(bdat['subject_nickname'].unique())
+	for midx, mousename in enumerate(subjects['subject_nickname'].unique()):
 
-	if lidx == 0:
-		behav = bdat.copy()
-	else:
-		behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
+        # ============================================= #
+        # check whether the subject is trained based the the lastest session
+        # ============================================= #
+
+		subj = subject.Subject & 'subject_nickname="{}"'.format(mousename)
+		last_session = subj.aggr(
+		behavior.TrialSet, session_start_time='max(session_start_time)')
+		training_status = \
+		(criterion & last_session).fetch1(
+		'training_status')
+
+		if training_status in ['ready for ephys']:
+			first_trained_session = subj.aggr(
+			criterion &
+			'training_status="ready for ephys"',
+			first_trained='min(session_start_time)')
+			first_trained_session_time = first_trained_session.fetch1(
+			'first_trained')
+			# convert to timestamp
+			trained_date = pd.DatetimeIndex([first_trained_session_time])[0]
+		else:
+			print('WARNING: THIS MOUSE WAS NOT TRAINED!')
+			continue
+
+		# now get the sessions that went into this
+		# https://github.com/shenshan/IBL-pipeline/blob/master/ibl_pipeline/analyses/behavior.py#L390
+		sessions = (behavior.TrialSet & subj &
+			(acquisition.Session) &
+			'session_start_time <= "{}"'.format(
+			trained_date.strftime(
+			'%Y-%m-%d %H:%M:%S')
+			)).fetch('KEY')
+
+		# if not more than 3 biased sessions, keep status trained
+		sessions_rel = sessions[-3:]
+
+		b = (behavior.TrialSet.Trial & sessions_rel) \
+			* (subject.SubjectLab & 'lab_name="%s"'%lab) \
+			* (subject.Subject & 'subject_nickname="%s"'%mousename)
+
+		bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
+		print(bdat['subject_nickname'].unique())
+		print(trained_date)
+		print(bdat['session_start_time'].unique())
+
+		# APPEND
+		if not 'behav' in locals():
+			behav = bdat.copy()
+		else:
+			behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
+
+# # hack to get around SQL limit
+# for lidx, lab in enumerate(labs):
+
+# 	print(lab)
+# 	b = (behavior.TrialSet.Trial & (subject.SubjectLab() & 'lab_name="%s"'%lab)) \
+# 		* sess.proj('session_uuid','task_protocol') \
+# 		* subject.SubjectLab.proj('lab_name') \
+# 		* subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
+# 		# * subject.Subject() & 'subject_line IS NULL OR subject_line="C57BL/6J"'
+
+# 	bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
+# 	print(bdat['subject_nickname'].unique())
+
+# 	if lidx == 0:
+# 		behav = bdat.copy()
+# 	else:
+# 		behav = behav.append(bdat.copy(), sort=False, ignore_index=True)
 
 behav = dj2pandas(behav)
 behav['lab_name'] = behav['lab_name'].str.replace('zadorlab', 'churchlandlab')
+
+# ================================= #
+# QUICK OVERVIEW
+# ================================= #
+
+cmap = sns.diverging_palette(220, 20, n=len(behav['probabilityLeft'].unique()), center="dark")
+fig = sns.FacetGrid(behav[behav.init_unbiased == True], hue="probabilityLeft",
+	col="subject_nickname", col_wrap=6, 
+	palette=cmap, sharex=True, sharey=True)
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
+fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
+fig.despine(trim=True)
+fig._legend.set_title('P(Right) (%)')
+fig.set_titles("{col_name}")
+fig.savefig(os.path.join(figpath, "psychfuncs_biased_blocks_permouse.pdf"))
+fig.savefig(os.path.join(figpath, "biased_blocks_alternative.png"), dpi=200)
+shell()
 
 # ================================= #
 # choice history
@@ -163,16 +244,6 @@ fig.savefig(os.path.join(figpath, "psychfuncs_biased_blocks_summary.pdf"))
 fig.savefig(os.path.join(figpath, "biased_blocks_summary.png"), dpi=600)
 
 
-fig = sns.FacetGrid(behav[behav.init_unbiased == True], hue="probabilityLeft",
-	col="subject_nickname", col_wrap=6, 
-	palette=cmap, sharex=True, sharey=True)
-fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
-fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
-fig.despine(trim=True)
-fig._legend.set_title('P(Right) (%)')
-fig.set_titles("{col_name}")
-fig.savefig(os.path.join(figpath, "psychfuncs_biased_blocks_permouse.pdf"))
-fig.savefig(os.path.join(figpath, "biased_blocks_permouse.png"), dpi=600)
 
 # LEAVE OUT THE 50/50 BLOCKS
 fig = sns.FacetGrid(behav[behav.probabilityLeft != 50], hue="probabilityLeft",

@@ -31,10 +31,11 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # GRAB ALL DATA FROM DATAJOINT
 # ================================= #
 
+use_subjects = subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
 criterion = criteria_urai.SessionTrainingStatus_v0()
 sess = ((acquisition.Session) * \
  (criterion & 'training_status="trained"')) \
- * subject.SubjectLab * subject.Subject
+ * subject.SubjectLab * use_subjects
 
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
 labs = list(s['lab_name'].unique())
@@ -133,27 +134,28 @@ print(behav.describe())
 # ================================= #
 
 fig = sns.FacetGrid(behav, 
-	col="subject_nickname", col_wrap=7, 
+	col="subject_nickname", col_wrap=6, 
 	palette="gist_gray", sharex=True, sharey=True)
 fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname", color='k').add_legend()
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black_original.pdf"))
-
-#fig.savefig(os.path.join(figpath, "psychfuncs_permouse_black.png"), dpi=600)
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_original.pdf"))
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_original.png"), dpi=100)
 plt.close('all')
 
 # ALSO CHRONOMETRIC FUNCTIONS
 sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0})
 fig = sns.FacetGrid(behav, 
-	col="subject_nickname", col_wrap=7, 
+	col="subject_nickname", col_wrap=6, 
 	palette="gist_gray", sharex=True, sharey=True)
 fig.map(plot_chronometric, "signed_contrast", "rt", "subject_nickname").add_legend()
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "chrono_permouse_black_original.pdf"))
+fig.savefig(os.path.join(figpath, "chrono_permouse_original.pdf"))
+fig.savefig(os.path.join(figpath, "chrono_permouse_original.png"), dpi=100)
+
 shell()
 
 # ================================= #

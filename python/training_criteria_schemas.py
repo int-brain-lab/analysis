@@ -350,7 +350,7 @@ class SessionTrainingStatus_v1(dj.Computed):
         # check if it is now
         # ================================================
 
-        # key['training_status'] = 'training in progress'
+        key['training_status'] = 'training in progress'
 
         # training in progress if the animals was trained in < 3 sessions
         sessions = (behavior.TrialSet & subject_key &
@@ -641,7 +641,9 @@ class SessionTrainingStatus_v2(dj.Computed):
 # shell()
 
 # SessionTrainingStatus_v2.drop() # remove old definition
-# SessionTrainingStatus_v2.populate(display_progress=True)
+SessionTrainingStatus_v2.populate(display_progress=True)
+SessionTrainingStatus_v0.populate(display_progress=True)
+SessionTrainingStatus_v1.populate(display_progress=True)
 
 # SessionTrainingStatus_v1.drop() # remove old definition
 # SessionTrainingStatus_v2.drop() # remove old definition
