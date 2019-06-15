@@ -33,6 +33,7 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
 use_subjects = subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
 criterion = criteria_urai.SessionTrainingStatus_v0()
+criterion = behavioral_analyses.SessionTrainingStatus()
 sess = ((acquisition.Session) * \
  (criterion & 'training_status="trained"')) \
  * subject.SubjectLab * use_subjects
@@ -140,8 +141,8 @@ fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname"
 fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_original.pdf"))
-fig.savefig(os.path.join(figpath, "psychfuncs_permouse_original.png"), dpi=100)
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_dj.pdf"))
+fig.savefig(os.path.join(figpath, "psychfuncs_permouse_dj.png"), dpi=100)
 plt.close('all')
 
 # ALSO CHRONOMETRIC FUNCTIONS
@@ -153,8 +154,8 @@ fig.map(plot_chronometric, "signed_contrast", "rt", "subject_nickname").add_lege
 fig.set_axis_labels('Signed contrast (%)', 'RT (s)')
 fig.set_titles("{col_name}")
 fig.despine(trim=True)
-fig.savefig(os.path.join(figpath, "chrono_permouse_original.pdf"))
-fig.savefig(os.path.join(figpath, "chrono_permouse_original.png"), dpi=100)
+fig.savefig(os.path.join(figpath, "chrono_permouse_dj.pdf"))
+fig.savefig(os.path.join(figpath, "chrono_permouse_dj.png"), dpi=100)
 
 shell()
 
