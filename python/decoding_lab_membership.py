@@ -45,14 +45,16 @@ def decoding(resp, labels, clf, num_splits):
 
 # Query list of subjects
 all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
-subjects = pd.DataFrame(all_sub)
+subjects = all_sub.fetch('subject_nickname')
+labs = all_sub.fetch('lab_name')
         
-learning = pd.DataFrame(columns=['mouse','lab','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
-for i, nickname in enumerate(subjects['subject_nickname']):
-    print('Processing subject %s'%nickname)
+learning = pd.DataFrame(columns=['mouse','lab','time_zone','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
+for i, nickname in enumerate(subjects):
+    if np.mod(i,10) == 0 and i != 0: 
+        print('Loading data of subject %d of %d'%(i,len(subjects)))
     
     # Gather behavioral data for subject
-    subj = subject.Subject & 'subject_nickname="%s"'%nickname
+    subj = subject.Subject * subject.SubjectLab & 'subject_nickname="%s"'%nickname
     behav = pd.DataFrame((behavior_analysis.BehavioralSummaryByDate * subject.Subject * subject.SubjectLab &
        'subject_nickname="%s"'%nickname).proj('session_date', 'performance_easy').fetch(as_dict=True, order_by='session_date'))
     rt = pd.DataFrame(((behavior_analysis.BehavioralSummaryByDate.ReactionTimeByDate * subject.Subject * subject.SubjectLab &
@@ -61,8 +63,8 @@ for i, nickname in enumerate(subjects['subject_nickname']):
        'subject_nickname="%s"'%nickname)).proj('session_date', 'n_trials_stim','threshold','bias','lapse_low','lapse_high').fetch(as_dict=True, order_by='session_date'))
     
     # Find first session in which mouse is trained
-    first_trained_session = subj.aggr(behavior_analysis.SessionTrainingStatus &	'training_status="trained"', first_trained='DATE(min(session_start_time))')
-    untrainable_session = subj.aggr(behavior_analysis.SessionTrainingStatus & 'training_status="untrainable"', first_trained='DATE(min(session_start_time))')
+    first_trained_session = subj.aggr(behavior_analysis.SessionTrainingStatus &	'training_status="trained"', first_trained='min(session_start_time)')
+    untrainable_session = subj.aggr(behavior_analysis.SessionTrainingStatus & 'training_status="untrainable"', first_trained='min(session_start_time)')
     if len(first_trained_session) == 0 & len(untrainable_session) == 0:
         learning.loc[i,'learned'] = 'in training'
         learning.loc[i,'training_time'] = len(behav)
@@ -70,25 +72,36 @@ for i, nickname in enumerate(subjects['subject_nickname']):
         learning.loc[i,'learned'] = 'untrainable'
         learning.loc[i,'training_time'] = len(behav)
     else:
-        first_trained_session_time = first_trained_session.fetch1('first_trained')    
+        first_trained_session_datetime = first_trained_session.fetch1('first_trained')    
+        first_trained_session_date = first_trained_session_datetime.date()
         learning.loc[i,'learned'] = 'trained'
-        learning.loc[i,'date_learned'] = first_trained_session_time
-        learning.loc[i,'training_time'] = sum(behav.session_date < first_trained_session_time)
-        learning.loc[i,'perf_easy'] = float(behav.performance_easy[behav.session_date == first_trained_session_time])*100
+        learning.loc[i,'date_learned'] = first_trained_session_date
+        learning.loc[i,'training_time'] = sum(behav.session_date < first_trained_session_date)
+        learning.loc[i,'perf_easy'] = float(behav.performance_easy[behav.session_date == first_trained_session_date])*100
         psych['n_trials'] = n_trials = [sum(s) for s in psych.n_trials_stim]
-        learning.loc[i,'n_trials'] = float(psych.n_trials[psych.session_date == first_trained_session_time])
-        learning.loc[i,'threshold'] = float(psych.threshold[psych.session_date == first_trained_session_time])
-        learning.loc[i,'bias'] = float(psych.bias[psych.session_date == first_trained_session_time])
-        learning.loc[i,'lapse_low'] = float(psych.lapse_low[psych.session_date == first_trained_session_time])
-        learning.loc[i,'lapse_high'] = float(psych.lapse_high[psych.session_date == first_trained_session_time])
-        if sum(rt.session_date == first_trained_session_time) == 0:
-            learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[np.argmin(np.array(abs(rt.session_date - first_trained_session_time)))])*1000
+        learning.loc[i,'n_trials'] = float(psych.n_trials[psych.session_date == first_trained_session_date])
+        learning.loc[i,'threshold'] = float(psych.threshold[psych.session_date == first_trained_session_date])
+        learning.loc[i,'bias'] = float(psych.bias[psych.session_date == first_trained_session_date])
+        learning.loc[i,'lapse_low'] = float(psych.lapse_low[psych.session_date == first_trained_session_date])
+        learning.loc[i,'lapse_high'] = float(psych.lapse_high[psych.session_date == first_trained_session_date])
+        if sum(rt.session_date == first_trained_session_date) == 0:
+            learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[np.argmin(np.array(abs(rt.session_date - first_trained_session_date)))])*1000
         else:
-            learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[rt.session_date == first_trained_session_time])*1000
+            learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[rt.session_date == first_trained_session_date])*1000
         
-    # Add mouse info to dataframe
+    # Add mouse and lab info to dataframe
     learning.loc[i,'mouse'] = nickname
-    learning.iloc[i]['lab'] = subjects.iloc[i]['lab_name']
+    lab_name = subj.fetch1('lab_name')
+    learning.loc[i,'lab'] = lab_name
+    lab_time = reference.Lab * reference.LabLocation & 'lab_name="%s"'%lab_name
+    time_zone = lab_time.fetch('time_zone')[0]
+    if time_zone == ('Europe/Lisbon' or 'Europe/London'):
+        time_zone_number = 0
+    elif time_zone == 'America/New_York':
+        time_zone_number = -5
+    elif time_zone == 'America/Los_Angeles':
+        time_zone_number = -7
+    learning.loc[i,'time_zone'] = time_zone_number
     
 # Select mice that learned
 learned = learning[learning['learned'] == 'trained'] 
@@ -97,7 +110,7 @@ learned = learning[learning['learned'] == 'trained']
 learned.loc[learned['lab'] == 'zadorlab','lab'] = 'churchlandlab'
 learned.loc[learned['lab'] == 'mrsicflogellab','lab'] = 'cortexlab'
 
-
+# Add (n = x) to lab names
 for i in learned.index.values:
     learned.loc[i,'lab_n'] = learned.loc[i,'lab'] + ' (n=' + str(sum(learned['lab'] == learned.loc[i,'lab'])) + ')'
 
@@ -114,6 +127,8 @@ bayes = []
 logres = []
 decoding_set = decod[decoding_metrics].values
 for i in range(decod_it):
+    if np.mod(i,500) == 0 and i != 0:
+        print('Iteration %d of %d'%(i,decod_it))
     random_forest.append(decoding(decoding_set, list(decod['lab']), clf_rf, num_splits))
     bayes.append(decoding(decoding_set, list(decod['lab']), clf_nb, num_splits))
     logres.append(decoding(decoding_set, list(decod['lab']), clf_lr, num_splits))
@@ -123,6 +138,8 @@ shuf_rf = []
 shuf_nb = []
 shuf_lr = []
 for i in range(shuffle_it):
+    if np.mod(i,500) == 0 and i != 0:
+        print('Iteration %d of %d of shuffled dataset'%(i,shuffle_it))
     shuf_rf.append(decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_rf, num_splits))
     shuf_nb.append(decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_nb, num_splits))
     shuf_lr.append(decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_lr, num_splits))
