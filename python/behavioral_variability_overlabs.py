@@ -23,6 +23,7 @@ path = '/home/guido/Figures/Behavior/'
 
 # Query list of subjects
 all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
+#all_sub = subject.Subject * subject.SubjectLab & 'subject_nickname = "ZM_1742"'
 subjects = pd.DataFrame(all_sub)
         
 learning = pd.DataFrame(columns=['mouse','lab','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
@@ -41,6 +42,7 @@ for i, nickname in enumerate(subjects['subject_nickname']):
     # Find first session in which mouse is trained
     first_trained_session = subj.aggr(behavior_analysis.SessionTrainingStatus &	'training_status="trained"', first_trained='DATE(min(session_start_time))')
     untrainable_session = subj.aggr(behavior_analysis.SessionTrainingStatus & 'training_status="untrainable"', first_trained='DATE(min(session_start_time))')
+    ephys_session = subj.aggr(behavior_analysis.SessionTrainingStatus & 'training_status="ready for ephys"', first_trained='DATE(min(session_start_time))')
     if len(first_trained_session) == 0 & len(untrainable_session) == 0:
         learning.loc[i,'learned'] = 'in training'
         learning.loc[i,'training_time'] = len(behav)
@@ -63,13 +65,19 @@ for i, nickname in enumerate(subjects['subject_nickname']):
             learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[np.argmin(np.array(abs(rt.session_date - first_trained_session_time)))])*1000
         else:
             learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[rt.session_date == first_trained_session_time])*1000
+    if len(ephys_session) > 0:
+        first_ephys_session_time = ephys_session.fetch1('first_trained')  
+        learning.loc[i,'learned'] = 'ephys'
+        learning.loc[i,'date_ephys'] = first_ephys_session_time
+        learning.loc[i,'days_trained_ephys'] = sum((behav.session_date > first_trained_session_time) & (behav.session_date < first_ephys_session_time))
         
     # Add mouse info to dataframe
     learning.loc[i,'mouse'] = nickname
     learning.iloc[i]['lab'] = subjects.iloc[i]['lab_name']
     
 # Select mice that learned
-learned = learning[learning['learned'] == 'trained'] 
+learned = learning[learning['learned'] == 'trained']
+learned = learned.append(learning[learning['learned'] == 'ephys'])
 
 # Merge some labs
 learned.loc[learned['lab'] == 'zadorlab','lab'] = 'churchlandlab'
@@ -104,24 +112,7 @@ use_palette = all_color + use_palette
 sns.set_palette(use_palette)
 sns.set(style='darkgrid', context='paper', font_scale=1.3, font='DejaVu Sans')
 
-# Plot decoding results
-plt.figure()
-fig = plt.gcf()
-ax1 = plt.gca()
-#ax1.plot([-1,5],[0,0],'--',color=[0.5,0.5,0.5])
-ax1.plot([-1,5],[0,0],'r--')
-sns.violinplot(data=decod_result, color=use_palette[1])
-ax1.set_ylabel('Decoding performance over chance level\n(F1 score)')
-ax1.set_title('Decoding of lab membership')
-ax1.set_ylim([-0.2, 0.3])
-for item in ax1.get_xticklabels():
-    item.set_rotation(60)
-    
-plt.tight_layout(pad = 2)
-fig.set_size_inches((5, 6), forward=False) 
-plt.savefig(join(path,'decoding_lab_membership.pdf'), dpi=300)
-plt.savefig(join(path,'decoding_lab_membership.png'), dpi=300)
-
+# Plot metrics over all mice
 f, ((ax1, ax2, ax3), (ax4, ax5, ax6)) = plt.subplots(2, 3, figsize=(12,8))
 sns.boxplot(y=learned.perf_easy, ax=ax1, color=use_palette[1], width=0.5)
 ax1.set(ylabel='Perf. at easy contrasts (%)', xlabel='', ylim=[80, 101], yticks=[80,85,90,95,100])

@@ -50,8 +50,8 @@ labs = all_sub.fetch('lab_name')
         
 learning = pd.DataFrame(columns=['mouse','lab','time_zone','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
 for i, nickname in enumerate(subjects):
-    if np.mod(i,10) == 0 and i != 0: 
-        print('Loading data of subject %d of %d'%(i,len(subjects)))
+    if np.mod(i+1,10) == 0: 
+        print('Loading data of subject %d of %d'%(i+1,len(subjects)))
     
     # Gather behavioral data for subject
     subj = subject.Subject * subject.SubjectLab & 'subject_nickname="%s"'%nickname
@@ -107,6 +107,7 @@ for i, nickname in enumerate(subjects):
 learned = learning[learning['learned'] == 'trained'] 
 
 # Merge some labs
+pd.options.mode.chained_assignment = None  # deactivate warning
 learned.loc[learned['lab'] == 'zadorlab','lab'] = 'churchlandlab'
 learned.loc[learned['lab'] == 'mrsicflogellab','lab'] = 'cortexlab'
 
@@ -127,8 +128,8 @@ bayes = []
 logres = []
 decoding_set = decod[decoding_metrics].values
 for i in range(decod_it):
-    if np.mod(i,500) == 0 and i != 0:
-        print('Iteration %d of %d'%(i,decod_it))
+    if np.mod(i+1,500) == 0:
+        print('Iteration %d of %d'%(i+1,decod_it))
     random_forest.append(decoding(decoding_set, list(decod['lab']), clf_rf, num_splits))
     bayes.append(decoding(decoding_set, list(decod['lab']), clf_nb, num_splits))
     logres.append(decoding(decoding_set, list(decod['lab']), clf_lr, num_splits))
@@ -138,12 +139,13 @@ shuf_rf = []
 shuf_nb = []
 shuf_lr = []
 for i in range(shuffle_it):
-    if np.mod(i,500) == 0 and i != 0:
-        print('Iteration %d of %d of shuffled dataset'%(i,shuffle_it))
+    if np.mod(i+1,500) == 0:
+        print('Iteration %d of %d of shuffled dataset'%(i+1,shuffle_it))
     shuf_rf.append(decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_rf, num_splits))
     shuf_nb.append(decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_nb, num_splits))
     shuf_lr.append(decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_lr, num_splits))
    
+# Calculate if any decoders perform above chance (positive values in perc indicate above chance-level performance)
 perc = [np.percentile(logres-np.mean(shuf_lr),5), np.percentile(bayes-np.mean(shuf_nb),5), np.percentile(random_forest-np.mean(shuf_rf),5)]
 
 # Put results in dataframe
@@ -153,12 +155,11 @@ decod_result['Bayesian'] = bayes-np.mean(shuf_nb)
 decod_result['Random\nforest'] = random_forest-np.mean(shuf_rf)
 
 # Plot decoding results
-plt.figure()
+plt.figure(figsize=(5,5))
 fig = plt.gcf()
 ax1 = plt.gca()
-#ax1.plot([-1,5],[0,0],'--',color=[0.5,0.5,0.5])
 ax1.plot([-1,5],[0,0],'r--')
-sns.violinplot(data=decod_result)
+sns.violinplot(data=decod_result, color=[0.6,0.6,0.6])
 ax1.set_ylabel('Decoding performance over chance level\n(F1 score)')
 ax1.set_title('Decoding of lab membership')
 ax1.set_ylim([-0.2, 0.3])
@@ -166,7 +167,7 @@ for item in ax1.get_xticklabels():
     item.set_rotation(60)
     
 plt.tight_layout(pad = 2)
-fig.set_size_inches((5, 6), forward=False) 
+fig.set_size_inches((5, 5), forward=False) 
 plt.savefig(join(path,'decoding_lab_membership.pdf'), dpi=300)
 plt.savefig(join(path,'decoding_lab_membership.png'), dpi=300)
 
