@@ -50,7 +50,7 @@ def compute_reaction_time(trials):
 
     return median_rt
 
-schema = dj.schema('user_anneurai_analyses')
+schema = dj.schema('group_shared_anneurai_analyses')
 print('defining table')
 
 @schema
@@ -641,7 +641,7 @@ class SessionTrainingStatus_v2(dj.Computed):
 # shell()
 
 # SessionTrainingStatus_v2.drop() # remove old definition
-SessionTrainingStatus_v2.populate(display_progress=True)
+#SessionTrainingStatus_v2.populate(display_progress=True)
 SessionTrainingStatus_v0.populate(display_progress=True)
 SessionTrainingStatus_v1.populate(display_progress=True)
 
