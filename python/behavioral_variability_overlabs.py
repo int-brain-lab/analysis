@@ -23,12 +23,15 @@ path = '/home/guido/Figures/Behavior/'
 
 # Query list of subjects
 all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
-#all_sub = subject.Subject * subject.SubjectLab & 'subject_nickname = "ZM_1742"'
+subjects = all_sub.fetch('subject_nickname')
+labs = all_sub.fetch('lab_name')
+
 subjects = pd.DataFrame(all_sub)
         
 learning = pd.DataFrame(columns=['mouse','lab','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
-for i, nickname in enumerate(subjects['subject_nickname']):
-    print('Processing subject %s'%nickname)
+for i, nickname in enumerate(subjects):
+    if np.mod(i+1,10) == 0: 
+        print('Loading data of subject %d of %d'%(i+1,len(subjects)))
     
     # Gather behavioral data for subject
     subj = subject.Subject & 'subject_nickname="%s"'%nickname

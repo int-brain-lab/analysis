@@ -46,7 +46,6 @@ def decoding(resp, labels, clf, num_splits):
 # Query list of subjects
 all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
 subjects = all_sub.fetch('subject_nickname')
-labs = all_sub.fetch('lab_name')
         
 learning = pd.DataFrame(columns=['mouse','lab','time_zone','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
 for i, nickname in enumerate(subjects):
