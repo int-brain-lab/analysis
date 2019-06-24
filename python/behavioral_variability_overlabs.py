@@ -24,9 +24,6 @@ path = '/home/guido/Figures/Behavior/'
 # Query list of subjects
 all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
 subjects = all_sub.fetch('subject_nickname')
-labs = all_sub.fetch('lab_name')
-
-subjects = pd.DataFrame(all_sub)
         
 learning = pd.DataFrame(columns=['mouse','lab','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
 for i, nickname in enumerate(subjects):
@@ -34,7 +31,7 @@ for i, nickname in enumerate(subjects):
         print('Loading data of subject %d of %d'%(i+1,len(subjects)))
     
     # Gather behavioral data for subject
-    subj = subject.Subject & 'subject_nickname="%s"'%nickname
+    subj = subject.Subject * subject.SubjectLab & 'subject_nickname="%s"'%nickname
     behav = pd.DataFrame((behavior_analysis.BehavioralSummaryByDate * subject.Subject * subject.SubjectLab &
        'subject_nickname="%s"'%nickname).proj('session_date', 'performance_easy').fetch(as_dict=True, order_by='session_date'))
     rt = pd.DataFrame(((behavior_analysis.BehavioralSummaryByDate.ReactionTimeByDate * subject.Subject * subject.SubjectLab &
@@ -76,7 +73,7 @@ for i, nickname in enumerate(subjects):
         
     # Add mouse info to dataframe
     learning.loc[i,'mouse'] = nickname
-    learning.iloc[i]['lab'] = subjects.iloc[i]['lab_name']
+    learning.loc[i,'lab'] = subj.fetch1('lab_name')
     
 # Select mice that learned
 learned = learning[learning['learned'] == 'trained']
@@ -146,58 +143,34 @@ f, ((ax1, ax2, ax3), (ax4, ax5, ax6)) = plt.subplots(2, 3, figsize=(13,10), shar
 sns.set_palette(use_palette)
   
 sns.boxplot(x='perf_easy', y='lab_n', data=learned_2, ax=ax1)
-ax1.set_title('Performance at easy contrasts (%)')
-ax1.set_xlim([80, 101])
+ax1.set(title='Performance at easy contrasts (%)', xlim=[80,101], ylabel='', xlabel='')
 ax1.xaxis.tick_top()
-ax1.set_ylabel('')
-ax1.set_xlabel('')
-for item in ax1.get_yticklabels():
-    item.set_rotation(40)
+plt.setp(ax1.yaxis.get_majorticklabels(), rotation=40)
 
 sns.boxplot(x='training_time', y='lab_n', data=learned_2, ax=ax2)
-ax2.set_title('Time to reach trained criterion (sessions)')
+ax2.set(title='Time to reach trained criterion (sessions)', xlim=[0,60], ylabel='', xlabel='')
 ax2.xaxis.tick_top()
-ax2.set_xlim([0, 60])
-ax2.set_ylabel('')
-ax2.set_xlabel('')
-for item in ax2.get_yticklabels():
-    item.set_rotation(40)
+plt.setp(ax2.yaxis.get_majorticklabels(), rotation=40)
     
 sns.boxplot(x='n_trials', y='lab_n', data=learned_2, ax=ax3)
-ax3.set_title('Number of trials')
-ax3.set_xlim([0, 1600])
+ax3.set(title='Number of trials', xlim=[0,1600], ylabel='', xlabel='')
 ax3.xaxis.tick_top()
-ax3.set_ylabel('')  
-ax3.set_xlabel('') 
-for item in ax3.get_yticklabels():
-    item.set_rotation(40)
+plt.setp(ax3.yaxis.get_majorticklabels(), rotation=40)
 
 sns.boxplot(x='threshold', y='lab_n', data=learned_2, ax=ax4)
-ax4.set_title('Visual threshold (% contrast)')
-ax4.set_xlim([0, 40])
+ax4.set(title='Visual threshold (% contrast)', xlim=[0,40], ylabel='', xlabel='')
 ax4.xaxis.tick_top()
-ax4.set_ylabel('')
-ax4.set_xlabel('')
-for item in ax4.get_yticklabels():
-    item.set_rotation(40)
+plt.setp(ax4.yaxis.get_majorticklabels(), rotation=40)
 
 sns.boxplot(x='bias', y='lab_n', data=learned_2, ax=ax5)
-ax5.set_title('Bias (% contrast)')
+ax5.set(title='Bias (% contrast)', xlim=[-30,30], ylabel='', xlabel='')
 ax5.xaxis.tick_top()
-ax5.set_xlim([-30, 30])
-ax5.set_ylabel('')  
-ax5.set_xlabel('')  
-for item in ax5.get_yticklabels():
-    item.set_rotation(40)
+plt.setp(ax5.yaxis.get_majorticklabels(), rotation=40)
 
 sns.boxplot(x='reaction_time', y='lab_n', data=learned_2, ax=ax6)
-ax6.set_title('Reaction time (ms)')
+ax6.set(title='Reaction time (ms)', xlim=[0,1000], ylabel='', xlabel='')
 ax6.xaxis.tick_top()
-ax6.set_xlim([0, 1000])
-ax6.set_ylabel('')  
-ax6.set_xlabel('')  
-for item in ax6.get_yticklabels():
-    item.set_rotation(40)
+plt.setp(ax5.yaxis.get_majorticklabels(), rotation=40)
 
 plt.tight_layout(pad = 3)
 fig = plt.gcf()
