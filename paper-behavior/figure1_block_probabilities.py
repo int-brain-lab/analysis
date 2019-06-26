@@ -1,5 +1,6 @@
 """
 SCHEMATIC OF BLOCK STRUCTURE
+Anne Urai, CSHL, 2019
 """
 
 import pandas as pd
