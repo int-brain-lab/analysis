@@ -30,15 +30,15 @@ behav = pd.DataFrame({'signed_contrasts':xvec, 'choice':psy.erf_psycho_2gammas([
 
 behav2 = pd.DataFrame({'signed_contrasts':xvec,	'choice':psy.erf_psycho_2gammas([10,30,0,0], xvec),
                        'prob':np.full_like(xvec, 80)})
-behav2 = behav2.append(pd.DataFrame({'signed_contrasts':xvec,	'choice':psy.erf_psycho_2gammas([-10,30,0,0], xvec),
+behav2 = behav2.append(pd.DataFrame({'signed_contrasts':xvec, 'choice':psy.erf_psycho_2gammas([-10,30,0,0], xvec),
                        'prob':np.full_like(xvec, 20)}))
 
 fig, ax = plt.subplots(1,2, figsize=(4,2), sharex=True, sharey=True)
-sns.lineplot(data=behav, x=behav.signed_contrasts, y=100*behav.choice, ax=ax[0], color='k')
+sns.lineplot(data=behav, x=behav.signed_contrasts, y=100*behav.choice, ax=ax[0], color='k', linewidth=2)
 
 # same in a different panel, for biased blocks
 sns.lineplot(x=behav2.signed_contrasts, y=100*behav2.choice, hue=behav2.prob,
-             legend=False, ax=ax[1], palette=cmap)
+             legend=False, ax=ax[1], palette=cmap, linewidth=2)
 
 # ax[1].annotate('Stimulus prior: 80% right', xy=(-10, 70), xytext=(-50, 100),
 #                horizontalalignment='center', verticalalignment='top', fontsize=7,
