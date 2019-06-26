@@ -16,13 +16,14 @@ from scipy.special import erf # for psychometric functions
 sns.set(style="darkgrid", context="paper", font='Helvetica')
 sns.set(style="darkgrid", context="paper", font_scale=1.4)
 sns.set_style("darkgrid", {'xtick.bottom': True,'ytick.left': True, 'lines.markeredgewidth':0})
+sns.set(style="ticks", context="paper", font_scale=1.4)
 
 # import wrappers etc
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
-import training_criteria_schemas as criteria_urai 
+# import training_criteria_schemas as criteria_urai 
 
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
@@ -31,7 +32,8 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # ================================= #
 
 use_subjects = subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
-criterion = criteria_urai.SessionTrainingStatus_v1()
+# criterion = criteria_urai.SessionTrainingStatus_v1()
+criterion = behavioral_analyses.SessionTrainingStatus()
 sess = ((acquisition.Session & 'task_protocol LIKE "%biased%"') * \
  (criterion & 'training_status="ready for ephys"')) \
  * subject.SubjectLab * use_subjects
@@ -192,21 +194,22 @@ plt.close("all")
 # EXAMPLE STIMULUS SEQUENCE
 # ================================= #
 
-# cmap = sns.diverging_palette(20, 220, n=len(behav['probabilityLeft'].unique()), center="dark")
-# behav['probability_left_block'] = (behav.probabilityLeft - 50) * 2
-# behav['stimulus_side'] = np.sign(behav.signed_contrast)
-# behav.loc[behav.stimulus_side == 0, 'stimulus_side'] = np.nan
+shell()
+cmap = sns.diverging_palette(20, 220, n=len(behav['probabilityLeft'].unique()), center="dark")
+behav['probability_left_block'] = (behav.probabilityLeft - 50) * 2
+behav['stimulus_side'] = np.sign(behav.signed_contrast)
+behav.loc[behav.stimulus_side == 0, 'stimulus_side'] = np.nan
 
-# fig = sns.FacetGrid(behav, 
-# 	col="probabilityLeft", hue="probabilityLeft", col_wrap=3, col_order=[50, 20, 80],
-# 	palette=cmap, sharex=True, sharey=True, aspect=0.6, height=2.2)
-# fig.map(sns.distplot, "stimulus_side", kde=False, norm_hist=True, bins=2, hist_kws={'rwidth':1})
-# fig.set_axis_labels(' ', 'Probability')
-# fig.set(xticks=[-1,1], xticklabels=['L', 'R'], xlim=[-1.5,1.5], ylim=[0,1], yticks=[0,0.5, 1])
-# for ax, title in zip(fig.axes.flat, ['P(Right) = 50%', 'P(Right) = 80%', 'P(Right) = 20%']):
-#     ax.set_title(title)
-# fig.savefig(os.path.join(figpath, "block_distribution.png"), dpi=600)
-# fig.savefig(os.path.join(figpath, "block_distribution.pdf"))
+fig = sns.FacetGrid(behav, 
+	col="probabilityLeft", hue="probabilityLeft", col_wrap=3, col_order=[50, 20, 80],
+	palette=cmap, sharex=True, sharey=True, aspect=0.6, height=2.2)
+fig.map(sns.distplot, "stimulus_side", kde=False, norm_hist=True, bins=2, hist_kws={'rwidth':1})
+fig.set_axis_labels(' ', 'Probability')
+fig.set(xticks=[-1,1], xticklabels=['L', 'R'], xlim=[-1.5,1.5], ylim=[0,1], yticks=[0,0.5, 1])
+for ax, title in zip(fig.axes.flat, ['P(Right) = 50%', 'P(Right) = 80%', 'P(Right) = 20%']):
+    ax.set_title(title)
+fig.savefig(os.path.join(figpath, "block_distribution.png"), dpi=600)
+fig.savefig(os.path.join(figpath, "block_distribution.pdf"))
 
 # cmap = sns.diverging_palette(20, 220, n=len(behav['probabilityLeft'].unique()), center="dark")
 # dat = behav[behav.subject_nickname.str.contains('ibl_witten_06') & 
