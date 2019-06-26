@@ -40,6 +40,7 @@ sess = ((acquisition.Session & 'task_protocol LIKE "%biased%"') * \
 
 s = pd.DataFrame.from_dict(sess.fetch(as_dict=True))
 labs = list(s['lab_name'].unique())
+labs = ['zadorlab']
 print(labs)
 
 # hack to get around SQL limit
