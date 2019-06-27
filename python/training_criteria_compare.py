@@ -23,7 +23,7 @@ from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
-import training_criteria_schemas as criteria_urai 
+import group_shared_anneurai_analyses as new_criteria
 
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
