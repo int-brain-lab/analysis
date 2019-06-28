@@ -18,7 +18,7 @@ from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 
 sys.path.insert(0, '/Users/urai/Documents/code/analysis_IBL/python')
-from dj_tools import *
+from fit_learning_curves import *
 
 ## INITIALIZE A FEW THINGS
 sns.set(style="ticks", context="paper", font_scale=1.2)

@@ -30,6 +30,8 @@ sns.set_palette("gist_gray")  # palette for water types
 # GET DATA FROM TRAINED ANIMALS
 # ================================= #
 
+#TODO: add a criterion for each mouse's project (only IBL-wide mice)
+
 use_subjects = (subject.Subject() & 'subject_birth_date > "2018-09-01"' \
 			   & 'subject_line IS NULL OR subject_line="C57BL/6J"') * subject.SubjectLab()
 criterion = behavioral_analyses.SessionTrainingStatus()
