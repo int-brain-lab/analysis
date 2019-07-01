@@ -26,8 +26,8 @@ from sklearn.metrics import f1_score
 
 # Settings
 path = '/home/guido/Figures/Behavior/'
-iterations = 5     # how often to decode
-num_splits = 3      # n in n-fold cross validation
+iterations = 2000     # how often to decode
+num_splits = 3        # n in n-fold cross validation
 decoding_metrics = ['perf_easy','n_trials','threshold','bias','reaction_time','training_time']
 decoding_metrics_control = ['perf_easy','n_trials','threshold','bias','reaction_time','training_time','time_zone']
 
