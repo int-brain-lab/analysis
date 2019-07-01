@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import sys, os, time
 import matplotlib.pyplot as plt
-import seaborn as sns
+from figure_style import seaborn_style
 import datajoint as dj
 from IPython import embed as shell # for debugging
 from scipy.special import erf # for psychometric functions

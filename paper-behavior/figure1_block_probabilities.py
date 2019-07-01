@@ -8,12 +8,13 @@ import numpy as np
 import sys, os, time
 import matplotlib.pyplot as plt
 import seaborn as sns
+from figure_style import seaborn_style
 import datajoint as dj
 from IPython import embed as shell # for debugging
 from scipy.special import erf # for psychometric functions
 
 ## INITIALIZE A FEW THINGS
-sns.set(style="ticks", context="paper", font_scale=1.1)
+seaborn_style()
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 cmap = sns.diverging_palette(20, 220, n=3, center="dark")
 

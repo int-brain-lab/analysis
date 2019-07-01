@@ -14,6 +14,7 @@ import numpy as np
 from scipy import stats
 from os.path import join
 import seaborn as sns
+from figure_style import seaborn_style
 import datajoint as dj
 from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
@@ -120,60 +121,39 @@ for i in learned.index.values:
 print('\nDecoding of lab membership..')
 decod = learned
 clf_rf = RandomForestClassifier(n_estimators=100)
-clf_nb = GaussianNB()
-clf_lr = LogisticRegression(solver='liblinear', multi_class='auto', max_iter=500)
 
 # Perform decoding of lab membership
-decoding_result = pd.DataFrame(columns=['random_forest','naive_bayes','log_res','rf_shuf','nb_shuf','lr_shuf'])
-decoding_control = pd.DataFrame(columns=['random_forest','naive_bayes','log_res','rf_shuf','nb_shuf','lr_shuf'])
+decoding_result = pd.DataFrame(columns=['original','original_shuffled','control','control_shuffled'])
 decoding_set = decod[decoding_metrics].values
 control_set = decod[decoding_metrics_control].values
 for i in range(iterations):
     if np.mod(i+1,100) == 0:
         print('Iteration %d of %d'%(i+1,iterations))        
     # Original dataset
-    decoding_result.loc[i,'random_forest'] = decoding(decoding_set, list(decod['lab']), clf_rf, num_splits)
-    decoding_result.loc[i,'naive_bayes'] = decoding(decoding_set, list(decod['lab']), clf_nb, num_splits)
-    decoding_result.loc[i,'log_res'] = decoding(decoding_set, list(decod['lab']), clf_lr, num_splits)
-    # Shuffled dataset
-    decoding_result.loc[i,'rf_shuf'] = decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_rf, num_splits)
-    decoding_result.loc[i,'nb_shuf'] = decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_nb, num_splits)
-    decoding_result.loc[i,'lr_shuf'] = decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_lr, num_splits)
+    decoding_result.loc[i,'original'] = decoding(decoding_set, list(decod['lab']), clf_rf, num_splits)
+    decoding_result.loc[i,'original_shuffled'] = decoding(decoding_set, list(decod['lab'].sample(frac=1)), clf_rf, num_splits)
     # Positive control dataset
-    decoding_control.loc[i,'random_forest'] = decoding(control_set, list(decod['lab']), clf_rf, num_splits)
-    decoding_control.loc[i,'naive_bayes'] = decoding(control_set, list(decod['lab']), clf_nb, num_splits)
-    decoding_control.loc[i,'log_res'] = decoding(control_set, list(decod['lab']), clf_lr, num_splits)
-    # Positive control
-    decoding_control.loc[i,'rf_shuf'] = decoding(control_set, list(decod['lab'].sample(frac=1)), clf_rf, num_splits)
-    decoding_control.loc[i,'nb_shuf'] = decoding(control_set, list(decod['lab'].sample(frac=1)), clf_nb, num_splits)
-    decoding_control.loc[i,'lr_shuf'] = decoding(control_set, list(decod['lab'].sample(frac=1)), clf_lr, num_splits)
+    decoding_result.loc[i,'control'] = decoding(control_set, list(decod['lab']), clf_rf, num_splits)
+    decoding_result.loc[i,'control_shuffled'] = decoding(control_set, list(decod['lab'].sample(frac=1)), clf_rf, num_splits)
    
 
-# Calculate if any decoders perform above chance (positive values in perc indicate above chance-level performance)
-#perc = [np.percentile(logres-np.mean(shuf_lr),5), np.percentile(bayes-np.mean(shuf_nb),5), np.percentile(random_forest-np.mean(shuf_rf),5)]
+# Calculate if decoder performs above chance (positive values in perc indicate above chance-level performance)
+sig = np.percentile(decoding_result['original']-np.mean(decoding_result['original_shuffled']),5)
+sig_control = np.percentile(decoding_result['control']-np.mean(decoding_result['control_shuffled']),5)
 
 # Plot decoding results
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,5))
-
-sns.violinplot(data=pd.concat([decoding_result['random_forest']-decoding_result['rf_shuf'], 
-                               decoding_result['naive_bayes']-decoding_result['nb_shuf'],
-                               decoding_result['log_res']-decoding_result['lr_shuf']], axis=1), color=[0.6,0.6,0.6], ax=ax1)
-ax1.plot([-1,3],[0,0],'r--')
-ax1.set(ylabel='Decoding performance over chance level\n(F1 score)', title='Decoding of lab membership', 
-        xticklabels=['Random\nForest','Naive\nBayes','Logistic\nRegression'], ylim=[-0.2, 0.5])
-plt.setp(ax1.xaxis.get_majorticklabels(), rotation=40)
-
-sns.violinplot(data=pd.concat([decoding_control['random_forest']-decoding_control['rf_shuf'], 
-                               decoding_control['naive_bayes']-decoding_control['nb_shuf'],
-                               decoding_control['log_res']-decoding_control['lr_shuf']], axis=1), color=[0.6,0.6,0.6], ax=ax2)
-ax2.plot([-1,3],[0,0],'r--')
-ax2.set(ylabel='Decoding performance over chance level\n(F1 score)', title='Decoding of lab membership including time zone', 
-        xticklabels=['Random\nForest','Naive\nBayes','Logistic\nRegression'], ylim=[-0.2, 0.5])
-plt.setp(ax2.xaxis.get_majorticklabels(), rotation=40)
-
+seaborn_style()
+plt.figure(figsize=(5,5))
+fig = plt.gcf()
+ax1 = plt.gca()
+sns.violinplot(data=pd.concat([decoding_result['original']-decoding_result['original_shuffled'], 
+                               decoding_result['control']-decoding_result['control_shuffled']], axis=1), color=[0.6,0.6,0.6], ax=ax1)
+ax1.plot([-1,5],[0,0],'r--')
+ax1.set(ylabel='Decoding performance over chance level\n(F1 score)', title='Random forest classifier', 
+        ylim=[-0.2,0.5], xticklabels=['Decoding of\nlab membership', 'Including\ntime zone'])
+plt.setp(ax1.xaxis.get_majorticklabels(), rotation=60)
 plt.tight_layout(pad = 2)
 fig.set_size_inches((5, 5), forward=False) 
-plt.savefig(join(path,'decoding_lab_membership.pdf'), dpi=300)
-plt.savefig(join(path,'decoding_lab_membership.png'), dpi=300)
+plt.savefig(join(path,'figure6_panel_decoding.pdf'), dpi=300)
 
 
