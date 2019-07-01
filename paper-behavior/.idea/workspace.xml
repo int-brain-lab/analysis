@@ -1,18 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/paper-behavior.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/figure3_learningcurves_perlab.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../python/fit_learning_curves.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/figure4_psychfuncs_biased_perlab.py" beforeDir="false" afterPath="$PROJECT_DIR$/figure4_psychfuncs_biased_perlab.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/figure4_psychfuncs_perlab.py" beforeDir="false" afterPath="$PROJECT_DIR$/figure4_psychfuncs_perlab.py" afterDir="false" />
-    </list>
+    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -36,8 +25,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/figure3_learningcurves_perlab.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="221">
-              <caret line="68" column="53" selection-start-line="68" selection-start-column="53" selection-end-line="68" selection-end-column="53" />
+            <state relative-caret-position="203">
+              <caret line="67" column="65" lean-forward="true" selection-start-line="67" selection-start-column="65" selection-end-line="67" selection-end-column="65" />
               <folding>
                 <element signature="e#73#92#0" expanded="true" />
               </folding>
@@ -170,7 +159,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1680" height="1050" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.16214587" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -296,8 +284,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/figure3_learningcurves_perlab.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="221">
-          <caret line="68" column="53" selection-start-line="68" selection-start-column="53" selection-end-line="68" selection-end-column="53" />
+        <state relative-caret-position="203">
+          <caret line="67" column="65" lean-forward="true" selection-start-line="67" selection-start-column="65" selection-end-line="67" selection-end-column="65" />
           <folding>
             <element signature="e#73#92#0" expanded="true" />
           </folding>
