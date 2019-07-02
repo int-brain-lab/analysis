@@ -1,2 +1,4 @@
 python/define_paths.py
 dj_local_conf.json
+
+paper-behavior/__pycache__/
