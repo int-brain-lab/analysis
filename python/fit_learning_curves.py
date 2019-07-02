@@ -36,14 +36,10 @@ def fit_learningcurve(df):
         norm_x = (fit_x - min(fit_x)) / max(fit_x - min(fit_x)) # normalize learning to the asymptote
         delay  = vec_x[np.argmin(np.abs(norm_x - 0.2))] # how long to reach 20% of performance?
         rise   = vec_x[np.argmin(np.abs(norm_x - 0.8))] - delay # after delay, how long to reach 80% of performance?
-
-        df2 = pd.DataFrame(
-            {'delay': delay, 'rise': rise, 'asymp': asymp, 'alpha': par[0], 'beta': par[1], 'gamma': par[2],
-             'vec_x': vec_x})
+        
+        df2 = pd.DataFrame({'delay': delay, 'rise': rise, 'asymp': asymp, 'alpha': par[0], 'beta': par[1], 'gamma': par[2]}, index=[0])
     else:
-        df2 = pd.DataFrame(
-            {'delay': np.nan, 'rise': np.nan, 'asymp': np.nan, 'alpha': np.nan, 'beta': np.nan, 'gamma': np.nan,
-             'vec_x': vec_x})
+        df2 = pd.DataFrame({'delay': np.nan, 'rise': np.nan, 'asymp': np.nan, 'alpha': np.nan, 'beta': np.nan, 'gamma': np.nan})
 
     return df2
 
@@ -57,9 +53,10 @@ def plot_learningcurve(x, y, subj, **kwargs):
     pars = fit_learningcurve(df)
 
     # plot fitted learning curve
-    sns.lineplot(pars.vec_x, sigmoid(pars.vec_x, pars.alpha, pars.beta, pars.gamma), **kwargs)
+    vec_x = np.arange(0, max(df.session_day) + 2, 0.1)
+    sns.lineplot(vec_x, sigmoid(vec_x, float(pars.alpha), float(pars.beta), float(pars.gamma)), **kwargs)
 
     # plot datapoints with errorbars on top
-    g = sns.lineplot(df['session_day'], df['performance_easy'], err_style="bars", linewidth=0, linestyle='None', mew=0.5,
-        marker='o', ci=68, **kwargs)
-    g.set_yticks([0.5, 0.75, 1])
+    sns.lineplot(df['session_day'], df['performance_easy'], err_style="bars", linewidth=0, linestyle='None', mew=0.5,
+                 marker='o', ci=68, **kwargs)
+    
