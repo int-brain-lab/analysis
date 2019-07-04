@@ -46,8 +46,10 @@ def decoding(resp, labels, clf, num_splits):
     return f1
 
 # Query list of subjects
-all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
-subjects = all_sub.fetch('subject_nickname')
+use_subjects = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' \
+                        & 'subject_line IS NULL OR subject_line="C57BL/6J"' \
+                        & 'subject_source IS NULL OR subject_source="Jax"'
+subjects = use_subjects.fetch('subject_nickname')
 
 # Create dataframe with behavioral metrics of all mice        
 learning = pd.DataFrame(columns=['mouse','lab','time_zone','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
@@ -155,5 +157,6 @@ plt.setp(ax1.xaxis.get_majorticklabels(), rotation=60)
 plt.tight_layout(pad = 2)
 fig.set_size_inches((5, 5), forward=False) 
 plt.savefig(join(path,'figure6_panel_decoding.pdf'), dpi=300)
+plt.savefig(join(path,'figure6_panel_decoding.png'), dpi=300)
 
 

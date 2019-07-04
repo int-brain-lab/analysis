@@ -25,8 +25,10 @@ from fit_learning_curves import fit_learningcurve, plot_learningcurve
 path = '/home/guido/Figures/Behavior/'
 
 # Query list of subjects
-all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
-subjects = all_sub.fetch('subject_nickname')
+use_subjects = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' \
+                        & 'subject_line IS NULL OR subject_line="C57BL/6J"' \
+                        & 'subject_source IS NULL OR subject_source="Jax"'
+subjects = use_subjects.fetch('subject_nickname')
 
 # Create dataframe with behavioral metrics of all mice        
 df_learning = pd.DataFrame()
@@ -68,16 +70,17 @@ behav['session_day'] = behav.index.array+1
 seaborn_style()
 f, (ax1, ax2) = plt.subplots(1,2,figsize=[9,5])
 plot_learningcurve(behav['session_day'], behav['performance_easy'], example_mouse, ax1)
-ax1.set(ylabel='Performance at easy trials (%)', xlabel='Training sessions', xlim=[0,20], xticks=np.arange(0,21,5))
+ax1.set(ylabel='Performance at easy trials (%)', xlabel='Training sessions', xlim=[0,20], ylim=[0.4, 1], xticks=np.arange(0,21,5))
 
-sns.boxplot(data=df_learned[['delay', 'rise', 'asymp', 'day_trained']], ax=ax2)
-ax2.set(ylabel='Training sessions', xticklabels=['Delay', 'Rise', 'Asymptotic\nperformance','Reached trained\ncriterium'])
+sns.boxplot(data=df_learned[['delay', 'rise', 'asymp', 'day_trained']], color=[0.6,0.6,0.6], ax=ax2)
+ax2.set(ylabel='Training sessions', ylim=[0,50], xticklabels=['Delay', 'Rise', 'Asymptotic\nperformance','Reached trained\ncriterium'])
 plt.setp(ax2.xaxis.get_majorticklabels(), rotation=40)
 
 plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((9,5), forward=False)
 plt.savefig(join(path, 'figure4_learning_rate.pdf'), dpi=300)
+plt.savefig(join(path, 'figure4_learning_rate.png'), dpi=300)
 
 
 

@@ -23,8 +23,10 @@ from ibl_pipeline.analyses import behavior as behavior_analysis
 path = '/home/guido/Figures/Behavior/'
 
 # Query list of subjects
-all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
-subjects = all_sub.fetch('subject_nickname')
+use_subjects = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' \
+                        & 'subject_line IS NULL OR subject_line="C57BL/6J"' \
+                        & 'subject_source IS NULL OR subject_source="Jax"'
+subjects = use_subjects.fetch('subject_nickname')
 
 # Create dataframe with behavioral metrics of all mice        
 learning = pd.DataFrame(columns=['mouse','lab','learned','date_learned','training_time','perf_easy','n_trials','threshold','bias','reaction_time','lapse_low','lapse_high'])
@@ -182,6 +184,7 @@ fig = plt.gcf()
 fig.set_size_inches((12, 8), forward=False)
 
 plt.savefig(join(path, 'figure6_panel_metrics_per_lab.pdf'), dpi=300)
+plt.savefig(join(path, 'figure6_panel_metrics_per_lab.png'), dpi=300)
 
 # Z-score data
 learned_zs = pd.DataFrame()
@@ -216,6 +219,7 @@ plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((5.5,6), forward=False)
 plt.savefig(join(path, 'figure6_panel_deviation.pdf'), dpi=300)
+plt.savefig(join(path, 'figure6_panel_deviation.png'), dpi=300)
 
 # Plot heat map of lab deviation
 f, ax1 = plt.subplots(1, 1, figsize=(5.5,5), sharey=True)
@@ -229,6 +233,7 @@ plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((5.5,5), forward=False)
 plt.savefig(join(path, 'figure6_panel_heatmap.pdf'), dpi=300)
+plt.savefig(join(path, 'figure6_panel_heatmap.png'), dpi=300)
 
 
 
