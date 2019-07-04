@@ -19,7 +19,8 @@ from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
 
 # Settings
-path = '/home/guido/Figures/Behavior/'
+fig_path = '/home/guido/Figures/Behavior/'
+csv_path = '/home/guido/Data/Behavior/'
 
 # Query list of subjects
 all_sub = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
@@ -104,6 +105,9 @@ learned['lapse_low'] = learned['lapse_low'].astype(float)
 learned['lapse_high'] = learned['lapse_high'].astype(float)
 learned['reaction_time'] = learned['reaction_time'].astype(float)
 
+# Save to csv
+learned.to_csv(join(csv_path, 'behavioral_metrics_labs.csv'))
+
 # Set color palette
 current_palette = sns.color_palette('Set1')
 use_palette = [current_palette[-1]]*len(np.unique(learned['lab']))
@@ -130,8 +134,8 @@ ax6.set(ylabel='Reaction time (ms)', xlabel='', ylim=[0, 1000])
 plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((10, 6), forward=False)
-plt.savefig(join(path, 'learning_params_all.pdf'), dpi=300)
-plt.savefig(join(path, 'learning_params_all.png'), dpi=300)
+plt.savefig(join(fig_path, 'learning_params_all.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'learning_params_all.png'), dpi=300)
 
 # Add all mice to dataframe seperately for plotting
 learned_2 = learned.copy()
@@ -178,8 +182,8 @@ fig.set_size_inches((12, 8), forward=False)
 #figManager = plt.get_current_fig_manager()
 #figManager.window.showMaximized()
 
-plt.savefig(join(path, 'learning_params.pdf'), dpi=300)
-plt.savefig(join(path, 'learning_params.png'), dpi=300)
+plt.savefig(join(fig_path, 'learning_params.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'learning_params.png'), dpi=300)
 
 # Z-score data
 learned_zs = pd.DataFrame()
@@ -211,8 +215,8 @@ plt.setp(ax2.xaxis.get_majorticklabels(), rotation=50, ha="right" )
 plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((10,5), forward=False)
-plt.savefig(join(path, 'variability_heatmap.pdf'), dpi=300)
-plt.savefig(join(path, 'variability_heatmap.png'), dpi=300)
+plt.savefig(join(fig_path, 'variability_heatmap.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'variability_heatmap.png'), dpi=300)
 
 
 
