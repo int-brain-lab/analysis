@@ -20,12 +20,11 @@ from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
 
 # Settings
-path = '/home/guido/Figures/Behavior/'
+fig_path = '/home/guido/Figures/Behavior/'
+csv_path = '/home/guido/Data/Behavior/'
 
 # Query list of subjects
-use_subjects = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' \
-                        & 'subject_line IS NULL OR subject_line="C57BL/6J"' \
-                        & 'subject_source IS NULL OR subject_source="Jax"'
+use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project = "ibl_neuropixel_brainwide_01"'
 subjects = use_subjects.fetch('subject_nickname')
 
 # Create dataframe with behavioral metrics of all mice        
@@ -65,7 +64,9 @@ for i, nickname in enumerate(subjects):
         learning.loc[i,'bias'] = float(psych.bias[psych.session_date == first_trained_session_date])
         learning.loc[i,'lapse_low'] = float(psych.lapse_low[psych.session_date == first_trained_session_date])
         learning.loc[i,'lapse_high'] = float(psych.lapse_high[psych.session_date == first_trained_session_date])
-        if sum(rt.session_date == first_trained_session_date) == 0:
+        if len(rt) == 0:
+            learning.loc[i,'reaction_time'] = np.nan
+        elif sum(rt.session_date == first_trained_session_date) == 0:
             learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[np.argmin(np.array(abs(rt.session_date - first_trained_session_date)))])*1000
         else:
             learning.loc[i,'reaction_time'] = float(rt.median_reaction_time[rt.session_date == first_trained_session_date])*1000
@@ -90,6 +91,14 @@ learned.loc[learned['lab'] == 'cortexlab','lab'] = 'UCL'
 learned.loc[learned['lab'] == 'danlab','lab'] = 'Berkeley'
 learned.loc[learned['lab'] == 'mainenlab','lab'] = 'CCU'
 learned.loc[learned['lab'] == 'wittenlab','lab'] = 'Princeton'
+
+# Clean up dataframe and save to CSV file
+learning = learning.sort_values(by='lab')
+learning = learning.reset_index()
+learning.to_csv(join(csv_path,'all_mice_data.csv'))
+learned = learned.sort_values(by='lab')
+learned = learned.reset_index()
+learned.to_csv(join(csv_path,'learned_mice_data.csv'))
 
 # Add (n = x) to lab names
 for i in learned.index.values:
@@ -183,8 +192,8 @@ plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((12, 8), forward=False)
 
-plt.savefig(join(path, 'figure6_panel_metrics_per_lab.pdf'), dpi=300)
-plt.savefig(join(path, 'figure6_panel_metrics_per_lab.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure6_panel_metrics_per_lab.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'figure6_panel_metrics_per_lab.png'), dpi=300)
 
 # Z-score data
 learned_zs = pd.DataFrame()
@@ -218,8 +227,8 @@ ax1.legend(loc=[0.66,0.01]).set_title('')
 plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((5.5,6), forward=False)
-plt.savefig(join(path, 'figure6_panel_deviation.pdf'), dpi=300)
-plt.savefig(join(path, 'figure6_panel_deviation.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure6_panel_deviation.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'figure6_panel_deviation.png'), dpi=300)
 
 # Plot heat map of lab deviation
 f, ax1 = plt.subplots(1, 1, figsize=(5.5,5), sharey=True)
@@ -232,8 +241,8 @@ plt.setp(ax1.xaxis.get_majorticklabels(), rotation=40, ha="right" )
 plt.tight_layout(pad = 3)
 fig = plt.gcf()
 fig.set_size_inches((5.5,5), forward=False)
-plt.savefig(join(path, 'figure6_panel_heatmap.pdf'), dpi=300)
-plt.savefig(join(path, 'figure6_panel_heatmap.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure6_panel_heatmap.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'figure6_panel_heatmap.png'), dpi=300)
 
 
 

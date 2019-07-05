@@ -25,9 +25,7 @@ from fit_learning_curves import fit_learningcurve, plot_learningcurve
 path = '/home/guido/Figures/Behavior/'
 
 # Query list of subjects
-use_subjects = subject.Subject * subject.SubjectLab & 'subject_birth_date > "2018-09-01"' \
-                        & 'subject_line IS NULL OR subject_line="C57BL/6J"' \
-                        & 'subject_source IS NULL OR subject_source="Jax"'
+use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project = "ibl_neuropixel_brainwide_01"'
 subjects = use_subjects.fetch('subject_nickname')
 
 # Create dataframe with behavioral metrics of all mice        
