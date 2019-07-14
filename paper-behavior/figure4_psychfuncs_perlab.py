@@ -42,10 +42,8 @@ b = (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
 bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav = dj2pandas(bdat)
 
-lab_names = {'cortexlab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
-			 'wittenlab':'Princeton',
-			 'angelakilab':'NYU', 'mrsicflogellab':'SWC', 'zadorlab':'CSHL',
-			 'danlab':'Berkeley'}
+lab_names = {'carandinilab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
+			 'wittenlab':'Princeton', 'angelakilab':'NYU', 'mrsicflogellab':'SWC', 'danlab':'Berkeley'}
 
 # ================================= #
 # PSYCHOMETRIC FUNCTIONS

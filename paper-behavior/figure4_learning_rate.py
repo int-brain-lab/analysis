@@ -17,7 +17,7 @@ from os.path import join
 import datajoint as dj
 from ibl_pipeline import subject
 from ibl_pipeline.analyses import behavior as behavior_analysis
-import sys
+import sys, os
 sys.path.insert(0, '../python')
 from fit_learning_curves import fit_learningcurve, plot_learningcurve
 
@@ -40,7 +40,7 @@ for i, nickname in enumerate(subjects):
     
     # Fit learning curve
     behav['session_day'] = behav.index.array+1
-    fitted_curve = fit_learningcurve(behav, nickname)
+    fitted_curve = fit_learningcurve(behav)
     
         
     # Get whether and when mouse is considered trained

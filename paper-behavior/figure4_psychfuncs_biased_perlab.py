@@ -19,7 +19,7 @@ from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 
 sys.path.insert(0, '/Users/urai/Documents/code/analysis_IBL/python')
-from fit_learning_curves import *
+from dj_tools import *
 
 ## INITIALIZE A FEW THINGS
 seaborn_style()
@@ -42,10 +42,8 @@ b = (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
 bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav = dj2pandas(bdat)
 
-lab_names = {'cortexlab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
-			 'wittenlab':'Princeton',
-			 'angelakilab':'NYU', 'mrsicflogellab':'SWC', 'zadorlab':'CSHL',
-			 'danlab':'Berkeley'}
+lab_names = {'carandinilab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
+			 'wittenlab':'Princeton', 'angelakilab':'NYU', 'mrsicflogellab':'SWC', 'danlab':'Berkeley'}
 
 # ================================= #
 # PSYCHOMETRIC FUNCTIONS

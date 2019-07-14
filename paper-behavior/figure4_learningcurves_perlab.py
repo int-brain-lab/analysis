@@ -52,7 +52,7 @@ behav['session_day'] = behav.groupby(['lab_name', 'subject_nickname'])['session_
 # remove_subjects = first_protocol.subject_nickname[first_protocol['task_protocol'].isnull()]
 # behav = behav[~behav['subject_nickname'].isin(remove_subjects.to_list())]
 
-lab_names = {'cortexlab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
+lab_names = {'carandinilab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
 			 'wittenlab':'Princeton',
 			 'angelakilab':'NYU', 'mrsicflogellab':'SWC', 'zadorlab':'CSHL',
 			 'danlab':'Berkeley'}

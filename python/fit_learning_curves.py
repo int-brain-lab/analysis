@@ -18,7 +18,7 @@ from scipy.optimize import curve_fit
 def sigmoid(x, alpha, beta, gamma):
     return 0.5 + (1 - 0.5 - gamma) * (1. / (1 + np.exp( -(x-alpha)/beta)))
 
-def fit_learningcurve(df, subject_nickname):
+def fit_learningcurve(df):
 
     # only fit learning curves if there is data from a sufficient number of days
     if len(df) > 14:
@@ -31,46 +31,43 @@ def fit_learningcurve(df, subject_nickname):
         vec_x = np.arange(0, max(df['session_day']) + 2, 0.1)
         fit_x = sigmoid(vec_x, par[0], par[1], par[2])
 
-        perf  = max(fit_x) # asymptotic performance for this animal
-        norm_x = (fit_x - min(fit_x)) / max(fit_x - min(fit_x)) # normalize learning to the asymptote
+        perf   = max(fit_x) # asymptotic performance for this animal
+        norm_x = (fit_x - min(fit_x)) / (max(fit_x) - min(fit_x)) # normalize learning to the asymptote
         delay  = vec_x[np.argmin(np.abs(norm_x - 0.2))] # how long to reach 20% of performance?
-        rise   = vec_x[np.argmin(np.abs(norm_x - 0.8))] - delay # after delay, how long to reach 80% of performance?
-        asymp   = vec_x[np.argmin(np.abs(norm_x - 0.99))] - delay # how long to reach asymptotic performance?
+        rise   = vec_x[np.argmin(np.abs(norm_x - 0.8))] # after delay, how long to reach 80% of performance?
+        asymp  = vec_x[np.argmin(np.abs(norm_x - 0.99))] - delay # how long to reach asymptotic performance?
         
         df2 = pd.DataFrame({'delay': delay, 'rise': rise, 'asymp': asymp, 'perf': perf, 'alpha': par[0], 'beta': par[1], 'gamma': par[2]}, 
-                            index=[subject_nickname])
+                            index=[0])
     else:
         df2 = pd.DataFrame({'delay': np.nan, 'rise': np.nan, 'asymp': np.nan, 'perf':np.nan, 'alpha': np.nan, 'beta': np.nan, 'gamma': np.nan}, 
-                           index=[subject_nickname])
+                           index=[0])
 
     return df2
 
 
-def plot_learningcurve(x, y, subj, ax, **kwargs):
+def plot_learningcurve(x, y, subj, **kwargs):
 
     # summary stats - average psychfunc over observers
     df = pd.DataFrame({'session_day':x, 'performance_easy':y, 'subject_nickname':subj})
 
     # fit learning curve
-    pars = fit_learningcurve(df, subj)
+    pars  = fit_learningcurve(df)
     vec_x = np.arange(0, max(df.session_day) + 2, 0.1)
     fit_x = sigmoid(vec_x, float(pars.alpha), float(pars.beta), float(pars.gamma))
     
     # plot lines at 20 and 80 % points
-    norm_x = (fit_x - min(fit_x)) / max(fit_x - min(fit_x))
-    delay  = vec_x[np.argmin(np.abs(norm_x - 0.2))]
-    rise   = vec_x[np.argmin(np.abs(norm_x - 0.8))]
-    ax.plot([0,delay,delay], [sigmoid(delay, float(pars.alpha), float(pars.beta), float(pars.gamma)),
-            sigmoid(delay, float(pars.alpha), float(pars.beta), float(pars.gamma)), 0.4], 'k--')
-    ax.plot([0,rise,rise], [sigmoid(rise, float(pars.alpha), float(pars.beta), float(pars.gamma)),
-            sigmoid(rise, float(pars.alpha), float(pars.beta), float(pars.gamma)), 0.4], 'k--')
-    
+    plt.plot([0, pars.delay.item(), pars.delay.item()], [sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
+                sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)), 0.4], ls=':', **kwargs)
+    plt.plot([0, pars.rise.item(), pars.rise.item()], [sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
+                sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)), 0.4], ls=':', **kwargs)
+
     # plot fitted function
-    sns.lineplot(vec_x, fit_x, color="#e74c3c", linewidth=2, ax=ax)
+    sns.lineplot(vec_x, fit_x, linewidth=2, **kwargs)
     
     # plot datapoints with errorbars on top
     sns.lineplot(df['session_day'], df['performance_easy'], err_style="bars", linewidth=0, 
-                 linestyle='None', mew=0.5, marker='o', ci=68, markersize=6, color='#34495e', ax=ax)
+                 linestyle='None', mew=0.5, marker='o', ci=68, markersize=6, **kwargs)
 
 
     
