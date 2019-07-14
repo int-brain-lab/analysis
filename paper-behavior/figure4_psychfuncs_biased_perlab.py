@@ -31,8 +31,9 @@ sns.set_palette(cmap)  # palette for water types
 # GET DATA FROM TRAINED ANIMALS
 # ================================= #
 
-use_subjects = (subject.Subject() & 'subject_birth_date > "2018-09-01"' \
-			   & 'subject_line IS NULL OR subject_line="C57BL/6J"') * subject.SubjectLab()
+# use_subjects = (subject.Subject() & 'subject_birth_date > "2018-09-01"' \
+# 			   & 'subject_line IS NULL OR subject_line="C57BL/6J"') * subject.SubjectLab()
+use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project = "ibl_neuropixel_brainwide_01"'
 criterion = behavioral_analyses.SessionTrainingStatus()
 sess = ((acquisition.Session & 'task_protocol LIKE "%biasedChoiceWorld%"') \
 		* (criterion & 'training_status="ready for ephys"')) * use_subjects
@@ -41,10 +42,10 @@ b = (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
 bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav = dj2pandas(bdat)
 
-lab_names = {'carandinilab':'Carandini & Harris lab', 'mainenlab':'Mainenlab', 'churchlandlab':'Churchland lab',
-			 'wittenlab':'Witten lab',
-			 'angelakilab':'Angelakilab', 'mrsicflogellab':'Mrsic-flogel lab', 'zadorlab':'Zador lab',
-			 'danlab':'Dan lab'}
+lab_names = {'cortexlab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
+			 'wittenlab':'Princeton',
+			 'angelakilab':'NYU', 'mrsicflogellab':'SWC', 'zadorlab':'CSHL',
+			 'danlab':'Berkeley'}
 
 # ================================= #
 # PSYCHOMETRIC FUNCTIONS

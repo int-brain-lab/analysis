@@ -46,7 +46,7 @@ def fit_learningcurve(df, subject_nickname):
     return df2
 
 
-def plot_learningcurve(x, y, subj, ax):
+def plot_learningcurve(x, y, subj, ax, **kwargs):
 
     # summary stats - average psychfunc over observers
     df = pd.DataFrame({'session_day':x, 'performance_easy':y, 'subject_nickname':subj})
