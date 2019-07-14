@@ -14,7 +14,6 @@ from scipy.optimize import curve_fit
 # PAPER: BATHELLIER ET AL https://www.pnas.org/content/110/49/19950
 # ================================================================== #
 
-
 def sigmoid(x, alpha, beta, gamma):
     return 0.5 + (1 - 0.5 - gamma) * (1. / (1 + np.exp( -(x-alpha)/beta)))
 
@@ -35,7 +34,7 @@ def fit_learningcurve(df):
         norm_x = (fit_x - min(fit_x)) / (max(fit_x) - min(fit_x)) # normalize learning to the asymptote
         delay  = vec_x[np.argmin(np.abs(norm_x - 0.2))] # how long to reach 20% of performance?
         rise   = vec_x[np.argmin(np.abs(norm_x - 0.8))] # after delay, how long to reach 80% of performance?
-        asymp  = vec_x[np.argmin(np.abs(norm_x - 0.99))] - delay # how long to reach asymptotic performance?
+        asymp  = vec_x[np.argmin(np.abs(norm_x - 0.99))] # how long to reach asymptotic performance?
         
         df2 = pd.DataFrame({'delay': delay, 'rise': rise, 'asymp': asymp, 'perf': perf, 'alpha': par[0], 'beta': par[1], 'gamma': par[2]}, 
                             index=[0])
@@ -57,15 +56,22 @@ def plot_learningcurve(x, y, subj, **kwargs):
     fit_x = sigmoid(vec_x, float(pars.alpha), float(pars.beta), float(pars.gamma))
     
     # plot lines at 20 and 80 % points
-    plt.plot([0, pars.delay.item(), pars.delay.item()], [sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
-                sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)), 0.4], ls=':', **kwargs)
-    plt.plot([0, pars.rise.item(), pars.rise.item()], [sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
-                sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)), 0.4], ls=':', **kwargs)
+    # USE SEABORN, AX.PLOT WILL BREAK FACETGRID!
+    sns.lineplot([0, pars.delay.item()], [sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
+                sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))], 
+                style=0, dashes={0:(2,1)}, lw=1, legend=False, **kwargs)
+    sns.lineplot([pars.delay.item(), pars.delay.item()], [0.4, sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))], 
+                style=0, dashes={0:(2,1)}, lw=1, legend=False, **kwargs)
+    sns.lineplot([0, pars.rise.item()], [sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
+                sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))], 
+                 style=0, dashes={0:(2,1)}, legend=False, **kwargs)
+    sns.lineplot([pars.rise.item(), pars.rise.item()], [0.4, sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))],  
+                style=0, dashes={0:(2,1)}, legend=False, **kwargs)
 
     # plot fitted function
     sns.lineplot(vec_x, fit_x, linewidth=2, **kwargs)
     
-    # plot datapoints with errorbars on top
+    # plot datapoints with errorbars (across subjects) on top
     sns.lineplot(df['session_day'], df['performance_easy'], err_style="bars", linewidth=0, 
                  linestyle='None', mew=0.5, marker='o', ci=68, markersize=6, **kwargs)
 
