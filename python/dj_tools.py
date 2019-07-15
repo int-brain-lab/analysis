@@ -203,7 +203,4 @@ def dj2pandas(behav):
 	behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time', 
 		'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
 
-	# # replace cortexlab name for now
-	behav['lab_name'] = behav['lab_name'].str.replace('cortexlab', 'carandinilab')
-
 	return behav
