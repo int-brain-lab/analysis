@@ -200,7 +200,10 @@ def dj2pandas(behav):
 	behav.loc[behav.choice == 0, 'trial_feedback_type'] = np.nan # don't count RT if there was no response
 
 	# indicate, for each session, whether there was an unbiased initial block or not
-	behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time', 
-		'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
+	try:
+		behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time',
+			'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
+	except:
+		pass
 
 	return behav
