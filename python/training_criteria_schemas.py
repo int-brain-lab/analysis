@@ -20,7 +20,6 @@ sns.set(style="darkgrid", context="paper", font_scale=1.3)
 
 # import wrappers etc
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
-from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
 from ibl_pipeline.analyses import analysis_utils as utils
@@ -134,8 +133,8 @@ class SessionTrainingStatus(dj.Computed):
                     if not np.all(abs(prob_lefts - 0.5) > 0.001):
 
                         # compute psychometric functions for each of 3 conditions
-                        trials_unbiased = trials & \
-                            'ABS(trial_stim_prob_left - 0.5) < 0.001'
+                        # trials_unbiased = trials & \
+                        #     'ABS(trial_stim_prob_left - 0.5) < 0.001'
 
                         trials_80 = trials & \
                             'ABS(trial_stim_prob_left - 0.2) < 0.001'
@@ -147,7 +146,7 @@ class SessionTrainingStatus(dj.Computed):
                         psych_80 = utils.compute_psych_pars(trials_80)
                         psych_20 = utils.compute_psych_pars(trials_20)
 
-                        criterion = abs(psych_80['lapse_low']) < 0.1 and \
+                        criterion = psych_80['lapse_low'] < 0.1 and \
                             psych_80['lapse_high'] < 0.1 and \
                             psych_20['lapse_low'] < 0.1 and \
                             psych_20['lapse_high'] < 0.1 and \
@@ -195,12 +194,15 @@ class SessionTrainingStatus(dj.Computed):
                     trials = behavior.TrialSet.Trial & sessions_rel
                     psych = utils.compute_psych_pars(trials)
 
-                    # cum_perform_easy = utils.compute_performance_easy(trials)
+                    # also compute the median reaction time
+                    medRT = compute_reaction_time(trials)
 
+                    # cum_perform_easy = utils.compute_performance_easy(trials)
                     criterion = abs(psych['bias']) < 10 and \
                         psych['threshold'] < 20 and \
                         psych['lapse_low'] < 0.1 and \
-                        psych['lapse_high'] < 0.1
+                        psych['lapse_high'] < 0.1 and \
+                        medRT.loc[medRT['signed_contrast'] == 0, 'rt'].item() < 2
 
                     if criterion:
                         key['training_status'] = 'trained_1b'
@@ -208,8 +210,8 @@ class SessionTrainingStatus(dj.Computed):
                         return
 
         # ========================================================= #
-        # is the animal doing trainingChoiceWorld?
-        # 1B training
+        # is the animal still doing trainingChoiceWorld?
+        # 1A training
         # ========================================================= #
 
         # if has reached 'trained_1b' before, mark the current session 'trained_1b' as well
@@ -243,13 +245,11 @@ class SessionTrainingStatus(dj.Computed):
                     trials = behavior.TrialSet.Trial & sessions_rel
                     psych = utils.compute_psych_pars(trials)
                     # cum_perform_easy = utils.compute_performance_easy(trials)
-                    medRT = compute_reaction_time(trials)
 
                     criterion = abs(psych['bias']) < 16 and \
                         psych['threshold'] < 19 and \
                         psych['lapse_low'] < 0.2 and \
-                        psych['lapse_high'] < 0.2 and \
-                        medRT.loc[medRT['signed_contrast'] == 0, 'rt'].item() < 2
+                        psych['lapse_high'] < 0.2
 
                     if criterion:
                         key['training_status'] = 'trained_1a'

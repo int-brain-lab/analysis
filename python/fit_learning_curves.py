@@ -20,7 +20,7 @@ def sigmoid(x, alpha, beta, gamma):
 def fit_learningcurve(df):
 
     # only fit learning curves if there is data from a sufficient number of days
-    if len(df) > 14:
+    if len(df) > 21:
 
         # fit the actual function
         par, mcov = curve_fit(sigmoid, df['session_day'], df['performance_easy'],
@@ -31,16 +31,22 @@ def fit_learningcurve(df):
         fit_x = sigmoid(vec_x, par[0], par[1], par[2])
 
         perf   = max(fit_x) # asymptotic performance for this animal
-        norm_x = (fit_x - min(fit_x)) / (max(fit_x) - min(fit_x)) # normalize learning to the asymptote
-        delay  = vec_x[np.argmin(np.abs(norm_x - 0.2))] # how long to reach 20% of performance?
-        rise   = vec_x[np.argmin(np.abs(norm_x - 0.8))] # after delay, how long to reach 80% of performance?
-        asymp  = vec_x[np.argmin(np.abs(norm_x - 0.99))] # how long to reach asymptotic performance?
+
+        if perf > 0.7:
+            norm_x = (fit_x - min(fit_x)) / (max(fit_x) - min(fit_x)) # normalize learning to the asymptote
+            delay  = vec_x[np.argmin(np.abs(norm_x - 0.2))] # how long to reach 20% of performance?
+            rise   = vec_x[np.argmin(np.abs(norm_x - 0.8))] # after delay, how long to reach 80% of performance?
+            asymp  = vec_x[np.argmin(np.abs(norm_x - 0.99))] # how long to reach asymptotic performance?
+        else: # if there is no appreciable learning curve, these learning times don't make much sense
+            delay = np.nan
+            rise = np.nan
+            asymp = np.nan
         
-        df2 = pd.DataFrame({'delay': delay, 'rise': rise, 'asymp': asymp, 'perf': perf, 'alpha': par[0], 'beta': par[1], 'gamma': par[2]}, 
-                            index=[0])
+        df2 = pd.DataFrame({'delay': delay, 'rise': rise, 'asymptote':
+            asymp, 'max_performance': perf, 'alpha': par[0], 'beta': par[1], 'gamma': par[2]}, index=[0])
     else:
-        df2 = pd.DataFrame({'delay': np.nan, 'rise': np.nan, 'asymp': np.nan, 'perf':np.nan, 'alpha': np.nan, 'beta': np.nan, 'gamma': np.nan}, 
-                           index=[0])
+        df2 = pd.DataFrame({'delay': np.nan, 'rise': np.nan, 'asymptote': np.nan,
+                            'max_performance':np.nan, 'alpha': np.nan, 'beta': np.nan, 'gamma': np.nan}, index=[0])
 
     return df2
 
@@ -57,16 +63,17 @@ def plot_learningcurve(x, y, subj, **kwargs):
     
     # plot lines at 20 and 80 % points
     # USE SEABORN, AX.PLOT WILL BREAK FACETGRID!
-    sns.lineplot([0, pars.delay.item()], [sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
-                sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))], 
-                style=0, dashes={0:(2,1)}, lw=1, legend=False, **kwargs)
-    sns.lineplot([pars.delay.item(), pars.delay.item()], [0.4, sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))], 
-                style=0, dashes={0:(2,1)}, lw=1, legend=False, **kwargs)
-    sns.lineplot([0, pars.rise.item()], [sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
-                sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))], 
-                 style=0, dashes={0:(2,1)}, legend=False, **kwargs)
-    sns.lineplot([pars.rise.item(), pars.rise.item()], [0.4, sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))],  
-                style=0, dashes={0:(2,1)}, legend=False, **kwargs)
+    if len(subj.unique()) == 1:
+        sns.lineplot([0, pars.delay.item()], [sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
+                    sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))],
+                    style=0, dashes={0:(2,1)}, lw=1, legend=False, **kwargs)
+        sns.lineplot([pars.delay.item(), pars.delay.item()], [0.4, sigmoid(pars.delay.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))],
+                    style=0, dashes={0:(2,1)}, lw=1, legend=False, **kwargs)
+        sns.lineplot([0, pars.rise.item()], [sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma)),
+                    sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))],
+                     style=0, dashes={0:(2,1)}, legend=False, **kwargs)
+        sns.lineplot([pars.rise.item(), pars.rise.item()], [0.4, sigmoid(pars.rise.item(), float(pars.alpha), float(pars.beta), float(pars.gamma))],
+                    style=0, dashes={0:(2,1)}, legend=False, **kwargs)
 
     # plot fitted function
     sns.lineplot(vec_x, fit_x, linewidth=2, **kwargs)

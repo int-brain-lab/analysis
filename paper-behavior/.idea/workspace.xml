@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/figure8_choice_history.py" beforeDir="false" afterPath="$PROJECT_DIR$/figure8_choice_history.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../python/dj_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/../python/dj_tools.py" afterDir="false" />
-    </list>
+    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -17,11 +13,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/figure8_choice_history.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="448">
-              <caret line="44" column="90" lean-forward="true" selection-start-line="44" selection-start-column="90" selection-end-line="44" selection-end-column="90" />
-              <folding>
-                <element signature="e#117#136#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="-156">
+              <caret line="11" column="50" lean-forward="true" selection-start-line="11" selection-start-column="50" selection-end-line="11" selection-end-column="50" />
             </state>
           </provider>
         </entry>
@@ -113,7 +106,6 @@
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="1680" />
     <option name="width" value="1680" />
     <option name="height" value="1050" />
   </component>
@@ -175,10 +167,9 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="1680" y="0" width="2560" height="1440" extended-state="6" />
-    <editor active="true" />
+    <frame x="0" y="0" width="1680" height="1050" extended-state="6" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.12918472" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.19770946" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -189,7 +180,7 @@
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info active="true" anchor="bottom" id="Terminal" order="8" visible="true" weight="0.38943395" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="8" visible="true" weight="0.55187166" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
       <window_info anchor="bottom" id="Python Console" order="10" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
@@ -338,11 +329,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/figure8_choice_history.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="448">
-          <caret line="44" column="90" lean-forward="true" selection-start-line="44" selection-start-column="90" selection-end-line="44" selection-end-column="90" />
-          <folding>
-            <element signature="e#117#136#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="-156">
+          <caret line="11" column="50" lean-forward="true" selection-start-line="11" selection-start-column="50" selection-end-line="11" selection-end-column="50" />
         </state>
       </provider>
     </entry>
