@@ -23,7 +23,7 @@ from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
-import group_shared_anneurai_analyses as new_criteria
+new_criteria = dj.create_virtual_module('analyses', 'group_shared_anneurai_analyses')
 
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
@@ -31,7 +31,7 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # 1. get training status from original DJ table
 # ================================= #
 
-use_subjects = subject.Subject() & 'subject_birth_date between "2018-09-01" and "2019-02-01"' & 'subject_line IS NULL OR subject_line="C57BL/6J"'
+use_subjects = subject.Subject * subject.SubjectProject & 'subject_project = "ibl_neuropixel_brainwide_01"'
 sess = behavioral_analyses.SessionTrainingStatus() \
  * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
 
@@ -44,19 +44,20 @@ df2 = df2.sort_values('training_status')
 print(df2)
 
 # QUICK PIE PLOT
+sns.set_palette("husl")
 fig, ax = plt.subplots(1, 2, figsize=(13,13))
-# ax[0,0].pie(df2['subject_uuid'], labels=df2['training_status'], autopct='%1.2f%%')
-# ax[0,0].set_title('Original criteria, n = %d'%df2['subject_uuid'].sum())
 
 # ================================= #
 # v0
 # ================================= #
 
-sess = criteria_urai.SessionTrainingStatus_v0() \
+sess = behavioral_analyses.SessionTrainingStatus() \
  * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
 df = pd.DataFrame(sess.fetch(as_dict=True))
 df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
-df2 = df2.sort_values('training_status')
+df2.index = df2.training_status
+df2 = df2.reindex(['ready for ephys', 'trained', 'training in progress', 'over40days'])
+
 print(df2)
 
 ax[0].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
@@ -66,29 +67,16 @@ ax[0].set_title('Original criteria (v0), n = %d'%df2['subject_uuid'].sum())
 # v1
 # ================================= #
 
-sess = criteria_urai.SessionTrainingStatus_v1() \
+sess = new_criteria.SessionTrainingStatus() \
  * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
 df = pd.DataFrame(sess.fetch(as_dict=True))
 df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
-df2 = df2.sort_values('training_status')
+df2.index = df2.training_status
+df2 = df2.reindex(['ready4ephysrig', 'trained_1b', 'trained_1a', 'intraining', 'untrainable'])
 print(df2)
 
 ax[1].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
 ax[1].set_title('Alternative criteria (v1), n = %d'%df2['subject_uuid'].sum())
-
-# ================================= #
-# v2
-# ================================= #
-
-# sess = criteria_urai.SessionTrainingStatus_v2() \
-#  * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
-# df = pd.DataFrame(sess.fetch(as_dict=True))
-# df2 = df.groupby(['training_status'])['subject_uuid'].count().reset_index()
-# df2 = df2.sort_values('training_status')
-# print(df2)
-
-# ax[1,1].pie(df2['subject_uuid'], autopct='%1.2f%%', labels=df2['training_status'])
-# ax[1,1].set_title('Compromise criteria (v2), n = %d'%df2['subject_uuid'].sum())
 
 # ================================= #
 
