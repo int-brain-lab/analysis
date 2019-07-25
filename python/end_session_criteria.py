@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.expanduser('~'), 'Documents/Github/analy
 
 from ibl_pipeline import acquisition, behavior
 
-schema = dj.schema('user_miles.wells_end_criteria')
+schema = dj.schema('user_mileswells_end_criteria')
 
 @schema
 class EndCriteria(dj.Lookup):
@@ -36,9 +36,11 @@ class SessionEndCriteria(dj.Computed):
     end_status_index:   int # trial_id index when status first triggered 
     """
 
+    key_source = behavior.CompleteTrialSession
+
     def make(self, key):
 
-        trials = behavior.TrialSet.Trial * behavior.CompleteTrialSession & key
+        trials = behavior.TrialSet.Trial & key
         trials = trials.proj(
             'trial_response_choice',
             'trial_response_choice',
@@ -98,5 +100,3 @@ class SessionEndCriteria(dj.Computed):
             key['end_status'] = criterion
             key['end_status_index'] = status_idx[criterion]
             self.insert1(key)
-
-SessionEndCriteria.populate(display_progress=True)
