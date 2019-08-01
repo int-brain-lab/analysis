@@ -46,8 +46,7 @@ bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, tri
 behav 	= dj2pandas(bdat)
 print(behav.tail(n=10))
 
-ct = pd.crosstab(behav, colnames=['previous_choice_name', 'previous_outcome_name'])
-shell()
+print(behav.groupby(['previous_outcome_name'])['repeat'].mean())
 
 # ================================= #
 # REPEAT FOR BIASEDCHOICEWORLD DATA
