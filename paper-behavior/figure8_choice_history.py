@@ -29,8 +29,8 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # but hasn't seen biased blocks yet
 # ================================= #
 
-use_subjects = (subject.Subject() & 'subject_birth_date > "2019-03-01"' \
-			   & 'subject_line IS NULL OR subject_line="C57BL/6J"') * subject.SubjectLab()
+# use_subjects = (subject.Subject() & 'subject_birth_date > "2019-03-01"' \
+# 			   & 'subject_line IS NULL OR subject_line="C57BL/6J"') * subject.SubjectLab()
 use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project="ibl_neuropixel_brainwide_01"'
 # criterion = behavioral_analyses.SessionTrainingStatus()
 # sess = ((acquisition.Session & 'task_protocol LIKE "%trainingChoiceWorld%"') \
@@ -46,14 +46,8 @@ bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, tri
 behav 	= dj2pandas(bdat)
 print(behav.tail(n=10))
 
-# CODE FOR HISTORY
-behav['previous_choice'] 		= behav.choice.shift(1)
-behav.loc[behav.previous_choice == 0, 'previous_choice'] = np.nan
-behav['previous_outcome'] 		= behav.trial_feedback_type.shift(1)
-behav.loc[behav.previous_outcome == 0, 'previous_outcome'] = np.nan
-behav['previous_contrast'] 		= np.abs(behav.signed_contrast.shift(1))
-behav['previous_choice_name'] 	= behav['previous_choice'].map({-1:'left', 1:'right'})
-behav['previous_outcome_name']	= behav['previous_outcome'].map({-1:'post-error', 1:'post-correct'})
+ct = pd.crosstab(behav, colnames=['previous_choice_name', 'previous_outcome_name'])
+shell()
 
 # ================================= #
 # REPEAT FOR BIASEDCHOICEWORLD DATA
@@ -67,15 +61,6 @@ b 		= (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab(
 bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav_biased 	= dj2pandas(bdat)
 print(behav_biased.tail(n=10))
-
-# code for history
-behav_biased['previous_choice'] 		= behav_biased.choice.shift(1)
-behav_biased.loc[behav_biased.previous_choice == 0, 'previous_choice'] = np.nan
-behav_biased['previous_outcome'] 		= behav_biased.trial_feedback_type.shift(1)
-behav_biased.loc[behav_biased.previous_outcome == 0, 'previous_outcome'] = np.nan
-behav_biased['previous_contrast'] 		= np.abs(behav_biased.signed_contrast.shift(1))
-behav_biased['previous_choice_name'] 	= behav_biased['previous_choice'].map({-1:'left', 1:'right'})
-behav_biased['previous_outcome_name']	= behav_biased['previous_outcome'].map({-1:'post-error', 1:'post-correct'})
 
 # ================================= #
 # DEFINE HISTORY SHIFT FOR LAG 1
