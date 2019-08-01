@@ -198,11 +198,14 @@ def dj2pandas(behav):
 	behav.loc[behav.choice == 0, 'rt'] = np.nan # don't count RT if there was no response
 	behav.loc[behav.choice == 0, 'trial_feedback_type'] = np.nan # don't count RT if there was no response
 
-	# indicate, for each session, whether there was an unbiased initial block or not
-	try:
-		behav['init_unbiased'] = behav.groupby(['subject_nickname', 'session_start_time',
-			'lab_name'])['probabilityLeft'].transform(lambda x: 50 in x.unique())
-	except:
-		pass
+	# CODE FOR HISTORY
+	behav['previous_choice'] = behav.choice.shift(1)
+	behav.loc[behav.previous_choice == 0, 'previous_choice'] = np.nan
+	behav['previous_outcome'] = behav.trial_feedback_type.shift(1)
+	behav.loc[behav.previous_outcome == 0, 'previous_outcome'] = np.nan
+	behav['previous_contrast'] = np.abs(behav.signed_contrast.shift(1))
+	behav['previous_choice_name'] = behav['previous_choice'].map({-1: 'left', 1: 'right'})
+	behav['previous_outcome_name'] = behav['previous_outcome'].map({-1: 'post-error', 1: 'post-correct'})
+	behav['repeat'] = (behav.choice == behav.previous_choice)
 
 	return behav

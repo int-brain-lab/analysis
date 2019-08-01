@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="" />
+    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/../citricacid/citricAcid_datajoint2.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../citricacid/citricAcid_datajoint2.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/figure8_choice_history.py" beforeDir="false" afterPath="$PROJECT_DIR$/figure8_choice_history.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../python/dj_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/../python/dj_tools.py" afterDir="false" />
+    </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,17 +18,11 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/figure8_choice_history.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-156">
-              <caret line="11" column="50" lean-forward="true" selection-start-line="11" selection-start-column="50" selection-end-line="11" selection-end-column="50" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/figure1_block_probabilities.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="180">
-              <caret line="10" column="38" lean-forward="true" selection-start-line="10" selection-end-line="11" />
+            <state relative-caret-position="313">
+              <caret line="48" column="82" lean-forward="true" selection-start-line="48" selection-start-column="82" selection-end-line="48" selection-end-column="82" />
+              <folding>
+                <element signature="e#117#136#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -31,54 +30,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/../python/dj_tools.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="676">
-              <caret line="206" column="12" selection-start-line="206" selection-start-column="12" selection-end-line="206" selection-end-column="12" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/../../postdoc-analyses/choice_history.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="396">
-              <caret line="30" column="30" lean-forward="true" selection-start-line="30" selection-start-column="30" selection-end-line="30" selection-end-column="30" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/figure4_learning_rate.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="360">
-              <caret line="29" column="117" lean-forward="true" selection-start-line="29" selection-start-column="117" selection-end-line="29" selection-end-column="117" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/figure4_psychfuncs_perlab.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="792">
-              <caret line="44" selection-start-line="44" selection-end-line="45" selection-end-column="103" />
-              <folding>
-                <element signature="e#90#109#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/figure6_decoding_lab_membership.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1397" />
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/figure_style.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="180">
-              <caret line="10" column="20" lean-forward="true" selection-start-line="10" selection-start-column="20" selection-end-line="10" selection-end-column="20" />
+            <state relative-caret-position="511">
+              <caret line="208" column="61" selection-start-line="208" selection-start-column="61" selection-end-line="208" selection-end-column="61" />
             </state>
           </provider>
         </entry>
@@ -100,8 +53,8 @@
         <option value="$PROJECT_DIR$/../python/fit_learning_curves.py" />
         <option value="$PROJECT_DIR$/figure3_learningcurves_perlab.py" />
         <option value="$PROJECT_DIR$/../../postdoc-analyses/choice_history.py" />
-        <option value="$PROJECT_DIR$/../python/dj_tools.py" />
         <option value="$PROJECT_DIR$/figure8_choice_history.py" />
+        <option value="$PROJECT_DIR$/../python/dj_tools.py" />
       </list>
     </option>
   </component>
@@ -180,7 +133,7 @@
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info active="true" anchor="bottom" id="Terminal" order="8" visible="true" weight="0.55187166" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="8" visible="true" weight="0.35080215" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
       <window_info anchor="bottom" id="Python Console" order="10" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
@@ -240,19 +193,10 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="612">
           <caret line="39" selection-start-line="39" selection-end-line="42" selection-end-column="82" />
-          <folding>
-            <marker date="1561756311880" expanded="true" signature="960:1121" ph="..." />
-          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/figure3_learningcurves_perlab.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="5" column="19" selection-start-line="5" selection-start-column="19" selection-end-line="5" selection-end-column="19" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/figure3_learningcurves_perlab.py" />
     <entry file="file://$PROJECT_DIR$/../python/fit_learning_curves.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="187">
@@ -277,10 +221,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/figure4_learning_rate.py">
+    <entry file="file://$PROJECT_DIR$/figure1_block_probabilities.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="360">
-          <caret line="29" column="117" lean-forward="true" selection-start-line="29" selection-start-column="117" selection-end-line="29" selection-end-column="117" />
+        <state relative-caret-position="180">
+          <caret line="10" column="38" selection-start-line="10" selection-end-line="11" />
         </state>
       </provider>
     </entry>
@@ -291,16 +235,16 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/../python/dj_tools.py">
+    <entry file="file://$PROJECT_DIR$/figure4_learning_rate.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="676">
-          <caret line="206" column="12" selection-start-line="206" selection-start-column="12" selection-end-line="206" selection-end-column="12" />
+        <state relative-caret-position="360">
+          <caret line="29" column="117" lean-forward="true" selection-start-line="29" selection-start-column="117" selection-end-line="29" selection-end-column="117" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/figure4_psychfuncs_perlab.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="792">
+        <state relative-caret-position="576">
           <caret line="44" selection-start-line="44" selection-end-line="45" selection-end-column="103" />
           <folding>
             <element signature="e#90#109#0" expanded="true" />
@@ -309,9 +253,7 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/figure6_decoding_lab_membership.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1397" />
-      </provider>
+      <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/figure_style.py">
       <provider selected="true" editor-type-id="text-editor">
@@ -320,17 +262,20 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/figure1_block_probabilities.py">
+    <entry file="file://$PROJECT_DIR$/../python/dj_tools.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="180">
-          <caret line="10" column="38" lean-forward="true" selection-start-line="10" selection-end-line="11" />
+        <state relative-caret-position="511">
+          <caret line="208" column="61" selection-start-line="208" selection-start-column="61" selection-end-line="208" selection-end-column="61" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/figure8_choice_history.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-156">
-          <caret line="11" column="50" lean-forward="true" selection-start-line="11" selection-start-column="50" selection-end-line="11" selection-end-column="50" />
+        <state relative-caret-position="313">
+          <caret line="48" column="82" lean-forward="true" selection-start-line="48" selection-start-column="82" selection-end-line="48" selection-end-column="82" />
+          <folding>
+            <element signature="e#117#136#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
