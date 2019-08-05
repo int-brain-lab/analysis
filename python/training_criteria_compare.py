@@ -31,7 +31,6 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # 1. get training status from original DJ table
 # ================================= #
 
-shell()
 use_subjects = subject.Subject * subject.SubjectProject & 'subject_project = "ibl_neuropixel_brainwide_01"'
 sess = behavioral_analyses.SessionTrainingStatus() \
  * use_subjects * subject.SubjectLab * subject.Subject.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')

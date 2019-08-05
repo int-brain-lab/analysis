@@ -270,5 +270,4 @@ class SessionTrainingStatus(dj.Computed):
 # populate this
 # =================
 
-# SessionTrainingStatus.drop() # remove anything old!
 SessionTrainingStatus.populate(display_progress=True)

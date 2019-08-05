@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import datajoint as dj
 from IPython import embed as shell # for debugging
-from scipy.special import erf # for psychometric functions
 from math import ceil
 from figure_style import seaborn_style
 
@@ -21,6 +20,8 @@ from ibl_pipeline.utils import psychofit as psy
 sys.path.insert(0, '/Users/urai/Documents/code/analysis_IBL/python')
 from dj_tools import *
 
+plt.close("all")
+seaborn_style()
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
 # ================================= #
@@ -29,8 +30,6 @@ figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 # but hasn't seen biased blocks yet
 # ================================= #
 
-# use_subjects = (subject.Subject() & 'subject_birth_date > "2019-03-01"' \
-# 			   & 'subject_line IS NULL OR subject_line="C57BL/6J"') * subject.SubjectLab()
 use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project="ibl_neuropixel_brainwide_01"'
 # criterion = behavioral_analyses.SessionTrainingStatus()
 # sess = ((acquisition.Session & 'task_protocol LIKE "%trainingChoiceWorld%"') \
@@ -45,21 +44,43 @@ b 		= (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab(
 bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav 	= dj2pandas(bdat)
 print(behav.tail(n=10))
-
 print(behav.groupby(['previous_outcome_name'])['repeat'].mean())
+
+# PREVIOUS CHOICE - SUMMARY PLOT
+fig = sns.FacetGrid(behav, col="previous_outcome_name", hue="previous_choice_name", aspect=1, sharex=True, sharey=True)
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
+fig.despine(trim=True)
+fig.set_titles("{col_name}")
+fig._legend.set_title('Previous choice')
+fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
+fig.savefig(os.path.join(figpath, "history_trainingChoiceWorld.pdf"))
+fig.savefig(os.path.join(figpath, "history_trainingChoiceWorld.png"), dpi=600)
+print('done')
 
 # ================================= #
 # REPEAT FOR BIASEDCHOICEWORLD DATA
 # this should shift their history preferences
 # ================================= #
 
-# take all trials that include 0% contrast, instead of those where the animal is trained
 sess = (acquisition.Session & (behavior.TrialSet.Trial() & 'ABS(trial_stim_contrast_left-0)<0.0001' \
 	& 'ABS(trial_stim_contrast_right-0)<0.0001') & 'task_protocol like "%biasedChoiceWorld%"') * use_subjects
-b 		= (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
-bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
+b 				= (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
+bdat 			= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav_biased 	= dj2pandas(bdat)
 print(behav_biased.tail(n=10))
+print(behav_biased.groupby(['previous_outcome_name'])['repeat'].mean())
+
+# PREVIOUS CHOICE - SUMMARY PLOT
+fig = sns.FacetGrid(behav_biased, col="previous_outcome_name", hue="previous_choice_name",
+					aspect=1, sharex=True, sharey=True)
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname").add_legend()
+fig.despine(trim=True)
+fig.set_titles("{col_name}")
+fig._legend.set_title('Previous choice')
+fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
+fig.savefig(os.path.join(figpath, "history_biasedChoiceWorld.pdf"))
+fig.savefig(os.path.join(figpath, "history_biasedChoiceWorld.png"), dpi=600)
+print('done')
 
 # ================================= #
 # DEFINE HISTORY SHIFT FOR LAG 1
@@ -137,8 +158,6 @@ biasshift_biased['history_posterror'] = biasshift_biased2.history_posterror.copy
 # STRATEGY SPACE
 # ================================= #
 
-plt.close("all")
-seaborn_style()
 fig, ax = plt.subplots(1,1,figsize=[5,5])
 
 # show the shift line for each mouse, per lab
@@ -177,7 +196,3 @@ ax.set_ylabel("History shift, after error")
 fig.savefig(os.path.join(figpath, "history_strategy.pdf"))
 fig.savefig(os.path.join(figpath, "history_strategy.png"), dpi=600)
 plt.close("all")
-
-# ================================= #
-# STRATEGY PLOT
-# ================================= #

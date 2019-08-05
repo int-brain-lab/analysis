@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/../citricacid/citricAcid_datajoint2.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/../citricacid/citricAcid_datajoint2.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/figure8_choice_history.py" beforeDir="false" afterPath="$PROJECT_DIR$/figure8_choice_history.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../python/dj_tools.py" beforeDir="false" afterPath="$PROJECT_DIR$/../python/dj_tools.py" afterDir="false" />
-    </list>
+    <list default="true" id="046943c9-7c35-4b4d-9317-8809e3e78bc9" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -18,8 +13,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/figure8_choice_history.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="313">
-              <caret line="48" column="82" lean-forward="true" selection-start-line="48" selection-start-column="82" selection-end-line="48" selection-end-column="82" />
+            <state relative-caret-position="327">
+              <caret line="48" column="64" lean-forward="true" selection-start-line="48" selection-start-column="64" selection-end-line="48" selection-end-column="64" />
               <folding>
                 <element signature="e#117#136#0" expanded="true" />
               </folding>
@@ -53,8 +48,8 @@
         <option value="$PROJECT_DIR$/../python/fit_learning_curves.py" />
         <option value="$PROJECT_DIR$/figure3_learningcurves_perlab.py" />
         <option value="$PROJECT_DIR$/../../postdoc-analyses/choice_history.py" />
-        <option value="$PROJECT_DIR$/figure8_choice_history.py" />
         <option value="$PROJECT_DIR$/../python/dj_tools.py" />
+        <option value="$PROJECT_DIR$/figure8_choice_history.py" />
       </list>
     </option>
   </component>
@@ -271,8 +266,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/figure8_choice_history.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="313">
-          <caret line="48" column="82" lean-forward="true" selection-start-line="48" selection-start-column="82" selection-end-line="48" selection-end-column="82" />
+        <state relative-caret-position="327">
+          <caret line="48" column="64" lean-forward="true" selection-start-line="48" selection-start-column="64" selection-end-line="48" selection-end-column="64" />
           <folding>
             <element signature="e#117#136#0" expanded="true" />
           </folding>
