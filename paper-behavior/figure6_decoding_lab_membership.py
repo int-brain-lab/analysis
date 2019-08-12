@@ -28,8 +28,10 @@ from sklearn.metrics import f1_score
 path = '/home/guido/Figures/Behavior/'
 iterations = 2000     # how often to decode
 num_splits = 3        # n in n-fold cross validation
-decoding_metrics = ['perf_easy','n_trials','threshold','bias','reaction_time','training_time']
-decoding_metrics_control = ['perf_easy','n_trials','threshold','bias','reaction_time','training_time','time_zone']
+#decoding_metrics = ['perf_easy','n_trials','threshold','bias','reaction_time','training_time']
+#decoding_metrics_control = ['perf_easy','n_trials','threshold','bias','reaction_time','training_time','time_zone']
+decoding_metrics = ['perf_easy','n_trials','threshold','bias','reaction_time']
+decoding_metrics_control = ['perf_easy','n_trials','threshold','bias','reaction_time','time_zone']
 
 # Decoding function with n-fold cross validation
 def decoding(resp, labels, clf, num_splits):
@@ -57,6 +59,7 @@ for i, nickname in enumerate(subjects):
     
     # Gather behavioral data for subject
     subj = subject.Subject * subject.SubjectLab & 'subject_nickname="%s"'%nickname
+    training = pd.DataFrame(behavior_analysis.SessionTrainingStatus * subject.Subject & 'subject_nickname="%s"'%nickname)
     behav = pd.DataFrame((behavior_analysis.BehavioralSummaryByDate * subject.Subject * subject.SubjectLab &
        'subject_nickname="%s"'%nickname).proj('session_date', 'performance_easy').fetch(as_dict=True, order_by='session_date'))
     rt = pd.DataFrame(((behavior_analysis.BehavioralSummaryByDate.ReactionTimeByDate * subject.Subject * subject.SubjectLab &
@@ -64,17 +67,23 @@ for i, nickname in enumerate(subjects):
     psych = pd.DataFrame(((behavior_analysis.BehavioralSummaryByDate.PsychResults * subject.Subject * subject.SubjectLab &
        'subject_nickname="%s"'%nickname)).proj('session_date', 'n_trials_stim','threshold','bias','lapse_low','lapse_high').fetch(as_dict=True, order_by='session_date'))
     
+    if len(training) == 0:
+        print('No data found for subject %s'%nickname)
+        continue
+    
     # Find first session in which mouse is trained
-    first_trained_session = subj.aggr(behavior_analysis.SessionTrainingStatus &	'training_status="trained"', first_trained='min(session_start_time)')
-    untrainable_session = subj.aggr(behavior_analysis.SessionTrainingStatus & 'training_status="untrainable"', first_trained='min(session_start_time)')
-    if len(first_trained_session) == 0 & len(untrainable_session) == 0:
+    if sum(training['training_status'] == 'trained') == 0 & sum(training['training_status'] == 'over40days') == 0:
         learning.loc[i,'learned'] = 'in training'
         learning.loc[i,'training_time'] = len(behav)
-    elif len(first_trained_session) == 0 & len(untrainable_session) == 1:
-        learning.loc[i,'learned'] = 'untrainable'
+    elif sum(training['training_status'] == 'trained') == 0 & sum(training['training_status'] == 'over40days') > 0:
+        learning.loc[i,'learned'] = 'over40days'
         learning.loc[i,'training_time'] = len(behav)
     else:
-        first_trained_session_datetime = first_trained_session.fetch1('first_trained')    
+        first_trained_ind = min(training.loc[training['training_status'] == 'trained', 'session_start_time'].index.values)
+        first_day_ind = first_trained_ind - 1 #Get middle session of 3 day streak
+        if training.loc[first_day_ind, 'training_status'] == 'wrong session type run':
+            continue
+        first_trained_session_datetime = training.loc[first_day_ind, 'session_start_time']
         first_trained_session_date = first_trained_session_datetime.date()
         learning.loc[i,'learned'] = 'trained'
         learning.loc[i,'date_learned'] = first_trained_session_date
@@ -111,7 +120,7 @@ learned = learning[learning['learned'] == 'trained']
 # Merge some labs
 pd.options.mode.chained_assignment = None  # deactivate warning
 learned.loc[learned['lab'] == 'zadorlab','lab'] = 'churchlandlab'
-learned.loc[learned['lab'] == 'mrsicflogellab','lab'] = 'cortexlab'
+learned.loc[learned['lab'] == 'hoferlab','lab'] = 'mrsicflogellab'
 
 # Add (n = x) to lab names
 for i in learned.index.values:
@@ -143,17 +152,19 @@ sig_control = np.percentile(decoding_result['control']-np.mean(decoding_result['
 
 # Plot decoding results
 seaborn_style()
-plt.figure(figsize=(5,5))
+plt.figure(figsize=(4,5))
 fig = plt.gcf()
 ax1 = plt.gca()
 sns.violinplot(data=pd.concat([decoding_result['original']-decoding_result['original_shuffled'], 
                                decoding_result['control']-decoding_result['control_shuffled']], axis=1), color=[0.6,0.6,0.6], ax=ax1)
 ax1.plot([-1,5],[0,0],'r--')
 ax1.set(ylabel='Decoding performance over chance level\n(F1 score)', title='Random forest classifier', 
-        ylim=[-0.2,0.5], xticklabels=['Decoding of\nlab membership', 'Including\ntime zone'])
+        ylim=[-0.4,0.8], xlim=[-0.8,1.8], xticklabels=['Decoding of\nlab membership', 'Positive\ncontrol'])
+ax1.text(0, 0.68, 'n.s.', fontsize=12, ha='center')
+ax1.text(1, 0.68, '***', fontsize=15, ha='center', va='center')
 plt.setp(ax1.xaxis.get_majorticklabels(), rotation=60)
+
 plt.tight_layout(pad = 2)
-fig.set_size_inches((5, 5), forward=False) 
 plt.savefig(join(path,'figure6_panel_decoding.pdf'), dpi=300)
 plt.savefig(join(path,'figure6_panel_decoding.png'), dpi=300)
 
