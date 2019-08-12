@@ -39,7 +39,7 @@ import datajoint as dj
 from ibl_pipeline.analyses import behavior as behavior_analysis
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.analyses import behavior as behavior_analysis
-from load_mouse_data_datajoint import *  # this has all plotting functions
+from alexfigs_datajoint_functions import *  # this has all plotting functions
 
 
 #Collect all alyx data

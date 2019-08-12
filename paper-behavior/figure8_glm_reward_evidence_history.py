@@ -14,7 +14,7 @@ import datajoint as dj
 dj.config['database.host'] = 'datajoint.internationalbrainlab.org'
 from ibl_pipeline.analyses import behavior as behavior_analysis
 from ibl_pipeline import reference, subject, behavior
-from load_mouse_data_datajoint import *  
+from alexfigs_datajoint_functions import *  
 import seaborn as sns
 
 

@@ -31,7 +31,7 @@ import datajoint as dj
 from ibl_pipeline.analyses import behavior as behavior_analysis
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.analyses import behavior as behavior_analysis
-from load_mouse_data_datajoint import *  # this has all plotting functions
+from alexfigs_datajoint_functions import *  # this has all plotting functions
 
 
 #Collect all alyx data
@@ -213,6 +213,24 @@ plt.ylabel('trials from trained to ephys (trials)')
 
 figtrained.savefig("figdaystrained.pdf", bbox_inches='tight')
 figtrained.savefig("figdaystrained.png", bbox_inches='tight')
+
+
+#sessions to trained pooled
+
+sns.set()
+figtrained1 = plt.figure(figsize=(10,10))
+figtrained1.add_subplot()
+sns.swarmplot(x="lab_name", y="days_to_ephys",
+            data=allsubjects, color = 'black')
+sns.boxplot(x="lab_name", y="days_to_ephys",
+            data=allsubjects)
+plt.xticks(rotation=90)
+plt.ylabel('sessions from trained to ephys (sessions)')
+plt.xlabel('')
+
+figtrained1.savefig("figdaystrained_pooled.pdf", bbox_inches='tight')
+
+
 
 #Interaction - day
 interaction_trial = plt.figure(figsize=(10,6))

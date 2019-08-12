@@ -8,7 +8,7 @@ import datajoint as dj
 dj.config['database.host'] = 'datajoint.internationalbrainlab.org'
 from ibl_pipeline.analyses import behavior as behavior_analysis
 from ibl_pipeline import reference, subject, behavior
-from load_mouse_data_datajoint import *  # this has all plotting functions
+from alexfigs_datajoint_functions import *  # this has all plotting functions
 import seaborn as sns
 from glm import *
 
