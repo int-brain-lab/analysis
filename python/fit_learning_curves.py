@@ -20,7 +20,7 @@ def sigmoid(x, alpha, beta, gamma):
 def fit_learningcurve(df):
 
     # only fit learning curves if there is data from a sufficient number of days
-    if len(df) > 21:
+    if len(df) >= 21:
 
         # fit the actual function
         par, mcov = curve_fit(sigmoid, df['session_day'], df['performance_easy'],
@@ -47,6 +47,7 @@ def fit_learningcurve(df):
     else:
         df2 = pd.DataFrame({'delay': np.nan, 'rise': np.nan, 'asymptote': np.nan,
                             'max_performance':np.nan, 'alpha': np.nan, 'beta': np.nan, 'gamma': np.nan}, index=[0])
+        print('cannot fit learning curves with fewer than 21 days of training')
 
     return df2
 
