@@ -4,9 +4,7 @@ import seaborn as sns
 import pandas as pd
 
 
-def compute_rfs(
-        spike_times, spike_clusters, stimulus_times, stimulus, lags=8,
-        binsize=0.025):
+def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, binsize=0.025):
     """
     Compute receptive fields from locally sparse noise stimulus for all
     recorded neurons; uses a PSTH-like approach that averages responses from
@@ -18,19 +16,19 @@ def compute_rfs(
     :param stimulus: (y_pix, x_pix, M) array of pixel values
     :param lags: temporal dimension of receptive field
     :param binsize: length of each lag (seconds)
-    :return: dictionary of "on" and "off" receptive fields (values are lists); each
-        rf is [t, y_pix, x_pix]
+    :return: dictionary of "on" and "off" receptive fields (values are lists); each rf is
+        [t, y_pix, x_pix]
     """
 
     from brainbox.processing import bincount2D
 
-    cell_ids = np.unique(spike_clusters)
-    n_cells = len(cell_ids)
+    cluster_ids = np.unique(spike_clusters)
+    n_clusters = len(cluster_ids)
     y_pix, x_pix, _ = stimulus.shape
     stimulus = stimulus.astype('float')
     rfs = {
-        'on': np.zeros(shape=(n_cells, y_pix, x_pix, lags + 1)),
-        'off': np.zeros(shape=(n_cells, y_pix, x_pix, lags + 1))}
+        'on': np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)),
+        'off': np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1))}
     flips = {
         'on': np.zeros(shape=(y_pix, x_pix)),
         'off': np.zeros(shape=(y_pix, x_pix))}
@@ -55,13 +53,11 @@ def compute_rfs(
             t_beg = t
             t_end = t + binsize * lags
             idxs_t = (spike_times >= t_beg) & (spike_times < t_end)
-            binned_spikes, _, cell_idxs = bincount2D(
-                spike_times[idxs_t], spike_clusters[idxs_t], xbin=binsize,
-                xlim=[t_beg, t_end])
+            binned_spikes, _, cluster_idxs = bincount2D(
+                spike_times[idxs_t], spike_clusters[idxs_t], xbin=binsize, xlim=[t_beg, t_end])
             # insert these binned spikes into the rfs
-            _, cell_idxs, _ = np.intersect1d(cell_ids, cell_idxs,
-                                             return_indices=True)
-            rfs[sub][cell_idxs, y, x, :] += binned_spikes
+            _, cluster_idxs, _ = np.intersect1d(cluster_ids, cluster_idxs, return_indices=True)
+            rfs[sub][cluster_idxs, y, x, :] += binned_spikes
             # record flip
             flips[sub][y, x] += 1
 
@@ -74,14 +70,12 @@ def compute_rfs(
 
     # turn into list
     rfs_list = {
-        'on': [rfs['on'][i, :, :, :] for i in range(n_cells)],
-        'off': [rfs['off'][i, :, :, :] for i in range(n_cells)]}
+        'on': [rfs['on'][i, :, :, :] for i in range(n_clusters)],
+        'off': [rfs['off'][i, :, :, :] for i in range(n_clusters)]}
     return rfs_list
 
 
-def compute_rfs_corr(
-        spike_times, spike_clusters, stimulus_times, stimulus, lags=8,
-        binsize=0.025):
+def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, binsize=0.025):
     """
     Compute receptive fields from locally sparse noise stimulus for all
     recorded neurons; uses a reverse correlation approach
@@ -102,9 +96,9 @@ def compute_rfs_corr(
     # bin spikes
     indx_t = (spike_times > np.min(stimulus_times)) & \
              (spike_times < np.max(stimulus_times))
-    binned_spikes, ts_binned_spikes, cell_ids = bincount2D(
+    binned_spikes, ts_binned_spikes, cluster_ids = bincount2D(
         spike_times[indx_t], spike_clusters[indx_t], xbin=binsize)
-    n_cells = len(cell_ids)
+    n_clusters = len(cluster_ids)
 
     y_pix, x_pix, _ = stimulus.shape
     stimulus = stimulus.astype('float')
@@ -112,7 +106,7 @@ def compute_rfs_corr(
 
     subs = ['on', 'off']
     rfs = {
-        sub: np.zeros(shape=(n_cells, y_pix, x_pix, lags + 1)) for sub in subs}
+        sub: np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)) for sub in subs}
 
     # for indexing output of convolution
     i_end = binned_spikes.shape[1]
@@ -137,7 +131,7 @@ def compute_rfs_corr(
                     idx = np.argmin((ts_binned_spikes - stim_time) ** 2)
                     binned_stim[idx] = 1
 
-                for n in range(n_cells):
+                for n in range(n_clusters):
                     # cross correlate signal with spiking activity
                     # NOTE: scipy's correlate function is appx two orders of
                     # magnitude faster than numpy's correlate function on
@@ -148,8 +142,8 @@ def compute_rfs_corr(
 
     # turn into list
     rfs_list = {
-        'on': [rfs['on'][i, :, :, :] for i in range(n_cells)],
-        'off': [rfs['off'][i, :, :, :] for i in range(n_cells)]}
+        'on': [rfs['on'][i, :, :, :] for i in range(n_clusters)],
+        'off': [rfs['off'][i, :, :, :] for i in range(n_clusters)]}
     return rfs_list
 
 
@@ -166,7 +160,7 @@ def find_peak_responses(rfs):
     rfs_peak = {key: [] for key in rfs.keys()}
     # loop over rf type
     for sub_type, subs in rfs.items():
-        # loop over cells
+        # loop over clusters
         for sub in subs:
             # max over space for each time point
             s_max = np.max(sub, axis=(0, 1))
@@ -193,7 +187,7 @@ def interpolate_rfs(rfs, bin_scale):
     y_grid_new = np.arange(-0.5, y_pix, bin_scale)
     # loop over rf type
     for sub_type, subs in rfs.items():
-        # loop over cells
+        # loop over clusters
         for sub in subs:
             f = interp2d(y_grid, x_grid, sub)
             rfs_interp[sub_type].append(f(y_grid_new, x_grid_new))
@@ -267,11 +261,11 @@ def find_contiguous_pixels(rfs, threshold=0.35):
     """
 
     # store results
-    n_cells = len(rfs['on'])
-    max_fr = np.zeros(n_cells)
-    contig_pixels = {'on': np.zeros(n_cells), 'off': np.zeros(n_cells)}
+    n_clusters = len(rfs['on'])
+    max_fr = np.zeros(n_clusters)
+    contig_pixels = {'on': np.zeros(n_clusters), 'off': np.zeros(n_clusters)}
 
-    # compute max firing rate for each cell
+    # compute max firing rate for each cluster
     for sub_type, subs in rfs.items():
         for n, sub in enumerate(subs):
             max_fr[n] = np.max([max_fr[n], np.max(sub)])
@@ -307,7 +301,7 @@ def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
     """
 
     # "the larger of the ON and OFF peak responses was taken to be the maximum
-    # firing rate of the cell"
+    # firing rate of the cluster"
     peaks = find_peak_responses(rfs)
 
     # "the trial-averaged mean firing rates within the peak bins were then used
@@ -315,7 +309,7 @@ def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
     # subfield using a 2D bilinear interpolation."
     peaks_interp = interpolate_rfs(peaks, bin_scale=bin_scale)
 
-    # "All pixels in the interpolated grids that were <35% of the cell's
+    # "All pixels in the interpolated grids that were <35% of the cluster's
     # maximum firing rate were set to zero and a contiguous non-zero set of
     # pixels, including the peak pixel, were isolated"
     contig_pixels = find_contiguous_pixels(peaks_interp, threshold=threshold)
@@ -336,11 +330,11 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
     for sub_type, areas in rf_areas.items():
         for i, area in enumerate(areas):
             results.append(pd.DataFrame({
-                'Cell_id': i,
+                'cluster_id': i,
                 'area': area,
                 'Subfield': sub_type.upper()}, index=[0]))
     results_pd = pd.concat(results, ignore_index=True)
-    # leave out non-responsive cells
+    # leave out non-responsive clusters
     data_queried = results_pd[results_pd.area != 0]
 
     if plot_type == 'box':
@@ -367,7 +361,7 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
         plt.xscale('log')
         plt.xlim([xmin, xmax])
         plt.ylim([ymin, ymax])
-        plt.ylabel('Cell count')
+        plt.ylabel('Cluster count')
         plt.title('ON Subfield')
 
         plt.subplot(122)
