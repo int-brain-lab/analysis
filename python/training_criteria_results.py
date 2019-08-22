@@ -25,7 +25,7 @@ from ibl_pipeline.analyses import behavior as behavioral_analyses
 from dj_tools import *
 
 # virtual module, should be populated
-criterion_proposal = dj.create_virtual_module('analyses', 'group_shared_anneurai_analyses')
+criterion_proposal = dj.create_virtual_module('analyses', 'user_anneurai_analyses')
 figpath = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
 # ================================= #
@@ -43,13 +43,14 @@ for critidx, criterion in enumerate([criterion_old, criterion_new]):
     # find all the criterion names that are present
     status_options = pd.DataFrame(criterion.fetch('training_status', as_dict=True))
     status_options = status_options.training_status.unique()
-
+    
     # ============================================= #
     #
     # ============================================= #
 
     for statusidx, status in enumerate(status_options):
 
+        print(status)
         # START A NEW FIGURE
         try:
             del behav, bdat
@@ -67,6 +68,7 @@ for critidx, criterion in enumerate([criterion_old, criterion_new]):
             # check whether the subject is trained based the the latest session
             # ============================================= #
 
+            print(mousename)
             subj = subject.Subject & 'subject_nickname="{}"'.format(mousename)
             last_session = subj.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
             training_status = (criterion & last_session).fetch1('training_status')
@@ -83,8 +85,9 @@ for critidx, criterion in enumerate([criterion_old, criterion_new]):
                     'first_trained')
                 # convert to timestamp
                 trained_date = pd.DatetimeIndex([first_trained_session_time])[0]
+                print(trained_date)
             else:
-                print('WARNING: THIS MOUSE WAS NOT TRAINED!')
+                # print('WARNING: THIS MOUSE WAS NOT TRAINED!')
                 continue
 
             # now get the sessions that went into this
@@ -96,7 +99,6 @@ for critidx, criterion in enumerate([criterion_old, criterion_new]):
                                 '%Y-%m-%d %H:%M:%S')
                         )).fetch('KEY')
 
-            # if not more than 3 biased sessions, keep status trained
             sessions_rel = sessions[-3:]
             b = (behavior.TrialSet.Trial & sessions_rel) \
                 * (subject.Subject & 'subject_nickname="%s"' % mousename)
@@ -113,14 +115,15 @@ for critidx, criterion in enumerate([criterion_old, criterion_new]):
         # ================================= #
 
         behav = dj2pandas(behav)
-        print(behav.describe())
+        # print(behav.describe())
 
         # ================================= #
         # ONE PANEL PER MOUSE
         # ================================= #
 
-        cmap = sns.diverging_palette(220, 20, n=len(behav['probabilityLeft'].unique()), center="dark")
         if status in ['ready for ephys', 'ready4ephysrig', 'ready4recording']:
+            behav = behav.loc[behav['probabilityLeft'].isin([20, 50, 80])]
+            cmap = sns.diverging_palette(220, 20, n=len(behav['probabilityLeft'].unique()), center="dark")
             fig = sns.FacetGrid(behav, hue='probabilityLeft',
                                 col="subject_nickname", col_wrap=6,
                                 palette=cmap, sharex=True, sharey=True)
