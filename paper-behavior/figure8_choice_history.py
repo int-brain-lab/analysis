@@ -11,7 +11,7 @@ import seaborn as sns
 import datajoint as dj
 from IPython import embed as shell # for debugging
 from math import ceil
-from figure_style import seaborn_style
+# from figure_style import seaborn_style
 
 # import wrappers etc
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
@@ -20,9 +20,11 @@ from ibl_pipeline.utils import psychofit as psy
 sys.path.insert(0, '/Users/urai/Documents/code/analysis_IBL/python')
 from dj_tools import *
 
-plt.close("all")
-seaborn_style()
+## INITIALIZE A FEW THINGS
+sns.set(style="ticks", context="paper", font_scale=1.2)
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
+cmap = sns.diverging_palette(20, 220, n=3, center="dark")
+sns.set_palette("gist_gray")
 
 # ================================= #
 # GRAB ALL DATA FROM DATAJOINT

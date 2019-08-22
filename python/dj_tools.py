@@ -79,41 +79,41 @@ def plot_psychometric(x, y, subj, **kwargs):
 		marker='o', ci=68, **kwargs)
 	g.set_yticks([0, 0.25, 0.5, 0.75, 1])
 
-	# ADD TEXT WITH THE PSYCHOMETRIC FUNCTION PARAMETERS
-	if len(df['subject_nickname'].unique()) == 1:
+	# # ADD TEXT WITH THE PSYCHOMETRIC FUNCTION PARAMETERS
+	# if len(df['subject_nickname'].unique()) == 1:
 	
-		try:
-			# add text with parameters into the plot
-			if kwargs['label'] == '50':
-				ypos = 0.5
-				# ADD PSYCHOMETRIC FUNCTION PARAMS
-				plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
-				fontweight='normal', fontsize=5, color=kwargs['color'])
+	# 	try:
+	# 		# add text with parameters into the plot
+	# 		if kwargs['label'] == '50':
+	# 			ypos = 0.5
+	# 			# ADD PSYCHOMETRIC FUNCTION PARAMS
+	# 			plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
+	# 			fontweight='normal', fontsize=5, color=kwargs['color'])
 	
-			elif kwargs['label'] == '20':
-				ypos = 0.3
-				# ADD PSYCHOMETRIC FUNCTION PARAMS
-				plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
-				fontweight='normal', fontsize=5, color=kwargs['color'])
+	# 		elif kwargs['label'] == '20':
+	# 			ypos = 0.3
+	# 			# ADD PSYCHOMETRIC FUNCTION PARAMS
+	# 			plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
+	# 			fontweight='normal', fontsize=5, color=kwargs['color'])
 	
-			elif kwargs['label'] == '80':
-				ypos = 0.7
-				# ADD PSYCHOMETRIC FUNCTION PARAMS
-				plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
-				fontweight='normal', fontsize=5, color=kwargs['color'])
-		except: # when there is no label
-			# pass
-			ypos = 0.5
-			# ADD PSYCHOMETRIC FUNCTION PARAMS
-			plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
-			fontweight='normal', fontsize=8, color=kwargs['color'])
-			# plt.text(12, 0.1, '1 mouse', fontsize=10, color='k')
+	# 		elif kwargs['label'] == '80':
+	# 			ypos = 0.7
+	# 			# ADD PSYCHOMETRIC FUNCTION PARAMS
+	# 			plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
+	# 			fontweight='normal', fontsize=5, color=kwargs['color'])
+	# 	except: # when there is no label
+	# 		# pass
+	# 		ypos = 0.5
+	# 		# ADD PSYCHOMETRIC FUNCTION PARAMS
+	# 		plt.text(-35, ypos, r'$\mu\/ %.2f,\/ \sigma\/ %.2f,$'%(pars[0], pars[1]) + '\n' + r'$\gamma \/%.2f,\/ \lambda\/ %.2f$'%(pars[2], pars[3]),
+	# 		fontweight='normal', fontsize=8, color=kwargs['color'])
+	# 		# plt.text(12, 0.1, '1 mouse', fontsize=10, color='k')
 
-	# # print the number of mice
-	# if df['subject_nickname'].nunique() == 1:
-	# 	plt.text(12, 0.1, '1 mouse', fontsize=10, color='k')
-	# else:
-	# 	plt.text(12, 0.1, '%d mice'%(df['subject_nickname'].nunique()), fontsize=10, color='k')
+	# print the number of mice
+	if df['subject_nickname'].nunique() == 1:
+		plt.text(12, 0.1, '1 mouse', fontsize=10, color='k')
+	else:
+		plt.text(12, 0.1, '%d mice'%(df['subject_nickname'].nunique()), fontsize=10, color='k')
 
 	#if brokenXaxis:
 	g.set_xticks([-35, -25, -12.5, 0, 12.5, 25, 35])

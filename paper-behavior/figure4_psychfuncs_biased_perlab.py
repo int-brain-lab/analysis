@@ -22,7 +22,7 @@ sys.path.insert(0, '/Users/urai/Documents/code/analysis_IBL/python')
 from dj_tools import *
 
 ## INITIALIZE A FEW THINGS
-seaborn_style()
+sns.set(style="ticks", context="paper", font_scale=1.2)
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 cmap = sns.diverging_palette(20, 220, n=3, center="dark")
 sns.set_palette(cmap)  # palette for water types
@@ -41,9 +41,12 @@ sess = ((acquisition.Session & 'task_protocol LIKE "%biasedChoiceWorld%"') \
 b = (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
 bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav = dj2pandas(bdat)
+behav['lab_name'] = behav['lab_name'].str.replace('zadorlab','churchlandlab')
+behav['lab_name'] = behav['lab_name'].str.replace('hoferlab','mrsicflogellab')
 
-lab_names = {'cortexlab':'UCL', 'mainenlab':'CCU', 'churchlandlab':'CSHL',
-			 'wittenlab':'Princeton', 'angelakilab':'NYU', 'mrsicflogellab':'SWC', 'danlab':'Berkeley'}
+lab_names = {'danlab':'Berkeley', 'mainenlab':'CCU', 'churchlandlab':'CSHL', 'cortexlab':'UCL', 
+			 'angelakilab':'NYU', 'wittenlab':'Princeton', 'mrsicflogellab':'SWC'}
+print('lets go')
 
 # ================================= #
 # PSYCHOMETRIC FUNCTIONS
@@ -59,6 +62,18 @@ for ax, title in zip(fig.axes.flat, list(lab_names.values())):
 fig.despine(trim=True)
 fig.savefig(os.path.join(figpath, "figure4c_psychfuncs_biased_perlab.pdf"))
 fig.savefig(os.path.join(figpath, "figure4c_psychfuncs_biased_perlab.png"), dpi=600)
+plt.close('all')
+
+fig = sns.FacetGrid(behav,
+	col="lab_name", col_wrap=1, col_order=list(lab_names.keys()),
+	sharex=True, sharey=True, height=2, aspect=1.9, hue="probabilityLeft")
+fig.map(plot_psychometric, "signed_contrast", "choice_right", "subject_nickname")
+fig.set_axis_labels('Signed contrast (%)', 'Rightward choice (%)')
+for ax, title in zip(fig.axes.flat, list(lab_names.values())):
+    ax.set_title(title)
+fig.despine(trim=True)
+fig.savefig(os.path.join(figpath, "figure4c_psychfuncs_biased_perlab_vertical.pdf"))
+fig.savefig(os.path.join(figpath, "figure4c_psychfuncs_biased_perlab_vertical.png"), dpi=600)
 plt.close('all')
 
 fig = sns.FacetGrid(behav,
