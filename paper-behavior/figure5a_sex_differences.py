@@ -13,7 +13,7 @@ Created on Wed Jul  3 11:28:01 2019
 import time, re, datetime, os, glob
 from datetime import timedelta
 import seaborn as sns
-
+import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -26,6 +26,11 @@ from scipy import stats
 
 import datajoint as dj
 dj.config['database.host'] = 'datajoint.internationalbrainlab.org'
+sys.path.insert(0, '/Users/alex/Documents/PYTHON/analysis/python/')
+sys.path.insert(0, '/Users/alex/Documents/PYTHON/analysis/paper-behavior/')
+sys.path.insert(0, '/Users/alex/Documents/PYTHON/analysis/paper-behavior/figure8/')
+
+from dj_tools import *
 
 import datajoint as dj
 from ibl_pipeline.analyses import behavior as behavior_analysis
@@ -34,22 +39,18 @@ from ibl_pipeline.analyses import behavior as behavior_analysis
 from alexfigs_datajoint_functions import *  # this has all plotting functions
 
 
-#Collect all alyx data
-allsubjects = pd.DataFrame.from_dict((subject.Subject() * subject.SubjectLab & 'sex!="U"' & 'subject_birth_date>"2018-10-15"' ).fetch(as_dict=True, order_by=[ 'subject_nickname']))
+#Collect all all data 
+use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project="ibl_neuropixel_brainwide_01"'
+sess = (acquisition.Session & (behavior.TrialSet.Trial() & 'ABS(trial_stim_contrast_left-0)<0.0001' \
+	& 'ABS(trial_stim_contrast_right-0)<0.0001') & 'task_protocol like "%trainingChoiceWorld%"') \
+	* use_subjects
+b 		= (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
+bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
+allsubjects 	= dj2pandas(bdat)
 
 
 
-allsubjects = pd.DataFrame.from_dict(
-    ((subject.Subject - subject.Death) * subject.SubjectLab & 'sex!="U"' &
-     action.Weighing & action.WaterAdministration).fetch(
-as_dict=True, order_by=['lab_name', 'subject_nickname']))
 
-if allsubjects.empty:
-    raise ValueError('DataJoint seems to be down, please try again later')
-#Drop double entries
-allsubjects =  allsubjects.drop_duplicates('subject_nickname')
-#Drop transgenics
-allsubjects.loc[(allsubjects['subject_line'] == 'C57BL/6J') |(allsubjects['subject_line'] == None)]
 
 #Add learning rate columns
 allsubjects['training_status'] =np.nan
