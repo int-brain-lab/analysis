@@ -16,6 +16,8 @@ import seaborn as sns
 import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import scipy
+import math as m
 
 import numpy as np
 import pandas as pd
@@ -49,8 +51,51 @@ bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, tri
 allsubjects 	= dj2pandas(bdat)
 
 
+#Drop unnecesary weight 
 
+allsubjects= allsubjects.drop([
+ 'session_start_time',
+ 'trial_id',
+ 'trial_start_time',
+ 'trial_end_time',
+ 'trial_response_time',
+ 'trial_response_choice',
+ 'trial_stim_on_time',
+ 'trial_stim_contrast_left',
+ 'trial_stim_contrast_right',
+ 'trial_go_cue_time',
+ 'trial_go_cue_trigger_time',
+ 'trial_feedback_time',
+ 'trial_feedback_type',
+ 'trial_rep_num',
+ 'probabilityLeft',
+ 'trial_reward_volume',
+ 'trial_iti_duration',
+ 'trial_included',
+ 'subject_birth_date',
+ 'ear_mark',
+ 'subject_line',
+ 'subject_source',
+ 'protocol_number',
+ 'subject_description',
+ 'subject_ts',
+ 'subjectlab_ts',
+ 'signed_contrast',
+ 'trial',
+ 'choice',
+ 'correct',
+ 'choice_right',
+ 'choice2',
+ 'correct_easy',
+ 'rt',
+ 'previous_choice',
+ 'previous_outcome',
+ 'previous_contrast',
+ 'previous_choice_name',
+ 'previous_outcome_name',
+ 'repeat'], axis=1)
 
+allsubjects = allsubjects.drop_duplicates(['subject_nickname'])
 
 #Add learning rate columns
 allsubjects['training_status'] =np.nan
@@ -58,6 +103,10 @@ allsubjects['days_to_trained'] = np.nan
 allsubjects['trials_to_trained'] = np.nan
 allsubjects['days_to_ephys'] = np.nan
 allsubjects['trials_to_ephys'] = np.nan
+
+#Summary trial weight
+allsubjects['average_weight'] = np.nan
+allsubjects['average_trialspsession'] = np.nan
 
 
 #Add bias (level2) columns
@@ -80,6 +129,8 @@ for labname in users:
                 subj = subject.Subject & 'subject_nickname="{}"'.format(mouse)
                 last_session = subj.aggr(behavior.TrialSet, session_start_time='max(session_start_time)')
                 training_status = (behavior_analysis.SessionTrainingStatus & last_session).fetch1('training_status')
+                average_weight , _ = get_weights(mouse, labname).mean()
+                average_trialspsession  =  behav.groupby('days').mean()['trial_id']
                 
                 if training_status in ['trained', 'ready for ephys']:
                     first_trained_session = subj.aggr(behavior_analysis.SessionTrainingStatus & 'training_status="trained"', first_trained='min(session_start_time)')
@@ -134,16 +185,12 @@ for labname in users:
                     trials_to_ephys= np.nan
                     
                 # keep track
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['days_to_trained']] = days_to_trained
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['trials_to_trained']] = trials_to_trained
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['days_to_ephys']] = days_to_ephys
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['trials_to_ephys']] = trials_to_ephys
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['training_status']] = training_status
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['average_threshold']] = average_threshold
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['average_lapse_high']] = average_lapse_high
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['average_lapse_low']] = average_lapse_low
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['average_bias08']] = average_bias_08
-                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['average_bias02']] = average_bias_02
+                
+                allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['days_to_trained','trials_to_trained','days_to_ephys', 'training_status',\
+                                'average_threshold','average_lapse_high', 'average_lapse_low', 'average_bias08', 'average_bias02', 'average_weight', 'average_trialspsession']] = days_to_trained, \
+                                trials_to_trained,days_to_ephys, training_status,\
+                                average_threshold, average_lapse_high, average_lapse_low, average_bias_08, average_bias_02, average_weight, average_trialspsession
+                
                 
             except:
                 pass
@@ -156,19 +203,48 @@ allsubjects.loc[((allsubjects['lab_name']== 'cortexlab') | (allsubjects['lab_nam
 #labs that have trained males and females (TODO: detect this automatically)
 subjects_mixed = allsubjects.loc[((allsubjects['lab_name']== 'churchlandlab')|(allsubjects['lab_name']=='wittenlab') | (allsubjects['lab_name']=='angelakilab') | (allsubjects['lab_name']=='cortexlab'))]
 
-
 ##Plots per session
 #Total - day/trials
-sns.set()
-total_day = plt.figure(figsize=(20,20))
-total_day.add_subplot(221)
-sns.boxplot(x="sex", y="days_to_trained", data=allsubjects )
-sns.swarmplot(x="sex", y="days_to_trained", data=allsubjects,hue="lab_name", edgecolor="white")
-plt.ylabel('sessions to trained (sessions)')
-total_day.add_subplot(222)
-sns.boxplot(x="sex", y="days_to_ephys", data=allsubjects )
-sns.swarmplot(x="sex", y="days_to_ephys", data=allsubjects,hue="lab_name", edgecolor="white")
-plt.ylabel('sessions to ephys from trained (sessions)')
+sns.set('paper')
+fig, ax = plt.subplots(2,2,figsize=[13,10])
+plt.sca(ax[0,0])
+sns.boxplot(y="sex", x="days_to_trained", data=allsubjects, color = "yellow", width=0.5)
+sns.swarmplot(y="sex", x="days_to_trained", data=allsubjects,hue="lab_name", edgecolor="white", )
+plt.ylabel('Sex')
+plt.xlabel('Length of training (sessions)')
+ax[0,0].set_yticklabels(['Male \n (n = %d)' %len(allsubjects.loc[allsubjects['sex']=='M']), 'Female \n (n = %d)' %len(allsubjects.loc[allsubjects['sex']=='F']) ], rotation = 45)
+ax[0,0].legend(loc='upper right', bbox_to_anchor=(0.75, 1.2), ncol=3)
+# replace labels
+new_labels = ['CSHL', 'UC Berkeley', 'NYU', 'SWC - 1', 'Princeton','UCL', 'SWC - 2','CCU']
+for t, l in zip(ax[0,0].legend_.texts, new_labels): t.set_text(l)
+#Stats
+_ ,p_sessions  = scipy.stats.mannwhitneyu(allsubjects.loc[allsubjects['sex']=='M', 'days_to_trained'], allsubjects.loc[allsubjects['sex']=='F', 'days_to_trained'], use_continuity=True)
+lim = max(allsubjects['days_to_trained']) +  5
+plt.plot([lim,lim, lim, lim], [0, 0, 1, 1], linewidth=2, color='k')
+if p_sessions<0.05:
+    plt.text(lim*1.01, 0.5, '*'*m.floor(m.log10(p_sessions)*-1), ha='center', rotation = -90, fontsize=16)
+else:
+    plt.text(lim*1.01, 0.5, 'n.s', ha='center', rotation = -90, fontsize=16)
+
+plt.sca(ax[0,1])
+sns.boxplot(y="sex", x="trials_to_trained", data=allsubjects,  color = "yellow" , width=0.5)
+sns.swarmplot(y="sex", x="trials_to_trained", data=allsubjects,hue="lab_name", edgecolor="white")
+plt.ylabel('Sex')
+plt.xlabel('Length of training (trials)')
+ax[0,1].legend_.remove()
+ax[0,1].set_yticklabels(['Male \n (n = %d)' %len(allsubjects.loc[allsubjects['sex']=='M']), 'Female \n (n = %d)' %len(allsubjects.loc[allsubjects['sex']=='F']) ], rotation = 45)
+
+#Stats
+_ ,p_trials  = scipy.stats.mannwhitneyu(allsubjects.loc[allsubjects['sex']=='M', 'trials_to_trained'], allsubjects.loc[allsubjects['sex']=='F', 'trials_to_trained'], use_continuity=True)
+lim = max(allsubjects['trials_to_trained']) +  5000
+plt.plot([lim,lim, lim, lim], [0, 0, 1, 1], linewidth=2, color='k')
+if p_trials<0.05:
+    plt.text(lim*1.01, 0.5, '*'*m.floor(m.log10(p_trials)*-1), ha='center', rotation = -90, fontsize=16)
+else:
+    plt.text(lim*1.01, 0.5, 'n.s', ha='center', rotation = -90, fontsize=16)
+
+
+
 
 
 total_day.add_subplot(223)
