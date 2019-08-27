@@ -4,3 +4,5 @@ dj_local_conf.json
 */__pycache__/
 
 .idea
+.DS_Store
+.vscode
