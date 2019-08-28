@@ -20,7 +20,7 @@ def sigmoid(x, start, alpha, beta, asymp):
 def fit_learningcurve(df):
 
     # only fit learning curves if there is data from a sufficient number of days
-    if len(df) >= 21:
+    if len(df) >= 20:
 
         # fit the actual function
         par, pcov = curve_fit(sigmoid, df['session_day'], df['performance_easy'],
@@ -92,3 +92,30 @@ def plot_learningcurve(x, y, subj, **kwargs):
 
 
     
+# ANNOTATE THE CORRELATION PLOT
+def corrfunc(x, y, **kws):
+
+    # compute spearmans correlation across age groups
+    r, pval = sp.stats.spearmanr(x, y, nan_policy='omit')
+    print('%s, %s, %.2f, %.2f'%(x.name, y.name, r, pval))
+
+    if 'ax' in kws.keys():
+        ax = kws['ax']
+    else:
+        ax = plt.gca()
+
+    # if this correlates, draw a regression line across groups
+    if pval < 0.05:
+        sns.regplot(x, y, truncate=True, color='gray', scatter=False, ci=None, robust=True, ax=ax)
+
+    # now plot the datapoint, with age groups
+    if 'yerr' in kws.keys():
+        ax.errorbar(x, y, yerr=kws['yerr'].values, fmt='none', zorder=0, ecolor='silver', elinewidth=0.5)
+        kws.pop('yerr', None)
+    sns.scatterplot(x=x, y=y, legend=False, **kws)
+
+    # annotate with the correlation coefficient + n-2 degrees of freedom
+    txt = r"$\rho$({}) = {:.2f}".format(len(x)-2, r) + "\n" + "p = {:.3f}".format(pval)
+    if pval < 0.001:
+        txt = r"$\rho$({}) = {:.3f}".format(len(x)-2, r) + "\n" + "p < 0.001"
+    ax.annotate(txt, xy=(.7, .1), xycoords='axes fraction', fontsize='small')
