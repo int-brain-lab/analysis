@@ -21,6 +21,7 @@ from ibl_pipeline.analyses import behavior as behavioral_analyses
 # Settings
 fig_path = '/home/guido/Figures/Behavior/'
 data_path = '/home/guido/Data/Behavior/'
+training_phase = 'biased'  # biased or training
 window_size = 51  # must be an uneven number
 step_size = 5
 
@@ -36,7 +37,7 @@ perf_df = pd.DataFrame(columns=['mouse', 'lab', 'perf', 'centers', 'num_trials',
 # Get all sessions
 sess = (acquisition.Session * subject.Subject * subject.SubjectLab
         * (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"')
-        & 'task_protocol LIKE "%training%"')
+        & 'task_protocol LIKE "%' + training_phase + '%"')
 session_start_time = sess.fetch('session_start_time')
 
 for i, ses_start in enumerate(session_start_time):
@@ -69,9 +70,9 @@ for i, ses_start in enumerate(session_start_time):
     perf_df.loc[i, 'num_trials'] = [num_trials]
     perf_df.loc[i, 'window_size'] = window_size
     perf_df.loc[i, 'step_size'] = step_size
-    perf_df.to_pickle(join(data_path, 'within_session_perf'))
+    perf_df.to_pickle(join(data_path, 'within_session_perf_%s' % training_phase))
 
-perf_df = pd.read_pickle(join(data_path, 'within_session_perf'))
+perf_df = pd.read_pickle(join(data_path, 'within_session_perf_%s' % training_phase))
 
 
 # Function to get average of list of lists with different lengths
@@ -88,31 +89,60 @@ def arrays_mean(list_of_arrays):
 
 # Calculate per mouse the average performance of sliding window over sessions
 all_perf = []
+all_perf_stderr = []
 for i, mouse_id in enumerate(np.unique(perf_df['mouse'])):
     arrays = np.array(
             [x for sublist in perf_df.loc[perf_df['mouse'] == mouse_id, 'perf'] for x in sublist])
-    all_perf.append(arrays_mean(arrays)[0])
-
+    this_mean, this_stderr = arrays_mean(arrays)
+    all_perf.append(this_mean)
+    all_perf_stderr.append(this_stderr)
 
 # Get mean over mice
 mean_perf, stderr_perf = arrays_mean(np.array(all_perf))
 
 # Plot results
-plt.figure(figsize=(8, 5))
 seaborn_style()
-fig = plt.gcf()
-ax1 = plt.gca()
+f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(13, 10), sharex=True)
 all_centers = np.array([x for sl in perf_df['centers'] for x in sl])
 max_centers = all_centers[np.argmax([len(x) for x in all_centers])]
-sns.lineplot(x=max_centers, y=mean_perf, color='k')
-plt.fill_between(max_centers, mean_perf-(stderr_perf/2), mean_perf+(stderr_perf/2),
+
+exmpl_ses = 485
+sns.lineplot(x=max_centers[0:len(perf_df.loc[exmpl_ses, 'perf'][0])],
+             y=perf_df.loc[exmpl_ses, 'perf'][0], color='k', linewidth=2, ax=ax1)
+ax1.set(xlim=[0, 1000], ylim=[0.5, 1.01], ylabel='Performance on easy contrasts (%)',
+        yticklabels=['50', '60', '70', '80', '90', '100'],
+        title='Single example session')
+
+exmpl_mouse = 'IBL-T1'
+sns.set_palette(sns.color_palette('Set1'))
+for i in perf_df.loc[perf_df['mouse'] == exmpl_mouse, 'perf'].index.values:
+    sns.lineplot(x=max_centers[0:len(perf_df.loc[i, 'perf'][0])],
+                 y=perf_df.loc[i, 'perf'][0], linewidth=2, ax=ax2)
+ax2.set(xlim=[0, 1000], ylim=[0.5, 1.01], ylabel='Performance on easy contrasts (%)',
+        yticklabels=['50', '60', '70', '80', '90', '100'],
+        title='All sessions for mouse %s' % exmpl_mouse)
+
+exmpl_mouse = 24
+sns.lineplot(x=max_centers[0:len(all_perf[exmpl_mouse])], y=all_perf[exmpl_mouse],
+             color='k', ax=ax3)
+ax3.fill_between(max_centers[0:len(all_perf[exmpl_mouse])],
+                 all_perf[exmpl_mouse]-(all_perf_stderr[exmpl_mouse]/2),
+                 all_perf[exmpl_mouse]+(all_perf_stderr[exmpl_mouse]/2),
                  alpha=0.5, facecolor=[0.6, 0.6, 0.6])
-ax1.set(xlim=[0, 1400], ylim=[0.9, 1], ylabel='Performance on easy contrasts (%)',
-        yticklabels=['90', '92', '94', '96', '98', '100'],
+ax3.set(xlim=[0, 1000], ylim=[0.9, 1.002], ylabel='Performance on easy contrasts (%)',
+        yticklabels=np.arange(90, 101, 2),
         xlabel='Center of sliding window (trials)',
-        title='n = %d mice, window size = %d trials, step size = %d trials' % (
+        title='Mean over sessions for example mouse')
+
+sns.lineplot(x=max_centers, y=mean_perf, color='k', ax=ax4)
+ax4.fill_between(max_centers, mean_perf-(stderr_perf/2), mean_perf+(stderr_perf/2),
+                 alpha=0.5, facecolor=[0.6, 0.6, 0.6])
+ax4.set(xlim=[0, 1000], ylim=[0.9, 1.002], ylabel='Performance on easy contrasts (%)',
+        yticklabels=np.arange(90, 101, 2),
+        xlabel='Center of sliding window (trials)',
+        title='Mean over all %d mice, window size = %d trials, step size = %d trials' % (
                 len(all_perf), perf_df.loc[0, 'window_size'], perf_df.loc[0, 'step_size']))
 
 plt.tight_layout(pad=2)
-plt.savefig(join(fig_path, 'figure2_panel_perf_within_session.pdf'), dpi=300)
-plt.savefig(join(fig_path, 'figure2_panel_perf_within_session.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure2_panel_perf_within_session_%s.pdf' % training_phase), dpi=300)
+plt.savefig(join(fig_path, 'figure2_panel_perf_within_session_%s.png' % training_phase), dpi=300)
