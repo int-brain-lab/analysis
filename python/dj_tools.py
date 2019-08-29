@@ -33,9 +33,9 @@ def fit_psychfunc(df):
     df2['mean_rt']	     = df['rt'].mean(skipna=True)
 
     # some stuff per session
-    df['abs_contrast'] = np.abs(df['signed_contrast'])
-    df3 = df.groupby(['session_start_time', 'abs_contrast'])['correct'].mean().reset_index()
-    df2['easy_correct_perday'] = [df3.loc[df3['abs_contrast'] == 100, 'correct'].values]
+    # df['abs_contrast'] = np.abs(df['signed_contrast'])
+    # df3 = df.groupby(['session_start_time', 'abs_contrast'])['correct'].mean().reset_index()
+    # df2['easy_correct_perday'] = [df3.loc[df3['abs_contrast'] == 100, 'correct'].values]
 
     # number of trials per day
     df4 = df.groupby(['session_start_time'])['correct'].count().reset_index()
