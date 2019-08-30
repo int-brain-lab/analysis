@@ -5,7 +5,7 @@ Created on Mon Aug 26 13:47:20 2019
 
 Quantify behavioral performance within a session
 
-@author: guido
+@author: Guido Meijer
 """
 
 import pandas as pd
@@ -16,7 +16,7 @@ import seaborn as sns
 from figure_style import seaborn_style
 import datajoint as dj
 from ibl_pipeline import subject, acquisition, action, behavior, reference
-from ibl_pipeline.analyses import behavior as behavioral_analyses
+from ibl_pipeline.analyses import behavior as behavior_analysis
 
 # Settings
 fig_path = '/home/guido/Figures/Behavior/'
@@ -36,7 +36,7 @@ perf_df = pd.DataFrame(columns=['mouse', 'lab', 'perf', 'centers', 'num_trials',
 
 # Get all sessions
 sess = (acquisition.Session * subject.Subject * subject.SubjectLab
-        * (behavioral_analyses.SessionTrainingStatus() & 'training_status="trained"')
+        * (behavior_analysis.SessionTrainingStatus() & 'training_status="trained"')
         & 'task_protocol LIKE "%' + training_phase + '%"')
 session_start_time = sess.fetch('session_start_time')
 

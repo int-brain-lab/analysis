@@ -8,5 +8,6 @@ Created on Mon Jul  1 11:49:59 2019
 
 import seaborn as sns
 
+
 def seaborn_style():
     sns.set(style="ticks", context="paper", font_scale=1.2)

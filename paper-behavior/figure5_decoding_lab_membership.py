@@ -5,7 +5,7 @@ Created on Fri Dec 21 10:30:25 2018
 
 Try to predict in which lab an animal was trained based on its behavior
 
-@author: guido
+@author: Guido Meijer
 """
 
 import pandas as pd
@@ -204,5 +204,5 @@ ax1.text(1, 0.68, '***', fontsize=15, ha='center', va='center')
 plt.setp(ax1.xaxis.get_majorticklabels(), rotation=60)
 
 plt.tight_layout(pad=2)
-plt.savefig(join(path, 'figure6_panel_decoding.pdf'), dpi=300)
-plt.savefig(join(path, 'figure6_panel_decoding.png'), dpi=300)
+plt.savefig(join(path, 'figure5_decoding.pdf'), dpi=300)
+plt.savefig(join(path, 'figure5_decoding.png'), dpi=300)

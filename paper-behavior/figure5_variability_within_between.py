@@ -5,7 +5,7 @@ Created on Fri Dec 21 10:30:25 2018
 
 Quantify variability within and between labs
 
-@author: guido
+@author: Guido Meijer
 """
 
 import pandas as pd
@@ -243,8 +243,8 @@ plt.tight_layout(pad=2)
 fig = plt.gcf()
 fig.set_size_inches((12, 8), forward=False)
 
-plt.savefig(join(fig_path, 'figure6_panel_metrics_per_lab.pdf'), dpi=300)
-plt.savefig(join(fig_path, 'figure6_panel_metrics_per_lab.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_metrics_per_lab.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_metrics_per_lab.png'), dpi=300)
 
 # Plot lab deviation from global average
 f, ax1 = plt.subplots(1, 1, figsize=(5.5, 6))
@@ -273,5 +273,5 @@ plt.setp(ax1.xaxis.get_majorticklabels(), rotation=40, ha="right")
 plt.tight_layout(pad=3)
 fig = plt.gcf()
 fig.set_size_inches((5.5, 5), forward=False)
-plt.savefig(join(fig_path, 'figure6_panel_heatmap.pdf'), dpi=300)
-plt.savefig(join(fig_path, 'figure6_panel_heatmap.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_heatmap.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_heatmap.png'), dpi=300)
