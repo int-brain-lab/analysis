@@ -19,8 +19,8 @@ from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
 
 # Settings
-fig_path = join(expanduser('~'), 'Figures', 'Behavior')
-session_show = [5, 5]  # Sessions before and after trained to show
+FIG_PATH = join(expanduser('~'), 'Figures', 'Behavior')
+SESSION_SHOW = [5, 5]  # Sessions before and after trained to show
 
 # Query list of subjects
 use_subjects = (subject.Subject * subject.SubjectLab * subject.SubjectProject
@@ -29,7 +29,7 @@ subjects = use_subjects.fetch('subject_nickname')
 
 # Initialize some variables
 perf_biased = pd.DataFrame(columns=['mouse', 'perf', 'ses'])
-ses_rel = np.concatenate((np.arange(-session_show[0], 0), np.arange(1, session_show[1]+1)))
+ses_rel = np.concatenate((np.arange(-SESSION_SHOW[0], 0), np.arange(1, SESSION_SHOW[1]+1)))
 
 # Loop over mice
 for i, nickname in enumerate(subjects):
@@ -42,14 +42,14 @@ for i, nickname in enumerate(subjects):
                                                                   'task_protocol')
 
     # Skip mouse if not enough biased sessions, or if data is not available
-    if (len(task) < np.sum(session_show)
+    if (len(task) < np.sum(SESSION_SHOW)
             or any(task == None)
-            or np.sum(['biased' in s for s in task]) < session_show[1]):
+            or np.sum(['biased' in s for s in task]) < SESSION_SHOW[1]):
         continue
 
     # Determine first biased session and get sessions around it
     first_biased = next((i for i, j in enumerate(['biased' in s for s in task]) if j), None)
-    ses_ind = np.arange(first_biased-session_show[0], first_biased+session_show[1])
+    ses_ind = np.arange(first_biased-SESSION_SHOW[0], first_biased+SESSION_SHOW[1])
 
     # Get performance for theses sessions
     for j, ses in enumerate(ses_ind):
@@ -77,9 +77,5 @@ ax1.plot([0, 0], [80, 100], '--r')
 ax1.text(-0.5, 90, 'Transition to biased blocks', color='r', rotation=90)
 plt.tight_layout(pad=2)
 
-plt.savefig(join(fig_path, 'figure6_performance_to_biased.pdf'), dpi=300)
-plt.savefig(join(fig_path, 'figure6_performance_to_biased.png'), dpi=300)
-
-
-
-
+plt.savefig(join(FIG_PATH, 'figure6_performance_to_biased.pdf'), dpi=300)
+plt.savefig(join(FIG_PATH, 'figure6_performance_to_biased.png'), dpi=300)
