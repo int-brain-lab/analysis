@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 from scipy import stats
-from os.path import join
+from os.path import join, expanduser
 import seaborn as sns
 from figure_style import seaborn_style
 import datajoint as dj
@@ -21,8 +21,8 @@ from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
 
 # Settings
-fig_path = '/home/guido/Figures/Behavior/'
-csv_path = '/home/guido/Data/Behavior/'
+fig_path = join(expanduser('~'), 'Figures', 'Behavior')
+csv_path = join(expanduser('~'), 'Data', 'Behavior')
 
 # Query list of subjects
 use_subjects = (subject.Subject * subject.SubjectLab * subject.SubjectProject

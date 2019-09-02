@@ -11,7 +11,7 @@ Stability of performance on easy trials when mice transition from training into 
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from os.path import join
+from os.path import join, expanduser
 import seaborn as sns
 from figure_style import seaborn_style
 import datajoint as dj
@@ -19,8 +19,7 @@ from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
 
 # Settings
-data_path = '/home/guido/Data/Behavior/'
-fig_path = '/home/guido/Figures/Behavior/'
+fig_path = join(expanduser('~'), 'Figures', 'Behavior')
 session_show = [5, 5]  # Sessions before and after trained to show
 
 # Query list of subjects
@@ -64,13 +63,6 @@ for i, nickname in enumerate(subjects):
         else:
             perf_biased.loc[i*j, 'perf'] = np.nan
 
-# Save dataframe to disk
-perf_biased.reset_index
-perf_biased.to_pickle(join(data_path, 'perf_around_biased_transition'))
-
-# Load in data from disk (so you don't have to load in the data from DJ every time)
-perf_biased = pd.read_pickle(join(data_path, 'perf_around_biased_transition'))
-
 # Plot results
 perf_biased['ses'] = perf_biased['ses'].astype(float)
 perf_biased['perf'] = perf_biased['perf'].astype(float)
@@ -78,7 +70,7 @@ perf_biased['perf'] = perf_biased['perf'].astype(float)
 f, ax1 = plt.subplots(1, 1, figsize=(5, 5))
 seaborn_style()
 sns.lineplot(x='ses', y='perf', data=perf_biased, ci=68, ax=ax1)
-ax1.set(ylim=[80, 100], xticks=ses_rel, yticks=np.arange(80,101,5),
+ax1.set(ylim=[80, 100], xticks=ses_rel, yticks=np.arange(80, 101, 5),
         ylabel='Performance on easy contrasts (%)',
         xlabel='Training sessions relative to transition (days)')
 ax1.plot([0, 0], [80, 100], '--r')

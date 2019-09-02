@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from os.path import join
+from os.path import join, expanduser
 import seaborn as sns
 from figure_style import seaborn_style
 import datajoint as dj
@@ -25,7 +25,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
 
 # Settings
-path = '/home/guido/Figures/Behavior/'
+fig_path = join(expanduser('~'), 'Figures', 'Behavior')
 iterations = 2000     # how often to decode
 num_splits = 3        # n in n-fold cross validation
 decoding_metrics = ['perf_easy', 'n_trials', 'threshold', 'bias', 'reaction_time']
