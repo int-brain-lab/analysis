@@ -25,18 +25,24 @@ schema = dj.schema('group_shared_anneurai_analyses')
 @schema
 class PsyTrack(dj.Computed):
     definition = """
-    -> subject.Subject
+    -> behavior.TrialSet.Trial()
     ---
-    trial_primary_keys:     longblob
-    weights:                longblob # make a large matrix with weights that can be computed
+    weight_contrastleft:                 float
+    weight_contrastleft_post:            blob
+    weight_contrastright:                float 
     """
+
+    key_source = subject.Subject & behavior.TrialSet.Trial
 
     def make(self, key):
 
         # grab all trials for this subject
-        trials_key = (subject.Subject() & key) * behavior.TrialSet.Trial()
-        stim_left, stim_right, resp, feedback = trials_key.fetch('trial_stim_contrast_left', 
-            'trial_stim_contrast_right', 'trial_response_choice', 'trial_feedback_type')
+        trials = behavior.TrialSet.Trial & key
+        stim_left, stim_right, resp, feedback = trials.fetch(
+            'trial_stim_contrast_left',
+            'trial_stim_contrast_right',
+            'trial_response_choice',
+            'trial_feedback_type')
 
         # TODO: retrieve days to add dayLength
 
