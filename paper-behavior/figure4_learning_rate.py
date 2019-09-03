@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from figure_style import seaborn_style
+from paper_behavior_functions import seaborn_style
 from os.path import join
 import datajoint as dj
 from ibl_pipeline import subject
@@ -22,7 +22,7 @@ sys.path.insert(0, '../python')
 from fit_learning_curves import fit_learningcurve, plot_learningcurve
 from IPython import embed as shell # for debugging
 
-# Set path for figure 
+# Set path for figure
 path = '/home/guido/Figures/Behavior/'
 path  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 
@@ -30,16 +30,16 @@ path  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project = "ibl_neuropixel_brainwide_01"'
 subjects = use_subjects.fetch('subject_nickname')
 
-# Create dataframe with behavioral metrics of all mice        
+# Create dataframe with behavioral metrics of all mice
 df_learning = pd.DataFrame()
 for i, nickname in enumerate(subjects):
-    if np.mod(i+1,10) == 0: 
+    if np.mod(i+1,10) == 0:
         print('Loading data of subject %d of %d'%(i+1,len(subjects)))
     # Gather subject info
     subj = subject.Subject * subject.SubjectLab & 'subject_nickname="%s"'%nickname
     behav = pd.DataFrame((behavior_analysis.BehavioralSummaryByDate * subject.Subject * subject.SubjectLab &
        'subject_nickname="%s"'%nickname).proj('session_date', 'performance_easy','subject_nickname', 'lab_name').fetch(as_dict=True, order_by='session_date'))
-    
+
     if behav.empty: # skip if there are no data
         continue
 
@@ -56,12 +56,12 @@ for i, nickname in enumerate(subjects):
     if len(first_trained_session) == 0:
         fitted_curve.loc[nickname, 'day_trained'] = np.nan
     else:
-        first_trained_session_date = first_trained_session.fetch1('first_trained') 
+        first_trained_session_date = first_trained_session.fetch1('first_trained')
         fitted_curve.loc[nickname, 'day_trained'] = sum(behav.session_date < first_trained_session_date)
 
     df_learning = df_learning.append(fitted_curve)
 
-# Select trained mice    
+# Select trained mice
 df_learned = df_learning[df_learning['day_trained'].notnull()]
 
 # Get example mouse data
@@ -99,4 +99,3 @@ plt.savefig(join(path, 'figure4_learning_rate.png'), dpi=300)
 
 
 
-    

@@ -14,7 +14,7 @@ import numpy as np
 from scipy import stats
 from os.path import join, expanduser
 import seaborn as sns
-from figure_style import seaborn_style
+from paper_behavior_functions import query_subjects, seaborn_style
 import datajoint as dj
 from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
@@ -49,15 +49,13 @@ def decoding(resp, labels, clf, NUM_SPLITS):
 
 
 # Query list of subjects
-use_subjects = (subject.Subject * subject.SubjectLab * subject.SubjectProject
-                & 'subject_project = "ibl_neuropixel_brainwide_01"')
-subjects = use_subjects.fetch('subject_nickname')
+subjects = query_subjects()
 
 # Create dataframe with behavioral metrics of all mice
 learning = pd.DataFrame(columns=['mouse', 'lab', 'time_zone', 'learned', 'date_learned',
                                  'training_time', 'perf_easy', 'n_trials', 'threshold',
                                  'bias', 'reaction_time', 'lapse_low', 'lapse_high'])
-for i, nickname in enumerate(subjects):
+for i, nickname in enumerate(subjects['subject_nickname']):
     if np.mod(i+1, 10) == 0:
         print('Loading data of subject %d of %d' % (i+1, len(subjects)))
 

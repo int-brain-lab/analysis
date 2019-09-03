@@ -8,6 +8,7 @@ import numpy as np
 import sys, os, time
 import matplotlib.pyplot as plt
 import seaborn as sns
+from paper_behavior_functions import query_subjects
 import datajoint as dj
 from IPython import embed as shell # for debugging
 from math import ceil
@@ -17,10 +18,10 @@ from math import ceil
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 
-sys.path.insert(0, '/Users/urai/Documents/code/analysis_IBL/python')
+sys.path.insert(0, '../python')
 from dj_tools import *
 
-## INITIALIZE A FEW THINGS
+# INITIALIZE A FEW THINGS
 sns.set(style="ticks", context="paper", font_scale=1.2)
 figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
 cmap = sns.diverging_palette(20, 220, n=3, center="dark")
@@ -32,7 +33,7 @@ sns.set_palette("gist_gray")
 # but hasn't seen biased blocks yet
 # ================================= #
 
-use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project="ibl_neuropixel_brainwide_01"'
+use_subjects = query_subjects()
 # criterion = behavioral_analyses.SessionTrainingStatus()
 # sess = ((acquisition.Session & 'task_protocol LIKE "%trainingChoiceWorld%"') \
 # 		* (criterion & 'training_status="trained"')) * use_subjects

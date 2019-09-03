@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from os.path import join, expanduser
 import seaborn as sns
-from figure_style import seaborn_style
+from paper_behavior_functions import query_subjects, seaborn_style
 import datajoint as dj
 from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
@@ -23,16 +23,14 @@ FIG_PATH = join(expanduser('~'), 'Figures', 'Behavior')
 SESSION_SHOW = [5, 5]  # Sessions before and after trained to show
 
 # Query list of subjects
-use_subjects = (subject.Subject * subject.SubjectLab * subject.SubjectProject
-                & 'subject_project = "ibl_neuropixel_brainwide_01"')
-subjects = use_subjects.fetch('subject_nickname')
+subjects = query_subjects(as_dataframe=True)
 
 # Initialize some variables
 perf_biased = pd.DataFrame(columns=['mouse', 'perf', 'ses'])
 ses_rel = np.concatenate((np.arange(-SESSION_SHOW[0], 0), np.arange(1, SESSION_SHOW[1]+1)))
 
 # Loop over mice
-for i, nickname in enumerate(subjects):
+for i, nickname in enumerate(subjects['subject_nickname']):
     if np.mod(i+1, 10) == 0:
         print('Loading data of subject %d of %d' % (i+1, len(subjects)))
 
