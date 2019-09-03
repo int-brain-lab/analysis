@@ -9,7 +9,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
-from paper_behavior_functions import query_subjects, seaborn_style
+from paper_behavior_functions import query_subjects, query_sessions, seaborn_style
 import datajoint as dj
 from IPython import embed as shell # for debugging
 from scipy.special import erf # for psychometric functions
@@ -32,11 +32,7 @@ sns.set_palette(cmap)  # palette for water types
 # GET DATA FROM TRAINED ANIMALS
 # ================================= #
 
-use_subjects = query_subjects()
-criterion = behavioral_analyses.SessionTrainingStatus()
-sess = ((acquisition.Session & 'task_protocol LIKE "%biasedChoiceWorld%"')
-        * (criterion & 'training_status="ready for ephys"')) * use_subjects
-
+sess = query_sessions(protocol='biased', training_status='ready for ephys')
 b = (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
 bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav = dj2pandas(bdat)

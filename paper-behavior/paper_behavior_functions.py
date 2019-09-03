@@ -35,21 +35,21 @@ def query_subjects(as_dataframe=False):
     return subjects
 
 
-def query_sessions(protocol='all', trained=False, stable=False, as_dataframe=False):
+def query_sessions(protocol='all', training_status='all', stable=False, as_dataframe=False):
     """
     Query all sessions for analysis of behavioral data
 
     Parameters
     ----------
-    protocol:     string with the following possibilities
-                  'all': all sessions (default)
-                  'biased': biasedChoiceWorld sessions
-                  'training': trainingChoiceWorld sessions
-    trained:      boolean if True only return sessions in which mice were trained
-                  (default is False)
-    stable:       boolean if True only return sessions with stable hardware
-                  sessions after July 10, 2019 (default is False)
-    as_dataframe: boolean if True returns a pandas dataframe (default is False)
+    protocol:        string with the following possibilities
+                     'all': all sessions (default)
+                     'biased': biasedChoiceWorld sessions
+                     'training': trainingChoiceWorld sessions
+    training_status: string with the following possibilities
+                     'all' (default), 'trained', 'ready for ephys'
+    stable:          boolean if True only return sessions with stable hardware
+                     sessions after July 10, 2019 (default is False)
+    as_dataframe:    boolean if True returns a pandas dataframe (default is False)
     """
 
     use_subjects = query_subjects().proj('subject_uuid')
@@ -61,9 +61,9 @@ def query_sessions(protocol='all', trained=False, stable=False, as_dataframe=Fal
         sessions = (acquisition.Session * subject.Subject * subject.SubjectLab * use_subjects
                     & 'task_protocol LIKE "%' + protocol + '%"').proj(
                             'session_uuid', 'lab_name', 'subject_nickname', 'task_protocol')
-    if trained is True:
+    if training_status != 'all':
         sessions = sessions * (behavior_analysis.SessionTrainingStatus()
-                               & 'training_status="trained"')
+                               & 'training_status="%s"' % training_status)
     if stable is True:
         sessions = sessions & 'date(session_start_time) > "2019-06-10"'
     if as_dataframe is True:
