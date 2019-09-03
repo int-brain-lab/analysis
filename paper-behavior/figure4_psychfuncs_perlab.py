@@ -5,24 +5,26 @@ Anne Urai, CSHL, 2019
 
 import pandas as pd
 import numpy as np
-import sys, os, time
+import seaborn as sns
+import sys
+import os
 import matplotlib.pyplot as plt
-from figure_style import seaborn_style
+from paper_behavior_functions import query_subjects, seaborn_style
 import datajoint as dj
-from IPython import embed as shell # for debugging
-from scipy.special import erf # for psychometric functions
+from IPython import embed as shell  # for debugging
+from scipy.special import erf  # for psychometric functions
 
 # import wrappers etc
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.utils import psychofit as psy
 from ibl_pipeline.analyses import behavior as behavioral_analyses
 
-sys.path.insert(0, '/Users/urai/Documents/code/analysis_IBL/python')
+sys.path.insert(0, '../python')
 from dj_tools import *
 
-## INITIALIZE A FEW THINGS
+# INITIALIZE A FEW THINGS
 sns.set(style="ticks", context="paper", font_scale=1.2)
-figpath  = os.path.join(os.path.expanduser('~'), 'Data/Figures_IBL')
+figpath = os.path.join(os.path.expanduser('~'), 'Data', 'Figures_IBL')
 cmap = sns.diverging_palette(20, 220, n=3, center="dark")
 sns.set_palette("gist_gray")  # palette for water types
 
@@ -30,21 +32,18 @@ sns.set_palette("gist_gray")  # palette for water types
 # GET DATA FROM TRAINED ANIMALS
 # ================================= #
 
-# use_subjects = (subject.Subject() & 'subject_birth_date > "2018-09-01"' \
-# 			   & 'subject_line IS NULL OR subject_line="C57BL/6J"') * subject.SubjectLab()
-use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project = "ibl_neuropixel_brainwide_01"'
-
+use_subjects = query_subjects()
 criterion = behavioral_analyses.SessionTrainingStatus()
-sess = ((acquisition.Session & 'task_protocol LIKE "%trainingChoiceWorld%"') \
-		* (criterion & 'training_status="trained"')) * use_subjects
+sess = ((acquisition.Session & 'task_protocol LIKE "%trainingChoiceWorld%"')
+        * (criterion & 'training_status="trained"')) * use_subjects
 
 b = (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
 bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
 behav = dj2pandas(bdat)
-behav['lab_name'] = behav['lab_name'].str.replace('zadorlab','churchlandlab')
-behav['lab_name'] = behav['lab_name'].str.replace('hoferlab','mrsicflogellab')
+behav['lab_name'] = behav['lab_name'].str.replace('zadorlab', 'churchlandlab')
+behav['lab_name'] = behav['lab_name'].str.replace('hoferlab', 'mrsicflogellab')
 
-lab_names = {'danlab':'Berkeley', 'mainenlab':'CCU', 'churchlandlab':'CSHL', 'cortexlab':'UCL', 
+lab_names = {'danlab':'Berkeley', 'mainenlab':'CCU', 'churchlandlab':'CSHL', 'cortexlab':'UCL',
 			 'angelakilab':'NYU', 'wittenlab':'Princeton', 'mrsicflogellab':'SWC'}
 print('lets go')
 

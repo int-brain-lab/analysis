@@ -5,7 +5,7 @@ Created on Fri Dec 21 10:30:25 2018
 
 Quantify variability within and between labs
 
-@author: guido
+@author: Guido Meijer
 """
 
 import pandas as pd
@@ -13,27 +13,25 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 from scipy import stats
-from os.path import join
+from os.path import join, expanduser
 import seaborn as sns
-from figure_style import seaborn_style
+from paper_behavior_functions import query_subjects, seaborn_style
 import datajoint as dj
 from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
 
 # Settings
-fig_path = '/home/guido/Figures/Behavior/'
-csv_path = '/home/guido/Data/Behavior/'
+fig_path = join(expanduser('~'), 'Figures', 'Behavior')
+csv_path = join(expanduser('~'), 'Data', 'Behavior')
 
 # Query list of subjects
-use_subjects = (subject.Subject * subject.SubjectLab * subject.SubjectProject
-                & 'subject_project = "ibl_neuropixel_brainwide_01"')
-subjects = use_subjects.fetch('subject_nickname')
+subjects = query_subjects(as_dataframe=True)
 
 # Create dataframe with behavioral metrics of all mice
 learning = pd.DataFrame(columns=['mouse', 'lab', 'learned', 'date_learned', 'training_time',
                                  'perf_easy', 'n_trials', 'threshold', 'bias', 'reaction_time',
                                  'lapse_low', 'lapse_high'])
-for i, nickname in enumerate(subjects):
+for i, nickname in enumerate(subjects['subject_nickname']):
     if np.mod(i+1, 10) == 0:
         print('Loading data of subject %d of %d' % (i+1, len(subjects)))
 
@@ -243,8 +241,8 @@ plt.tight_layout(pad=2)
 fig = plt.gcf()
 fig.set_size_inches((12, 8), forward=False)
 
-plt.savefig(join(fig_path, 'figure6_panel_metrics_per_lab.pdf'), dpi=300)
-plt.savefig(join(fig_path, 'figure6_panel_metrics_per_lab.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_metrics_per_lab.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_metrics_per_lab.png'), dpi=300)
 
 # Plot lab deviation from global average
 f, ax1 = plt.subplots(1, 1, figsize=(5.5, 6))
@@ -273,5 +271,5 @@ plt.setp(ax1.xaxis.get_majorticklabels(), rotation=40, ha="right")
 plt.tight_layout(pad=3)
 fig = plt.gcf()
 fig.set_size_inches((5.5, 5), forward=False)
-plt.savefig(join(fig_path, 'figure6_panel_heatmap.pdf'), dpi=300)
-plt.savefig(join(fig_path, 'figure6_panel_heatmap.png'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_heatmap.pdf'), dpi=300)
+plt.savefig(join(fig_path, 'figure5_heatmap.png'), dpi=300)

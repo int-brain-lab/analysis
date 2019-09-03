@@ -39,20 +39,21 @@ from ibl_pipeline.analyses import behavior as behavior_analysis
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior
 from ibl_pipeline.analyses import behavior as behavior_analysis
 from alexfigs_datajoint_functions import *  # this has all plotting functions
+from paper_behavior_functions import query_subjects, seaborn_style
 
 
-#Collect all all data 
-use_subjects = subject.Subject * subject.SubjectLab * subject.SubjectProject & 'subject_project="ibl_neuropixel_brainwide_01"'
-sess = (acquisition.Session & (behavior.TrialSet.Trial() & 'ABS(trial_stim_contrast_left-0)<0.0001' \
-	& 'ABS(trial_stim_contrast_right-0)<0.0001') & 'task_protocol like "%trainingChoiceWorld%"') \
-	* use_subjects
-b 		= (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
-bdat 	= pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
-allsubjects 	= dj2pandas(bdat)
+# Collect all all data
+use_subjects = query_subjects()
+sess = (acquisition.Session * use_subjects
+        & (behavior.TrialSet.Trial() & 'ABS(trial_stim_contrast_left-0)<0.0001'
+           & 'ABS(trial_stim_contrast_right-0)<0.0001'
+           & 'task_protocol like "%trainingChoiceWorld%"'))
 
+b = (behavior.TrialSet.Trial & sess) * subject.Subject() * subject.SubjectLab()
+bdat = pd.DataFrame(b.fetch(order_by='subject_nickname, session_start_time, trial_id'))
+allsubjects	= dj2pandas(bdat)
 
-#Drop unnecesary weight 
-
+# Drop unnecesary weight
 allsubjects= allsubjects.drop([
  'session_start_time',
  'trial_id',
@@ -131,7 +132,7 @@ for labname in users:
                 training_status = (behavior_analysis.SessionTrainingStatus & last_session).fetch1('training_status')
                 average_weight , _ = get_weights(mouse, labname).mean()
                 average_trialspsession  =  behav.groupby('days').count()['trial_id'].mean()
-                
+
                 if training_status in ['trained', 'ready for ephys']:
                     first_trained_session = subj.aggr(behavior_analysis.SessionTrainingStatus & 'training_status="trained"', first_trained='min(session_start_time)')
                     first_trained_session_time = first_trained_session.fetch1('first_trained')
@@ -141,7 +142,7 @@ for labname in users:
                     days_to_trained = sum(behav['date'].unique() < trained_date.to_datetime64())
                     # how many trials to trained?
                     trials_to_trained = sum(behav['date'] < trained_date.to_datetime64())
-                       
+
                     #average threshold
                     pars = pd.DataFrame((behavior_analysis.BehavioralSummaryByDate.PsychResults * subject.Subject * subject.SubjectLab & \
                                          'subject_nickname="%s"'%mouse & 'lab_name="%s"'%labname).fetch(as_dict=True))
@@ -151,13 +152,13 @@ for labname in users:
                                                 >= first_trained_session_time.date()), 'lapse_high'].mean()
                     average_lapse_low  = pars.loc[(pars['prob_left'] == 0.5) & (pars['session_date'] \
                                                 >= first_trained_session_time.date()), 'lapse_low'].mean()
-                else:   
+                else:
                     days_to_trained = np.nan
                     trials_to_trained = np.nan
                     average_threshold = np.nan
                     average_lapse_high = np.nan
                     average_lapse_low = np.nan
-    
+
                 if training_status == 'ready for ephys':
                     #Only counting from ready to ephys status
                     first_ephystrained_session = subj.aggr(behavior_analysis.SessionTrainingStatus & \
@@ -167,9 +168,9 @@ for labname in users:
                     ephys_date = pd.DatetimeIndex([first_ephystrained_session_time])[0]
                     days_to_ephys = sum((behav['date'].unique() < ephys_date.to_datetime64()) & (behav['date'].unique() > trained_date.to_datetime64()))
                     trials_to_ephys = sum((behav['date'] < ephys_date.to_datetime64()) & (behav['date'] > trained_date.to_datetime64()))
-                    
+
                     #Bias analysis
-                
+
                     pars = pd.DataFrame((behavior_analysis.BehavioralSummaryByDate.PsychResults * \
                                          subject.Subject * subject.SubjectLab & 'subject_nickname="%s"'%mouse & \
                                          'lab_name="%s"'%labname).fetch(as_dict=True))
@@ -177,24 +178,24 @@ for labname in users:
                                                 >= first_ephystrained_session_time.date()), 'bias'].mean()
                     average_bias_02  = pars.loc[(pars['prob_left'] == 0.2) & (pars['session_date'] \
                                                 >= first_ephystrained_session_time.date()), 'bias'].mean()
-                    
+
                 else:
                     average_bias_08 = np.nan
                     average_bias_02= np.nan
                     days_to_ephys = np.nan
                     trials_to_ephys= np.nan
-                    
+
                 # keep track
-                
+
                 allsubjects.loc[allsubjects['subject_nickname'] == mouse, ['days_to_trained','trials_to_trained','days_to_ephys','trials_to_ephys', 'training_status',\
                                 'average_threshold','average_lapse_high', 'average_lapse_low', 'average_bias08', 'average_bias02', 'average_weight', 'average_trialspsession']] = days_to_trained, \
                                 trials_to_trained,days_to_ephys, trials_to_ephys, training_status,\
                                 average_threshold, average_lapse_high, average_lapse_low, average_bias_08, average_bias_02, average_weight, average_trialspsession
-                
-                
+
+
             except:
                 pass
-        
+
 #Star plotting
 #Make sublist with labs that have trained males and female
 #TODO dectect this condition automatically
@@ -286,7 +287,7 @@ if pearson[1]<0.05:
          transform = ax[1,1].transAxes)
 
 ######
-    
+
 allsubjects['gsessions_2_trained'] = allsubjects['days_to_trained']/allsubjects['average_weight']
 plt.sca(ax[2,0])
 sns.boxplot(y="sex", x="gsessions_2_trained", data=allsubjects, color = "yellow", width=0.5)

@@ -5,16 +5,16 @@ Created on Fri Dec 21 10:30:25 2018
 
 Try to predict in which lab an animal was trained based on its behavior
 
-@author: guido
+@author: Guido Meijer
 """
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from os.path import join
+from os.path import join, expanduser
 import seaborn as sns
-from figure_style import seaborn_style
+from paper_behavior_functions import query_subjects, seaborn_style
 import datajoint as dj
 from ibl_pipeline import subject, acquisition, action, behavior, reference
 from ibl_pipeline.analyses import behavior as behavior_analysis
@@ -25,17 +25,17 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
 
 # Settings
-path = '/home/guido/Figures/Behavior/'
-iterations = 2000     # how often to decode
-num_splits = 3        # n in n-fold cross validation
-decoding_metrics = ['perf_easy', 'n_trials', 'threshold', 'bias', 'reaction_time']
-decoding_metrics_control = ['perf_easy', 'n_trials', 'threshold', 'bias', 'reaction_time',
-                            'time_zone']
+FIG_PATH = join(expanduser('~'), 'Figures', 'Behavior')
+ITERATIONS = 2000     # how often to decode
+NUM_SPLITS = 3        # n in n-fold cross validation
+DECODING_METRICS = ['perf_easy', 'n_trials', 'threshold', 'bias', 'reaction_time']
+DECODING_METRIS_CONTROL = ['perf_easy', 'n_trials', 'threshold', 'bias', 'reaction_time',
+                           'time_zone']
 
 
 # Decoding function with n-fold cross validation
-def decoding(resp, labels, clf, num_splits):
-    kf = KFold(n_splits=num_splits, shuffle=True)
+def decoding(resp, labels, clf, NUM_SPLITS):
+    kf = KFold(n_splits=NUM_SPLITS, shuffle=True)
     y_pred = np.array([])
     y_true = np.array([])
     for train_index, test_index in kf.split(resp):
@@ -49,15 +49,13 @@ def decoding(resp, labels, clf, num_splits):
 
 
 # Query list of subjects
-use_subjects = (subject.Subject * subject.SubjectLab * subject.SubjectProject
-                & 'subject_project = "ibl_neuropixel_brainwide_01"')
-subjects = use_subjects.fetch('subject_nickname')
+subjects = query_subjects()
 
 # Create dataframe with behavioral metrics of all mice
 learning = pd.DataFrame(columns=['mouse', 'lab', 'time_zone', 'learned', 'date_learned',
                                  'training_time', 'perf_easy', 'n_trials', 'threshold',
                                  'bias', 'reaction_time', 'lapse_low', 'lapse_high'])
-for i, nickname in enumerate(subjects):
+for i, nickname in enumerate(subjects['subject_nickname']):
     if np.mod(i+1, 10) == 0:
         print('Loading data of subject %d of %d' % (i+1, len(subjects)))
 
@@ -162,23 +160,23 @@ clf_rf = RandomForestClassifier(n_estimators=100)
 # Perform decoding of lab membership
 decoding_result = pd.DataFrame(columns=['original', 'original_shuffled',
                                         'control', 'control_shuffled'])
-decoding_set = decod[decoding_metrics].values
-control_set = decod[decoding_metrics_control].values
-for i in range(iterations):
+decoding_set = decod[DECODING_METRICS].values
+control_set = decod[DECODING_METRIS_CONTROL].values
+for i in range(ITERATIONS):
     if np.mod(i+1, 100) == 0:
-        print('Iteration %d of %d' % (i+1, iterations))
+        print('Iteration %d of %d' % (i+1, ITERATIONS))
     # Original dataset
     decoding_result.loc[i, 'original'] = decoding(decoding_set,
-                                                  list(decod['lab']), clf_rf, num_splits)
+                                                  list(decod['lab']), clf_rf, NUM_SPLITS)
     decoding_result.loc[i, 'original_shuffled'] = decoding(decoding_set,
                                                            list(decod['lab'].sample(frac=1)),
-                                                           clf_rf, num_splits)
+                                                           clf_rf, NUM_SPLITS)
     # Positive control dataset
     decoding_result.loc[i, 'control'] = decoding(control_set,
-                                                 list(decod['lab']), clf_rf, num_splits)
+                                                 list(decod['lab']), clf_rf, NUM_SPLITS)
     decoding_result.loc[i, 'control_shuffled'] = decoding(control_set,
                                                           list(decod['lab'].sample(frac=1)),
-                                                          clf_rf, num_splits)
+                                                          clf_rf, NUM_SPLITS)
 
 
 # Calculate if decoder performs above chance (positive values indicate above chance-level)
@@ -204,5 +202,5 @@ ax1.text(1, 0.68, '***', fontsize=15, ha='center', va='center')
 plt.setp(ax1.xaxis.get_majorticklabels(), rotation=60)
 
 plt.tight_layout(pad=2)
-plt.savefig(join(path, 'figure6_panel_decoding.pdf'), dpi=300)
-plt.savefig(join(path, 'figure6_panel_decoding.png'), dpi=300)
+plt.savefig(join(FIG_PATH, 'figure5_decoding.pdf'), dpi=300)
+plt.savefig(join(FIG_PATH, 'figure5_decoding.png'), dpi=300)
