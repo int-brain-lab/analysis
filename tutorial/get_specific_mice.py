@@ -1,5 +1,5 @@
 # Gaelle Chapuis
-# find 10 mice from database, that are: 1) trained, 2) 5 female, 5 male
+# find mice in database, that are: 1) trained, 2) male or female, 3) belonging to specific lab
 
 
 # %%
@@ -7,24 +7,33 @@ import datajoint as dj
 from ibl_pipeline import reference, subject, action, acquisition, data, behavior, ephys
 from ibl_pipeline.analyses import behavior as behavior_analyses
 # %%
-sex = 'm'
-male = subject.Subject & {'sex': sex}
-trained = behavior_analyses.SessionTrainingStatus & 'training_status="trained"'
-
-male_trained = male & trained
-
-subjs_mt = male_trained.fetch(format='frame')
-
-n_subjs_mt = subjs_mt.shape[0]  # how many male trained mice there are in the database
-# %%
-
-if n_subjs_mt >= 5:  # get first 5 animals
-    smt5 = subjs_mt.iloc[:5]
-else:
-    print('you do not have enough mice to run this analysis')
-   
+SEX_DEFAULTS = ('m', 'M', 'f', 'F', 'mf')
 
 
-# attest2 = subject.Subject * subject.SubjectProject * subject.SubjectLab
-# nummales_mf = len(attest2 & 'sex="M"' & 'subject_project="ibl_neuropixel_brainwide_01"' & 'lab_name="mrsicflogellab"')
-# nummales_h = len(attest2 & 'sex="M"' & 'subject_project="ibl_neuropixel_brainwide_01"' & 'lab_name="hoferlab"')
+def get_trained_mice(sex='mf', lab_name=None, training_status='trained', format='frame'):
+
+    if not isinstance(training_status, str):
+        raise ValueError('training_status has to be a string')
+    if sex not in SEX_DEFAULTS:
+        raise ValueError('if a specific sex is wanted, sex has to be written either m or f.')
+
+    #  Sex criterion
+    if sex == 'mf':
+        subject_sex = subject.Subject
+    else:
+        subject_sex = subject.Subject & {'sex': sex}
+
+    # Lab criterion
+    if lab_name is None:
+        subject_lab = subject.SubjectLab
+    else:
+        subject_lab = subject.SubjectLab & {'lab_name': lab_name}
+
+    #  Training criterion
+    trained = behavior_analyses.SessionTrainingStatus & (f'training_status="{training_status}"')
+
+    # Assemble multiple conditions
+    subject_output = subject_sex & trained & subject_lab
+
+    #  Fetch data
+    return subject_output.fetch(format=format)
