@@ -1,6 +1,8 @@
 # Gaelle Chapuis
 # find mice in database, that are: 1) trained, 2) male or female, 3) belonging to specific lab
-
+# Note: for a quick an dirty way to get a selection of mice, you can e.g. run:
+# attest2 = subject.Subject * subject.SubjectProject * subject.SubjectLab
+# select_mice = attest2 & 'sex="M"' & 'subject_project="ibl_neuropixel_brainwide_01"' & 'lab_name="mrsicflogellab"'
 
 # %%
 import datajoint as dj
