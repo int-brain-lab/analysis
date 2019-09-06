@@ -162,6 +162,11 @@ biasshift_biased['history_posterror'] = biasshift_biased2.history_posterror.copy
 # ================================= #
 
 fig, ax = plt.subplots(1,1,figsize=[5,5])
+lab_names = {'danlab': 'Berkeley', 'mainenlab': 'CCU', 'churchlandlab': 'CSHL',
+             'cortexlab': 'UCL', 'angelakilab': 'NYU', 'wittenlab': 'Princeton',
+             'mrsicflogellab': 'SWC'}
+biasshift['lab_name'] = biasshift['lab_name'].map(lab_names)
+biasshift_biased['lab_name'] = biasshift_biased['lab_name'].map(lab_names)
 
 # show the shift line for each mouse, per lab
 for mouse in biasshift.subject_nickname.unique():
@@ -181,8 +186,8 @@ sns.scatterplot(x="history_postcorrect", y="history_posterror", style="lab_name"
 
 axlim = ceil(np.max([biasshift_biased.history_postcorrect.max(), biasshift_biased.history_posterror.max()]) * 10) / 10
 
-ax.set_xlim([-axlim,axlim])
-ax.set_ylim([-axlim,axlim])
+# ax.set_xlim([-axlim,axlim])
+# ax.set_ylim([-axlim,axlim])
 ax.set_xticks([-axlim,0,axlim])
 ax.set_yticks([-axlim,0,axlim])
 ax.axhline(linewidth=0.75, color='k', zorder=-500)
@@ -199,3 +204,4 @@ ax.set_ylabel("History shift, after error")
 fig.savefig(os.path.join(figpath, "history_strategy.pdf"))
 fig.savefig(os.path.join(figpath, "history_strategy.png"), dpi=600)
 plt.close("all")
+
