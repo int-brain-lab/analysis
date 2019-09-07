@@ -88,7 +88,7 @@ plt.close('all')
 
 fig = sns.FacetGrid(behav,
 	col="lab_name", col_wrap=4, col_order=list(lab_names.keys()),
-	sharex=True, sharey=True, aspect=1, hue="probabilityLeft")
+	sharex=True, sharey=False, aspect=1, hue="probabilityLeft")
 fig.map(plot_chronometric, "signed_contrast", "rt", "subject_nickname")
 fig.set_axis_labels('Signed contrast (%)', 'Response time (s)')
 for ax, title in zip(fig.axes.flat, list(lab_names.values())):
