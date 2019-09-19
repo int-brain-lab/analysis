@@ -104,6 +104,13 @@ def plot_trial(trial_number,R, times):
     #plt.close('all')
     plt.tight_layout()
 
+#Get a raster plot
+plot_trial(235,R, times) 
+
+
+
+
+######################### Some example plot using this data? ##
 
 spike_times = spikes['times'][restrict] 
 spike_clusters = spikes['clusters'][restrict]
