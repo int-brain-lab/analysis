@@ -105,7 +105,9 @@ def plot_trial(trial_number,R, times):
     plt.tight_layout()
 
 #Get a raster plot
-plot_trial(235,R, times) 
+if __name__ == "__main__":
+    # get a raster plot for a particular trial 
+    plot_trial(235,R, times) 
 
 
 
