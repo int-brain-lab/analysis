@@ -396,7 +396,6 @@ if __name__ == '__main__':
 
     # load objects
     spikes = ioalf.load_object(session_path, 'spikes')
-    trials = ioalf.load_object(session_path, '_ibl_trials')
     rfmap = ioalf.load_object(session_path, '_iblcertif_.rfmap')
 
     rf_stim_times = rfmap['rfmap.times.00']

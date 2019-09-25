@@ -117,3 +117,55 @@ def plot_cdfs(prefs, xlabel, fontsize=15):
     plt.legend(fontsize=fontsize, loc='upper left')
     plt.show()
     return fig
+
+
+if __name__ == '__main__':
+
+    from pathlib import Path
+    from oneibl.one import ONE
+    import alf.io as ioalf
+
+    # get the data from flatiron and the current folder (note: this dataset doesn't work! none do)
+    one = ONE()
+    eid = one.search(subject='ZM_1887', date='2019-07-19', number=1)
+    D = one.load(eid[0], clobber=False, download_only=True)
+    session_path = Path(D.local_path[0]).parent
+
+    # load objects
+    spikes = ioalf.load_object(session_path, 'spikes')
+    gratings = ioalf.load_object(session_path, '_iblcertif_.odsgratings')
+
+    grating_times = {
+        'beg': gratings['odsgratings.times.00'],
+        'end': gratings['odsgratings.times.01']}
+    grating_vals = {
+        'beg': gratings['odsgratings.stims.00'],
+        'end': gratings['odsgratings.stims.01']}
+
+    # calculate mean responses to gratings
+    epochs = ['beg', 'end']
+    responses = {epoch: [] for epoch in epochs}
+    for epoch in epochs:
+        responses[epoch] = bin_responses(
+            spikes.times, spikes.clusters, grating_times[epoch], grating_vals[epoch])
+    responses_mean = {epoch: np.mean(responses[epoch], axis=2) for epoch in epochs}
+    responses_se = {
+        epoch: np.std(responses[epoch], axis=2) / np.sqrt(responses[epoch].shape[2])
+        for epoch in responses.keys()}
+
+    # calculate osi/ori pref
+    ori_pref = {epoch: [] for epoch in epochs}
+    osi = {epoch: [] for epoch in epochs}
+    for epoch in epochs:
+        osi[epoch], ori_pref[epoch] = compute_selectivity(
+            responses_mean[epoch], np.unique(grating_vals[epoch]), 'ori')
+
+    # compare OSI at beginning/end of session
+    fig0 = scatterplot(osi['beg'], osi['end'], 'OSI (beginning)', 'OSI (end)', id_line=True)
+
+    # compare orientation preference at beginning/end of session
+    fig1 = scatterplot(
+        ori_pref['end'], ori_pref['end'], 'Ori pref (beginning)', 'Ori pref (end)', id_line=True)
+
+    # cdf of orientation preference
+    fig2 = plot_cdfs(ori_pref, 'Orientation preference')
