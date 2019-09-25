@@ -3,4 +3,6 @@ dj_local_conf.json
 
 */__pycache__/
 
+*.DS_Store
+
 .idea

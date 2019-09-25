@@ -294,7 +294,7 @@ def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
 
     :param rfs: dictionary of receptive fields (dict keys are 'on' and 'off');
         output of `compute_rfs`
-    :param bin_scale: scaling for interpolation (i.e. 0.5 doubles bins)
+    :param bin_scale: scaling for interpolation (e.g. 0.5 doubles bins)
     :param threshold: pixels below this fraction of the maximum firing are set
         to zero before contiguous pixels are calculated
     :return: dictionary of receptive field areas for each type ("on" and "off")
@@ -377,3 +377,43 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
     plt.show()
 
     return splt
+
+
+if __name__ == '__main__':
+
+    from pathlib import Path
+    from oneibl.one import ONE
+    import alf.io as ioalf
+
+    BINSIZE = 0.025  # sec
+    LAGS = 8  # number of bins for calculating RF
+
+    # get the data from flatiron and the current folder (note: this dataset doesn't work! none do)
+    one = ONE()
+    eid = one.search(subject='ZM_1887', date='2019-07-19', number=1)
+    D = one.load(eid[0], clobber=False, download_only=True)
+    session_path = Path(D.local_path[0]).parent
+
+    # load objects
+    spikes = ioalf.load_object(session_path, 'spikes')
+    trials = ioalf.load_object(session_path, '_ibl_trials')
+    rfmap = ioalf.load_object(session_path, '_iblcertif_.rfmap')
+
+    rf_stim_times = rfmap['rfmap.times.00']
+    rf_stim = rfmap['rfmap.stim.00'].astype('float')
+
+    # method in Durand et al 2016
+    rfs = compute_rfs(
+        spikes.times, spikes.clusters,
+        rfmap['rfmap.times.00'], rfmap['rfmap.stim.00'].astype('float'),
+        lags=LAGS, binsize=BINSIZE)
+
+    # reverse correlation method
+    # rfs = compute_rfs_corr(
+    #     spikes.times, spikes.clusters,
+    #     rfmap['rfmap.times.00'], rfmap['rfmap.stim.00'].astype('float'),
+    #     lags = LAGS, binsize = BINSIZE)
+
+    rf_areas = compute_rf_areas(rfs)
+
+    fig = plot_rf_distributions(rf_areas, plot_type='hist')
