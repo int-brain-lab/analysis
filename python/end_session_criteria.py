@@ -1,20 +1,17 @@
-'''
+"""
 Plot various criteria for each mouse session
-'''
+"""
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import sys, os
 import datajoint as dj
-
-sys.path.insert(0, os.path.join(os.path.expanduser('~'), 'Documents/Python Scripts'))
-sys.path.insert(0, os.path.join(os.path.expanduser('~'), 'Documents/Github/analysis/python'))
 
 from ibl_pipeline import acquisition, behavior
 
+
 def session_end_indices(trials, make_plot=False, ax=None):
-    ## CALCULATE CRITERIA
+    # CALCULATE CRITERIA
     rt_win_size = 20  # Size of reaction time rolling window
     perf_win_size = 50  # Size of performance rolling window
     min_trials = 400  # Minimum number of trials for criteria to apply
@@ -35,16 +32,16 @@ def session_end_indices(trials, make_plot=False, ax=None):
     trials['perf_delta'] = (trials['perf_global'] - trials['perf_local']) / trials['perf_global']
 
     # Performance for easy trials only
-    last = lambda x: x[~np.isnan(x)][-perf_win_size:]  # Find last n values that aren't nan
+    def last(x): return x[~np.isnan(x)][-perf_win_size:]  # Find last n values that aren't nan
     trials['perf_local_ez'] = (trials['correct_easy'].expanding()
-                              .apply(lambda x: sum(last(x)) / last(x).size if last(x).size else np.nan, raw=True))
-    trials['perf_global_ez'] = trials['correct_easy'].expanding().apply(lambda x: (sum(x == 1) / sum(~np.isnan(x))),
-                                                                      raw=True)
+                               .apply(lambda x: sum(last(x)) / last(x).size if last(x).size else np.nan, raw=True))
+    trials['perf_global_ez'] = trials['correct_easy'].expanding().apply(
+        lambda x: (sum(x == 1) / sum(~np.isnan(x))), raw=True)
     trials['perf_delta_ez'] = (trials['perf_global_ez'] - trials['perf_local_ez']) / trials['perf_global_ez']
 
     status_idx = dict.fromkeys(EndCriteria.contents)
-    status_idx['long_rt'] = ((trials.RT_delta) & (trials.index > min_trials)).idxmax() if (
-            (trials.RT_delta) & (trials.index > min_trials)).any() else np.nan
+    status_idx['long_rt'] = (trials.RT_delta & (trials.index > min_trials)).idxmax() if (
+            trials.RT_delta & (trials.index > min_trials)).any() else np.nan
     status_idx['perf_ez<40'] = ((trials['perf_delta_ez'] > 0.4) & (trials.index > min_trials)).idxmax()
     status_idx['perf<40'] = ((trials['perf_delta_ez'] > 0.4) & (trials.index > min_trials)).idxmax()
     status_idx['<400_trials'] = ((trials.trial_start_time > 45 * 60) & (trials.index < min_trials)).idxmax()
@@ -63,7 +60,9 @@ def session_end_indices(trials, make_plot=False, ax=None):
 
     return {k: v for (k, v) in status_idx.items() if v > 0}
 
+
 schema = dj.schema('group_shared_end_criteria')
+
 
 @schema
 class EndCriteria(dj.Lookup):
@@ -77,6 +76,7 @@ class EndCriteria(dj.Lookup):
                     '>45_min_&_stopped',
                     '>90_min'
                     ])
+
 
 @schema
 class SessionEndCriteria(dj.Computed):
