@@ -1,5 +1,6 @@
 python/define_paths.py
 dj_local_conf.json
+citricacid/figures
 
 */__pycache__/
 
