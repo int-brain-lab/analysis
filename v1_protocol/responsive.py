@@ -49,7 +49,7 @@ def are_neurons_responsive(
     :type stimulus_intervals: the times of the stimulus events onsets and offsets
     :param stimulus_intervals: 2D array
     :type spontaneous_period: the period of spontaneous activity
-    :param spontaneous_intervals: 1D array with 2 elements
+    :param spontaneous_period: 1D array with 2 elements
     :param p_value_threshold: the threshold for the p value in the Wilcoxon test.
     :type p_value_threshold: float
     :rtype: 1D boolean array with `n_neurons` elements (clusters are sorted by increasing cluster
