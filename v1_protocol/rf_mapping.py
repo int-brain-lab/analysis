@@ -404,7 +404,7 @@ if __name__ == '__main__':
     # method in Durand et al 2016
     rfs = compute_rfs(
         spikes.times, spikes.clusters,
-        rfmap['rfmap.times.00'], rfmap['rfmap.stim.00'].astype('float'),
+        rfmap['rfmap.times.00'], rfmap['rfmap.stims.00'].astype('float'),
         lags=LAGS, binsize=BINSIZE)
 
     # reverse correlation method
