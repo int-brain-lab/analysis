@@ -18,7 +18,7 @@ from IPython import embed as shell
 # run this script to post adlib CA water for all CSHL mice on Friday, Saturday and Sunday
 one = ONE(base_url='https://alyx.internationalbrainlab.org')
 
-days = '3days'
+days = 'today'
 # days = sys.argv[1]
 print(days)
 
@@ -42,7 +42,7 @@ else:
 
 print(dates)
 subjects = pd.DataFrame(one.alyx.get(
-    '/subjects?&alive=True&water_restricted=True&responsible_user=valeria'))
+    '/subjects?&alive=True&water_restricted=True&responsible_user=anneu'))
 sub = subjects['nickname'].unique()
 print(sub)
 
