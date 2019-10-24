@@ -77,3 +77,16 @@ def are_neurons_responsive(
             pass
         responsive[i] = p < p_value_threshold
     return responsive
+
+
+if __name__ == '__main__':
+    from pathlib import Path
+    path = Path("~/Downloads/FlatIron/mainenlab/Subjects/ZM_2104/2019-09-19/001/alf/").expanduser()
+    odsgratings = np.load(path / '_iblcertif_.odsgratings.times.00.npy')
+    spontaneous = np.load(path / '_iblcertif_.spontaneous.times.00.npy')
+    spike_times = np.load(path / 'spikes.times.npy')
+    spike_clusters = np.load(path / 'spikes.clusters.npy')
+
+    resp = are_neurons_responsive(spike_times, spike_clusters, odsgratings, spontaneous)
+    print(resp)
+    print(resp.mean())
