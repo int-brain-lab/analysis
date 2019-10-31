@@ -6,14 +6,13 @@ import pandas as pd
 
 def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, binsize=0.025):
     """
-    Compute receptive fields from locally sparse noise stimulus for all
-    recorded neurons; uses a PSTH-like approach that averages responses from
-    each neuron for each pixel flip
+    Compute receptive fields from locally sparse noise stimulus for all recorded neurons; uses a
+    PSTH-like approach that averages responses from each neuron for each pixel flip
 
     :param spike_times: array of spike times
     :param spike_clusters: array of cluster ids associated with each entry of `spike_times`
     :param stimulus_times: (M,) array of stimulus presentation times
-    :param stimulus: (y_pix, x_pix, M) array of pixel values
+    :param stimulus: (M, y_pix, x_pix) array of pixel values
     :param lags: temporal dimension of receptive field
     :param binsize: length of each lag (seconds)
     :return: dictionary of "on" and "off" receptive fields (values are lists); each rf is
@@ -24,25 +23,21 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
 
     cluster_ids = np.unique(spike_clusters)
     n_clusters = len(cluster_ids)
-    y_pix, x_pix, _ = stimulus.shape
+    _, y_pix, x_pix = stimulus.shape
     stimulus = stimulus.astype('float')
-    rfs = {
-        'on': np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)),
-        'off': np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1))}
-    flips = {
-        'on': np.zeros(shape=(y_pix, x_pix)),
-        'off': np.zeros(shape=(y_pix, x_pix))}
+    subs = ['on', 'off']
+    rfs = {sub: np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)) for sub in subs}
+    flips = {sub: np.zeros(shape=(y_pix, x_pix)) for sub in subs}
 
     gray = np.median(stimulus)
     # loop over time points
     for i, t in enumerate(stimulus_times):
-        # skip first frame
+        # skip first frame since we're looking for pixels that flipped
         if i == 0:
             continue
         # find pixels that flipped
-        frame_change = stimulus[:, :, i] - gray
-        ys, xs = np.where(
-            (frame_change != 0) & (stimulus[:, :, i - 1] == gray))
+        frame_change = stimulus[i, :, :] - gray
+        ys, xs = np.where((frame_change != 0) & (stimulus[i - 1, :, :] == gray))
         # loop over changed pixels
         for y, x in zip(ys, xs):
             if frame_change[y, x] > 0:  # gray -> white
@@ -69,9 +64,9 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
                     rfs[sub][:, y, x, :] /= flips[sub][y, x]
 
     # turn into list
-    rfs_list = {
-        'on': [rfs['on'][i, :, :, :] for i in range(n_clusters)],
-        'off': [rfs['off'][i, :, :, :] for i in range(n_clusters)]}
+    rfs_list = {}
+    for sub in subs:
+        rfs_list[sub] = [rfs[sub][i, :, :, :] for i in range(n_clusters)]
     return rfs_list
 
 
@@ -83,7 +78,7 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
     :param spike_times: array of spike times
     :param spike_clusters: array of cluster ids associated with each entry of `spikes`
     :param stimulus_times: (M,) array of stimulus presentation times
-    :param stimulus: (y_pix, x_pix, M) array of pixel values
+    :param stimulus: (M, y_pix, x_pix) array of pixel values
     :param lags: temporal dimension of receptive field
     :param binsize: length of each lag (seconds)
     :return: dictionary of "on" and "off" receptive fields (values are lists); each
@@ -100,13 +95,12 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
         spike_times[indx_t], spike_clusters[indx_t], xbin=binsize)
     n_clusters = len(cluster_ids)
 
-    y_pix, x_pix, _ = stimulus.shape
+    _, y_pix, x_pix = stimulus.shape
     stimulus = stimulus.astype('float')
     gray = np.median(stimulus)
 
     subs = ['on', 'off']
-    rfs = {
-        sub: np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)) for sub in subs}
+    rfs = {sub: np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)) for sub in subs}
 
     # for indexing output of convolution
     i_end = binned_spikes.shape[1]
@@ -116,11 +110,11 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
         for y in range(y_pix):
             for x in range(x_pix):
                 # find times that pixels flipped
-                diffs = np.concatenate([np.diff(stimulus[y, x, :]), [0]])
+                diffs = np.concatenate([np.diff(stimulus[:, y, x]), [0]])
                 if sub == 'on':  # gray -> white
-                    changes = (diffs > 0) & (stimulus[y, x, :] == gray)
+                    changes = (diffs > 0) & (stimulus[:, y, x] == gray)
                 else:
-                    changes = (diffs < 0) & (stimulus[y, x, :] == gray)
+                    changes = (diffs < 0) & (stimulus[:, y, x] == gray)
                 t_change = np.where(changes)[0]
 
                 # put on same timescale as neural activity
@@ -136,14 +130,13 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
                     # NOTE: scipy's correlate function is appx two orders of
                     # magnitude faster than numpy's correlate function on
                     # relevant data size; perhaps scipy uses FFT? Not in docs.
-                    cc = correlate(
-                        binned_stim, binned_spikes[n, :], mode='full')
+                    cc = correlate(binned_stim, binned_spikes[n, :], mode='full')
                     rfs[sub][n, y, x, :] = cc[i_beg:i_end + 1]
 
     # turn into list
-    rfs_list = {
-        'on': [rfs['on'][i, :, :, :] for i in range(n_clusters)],
-        'off': [rfs['off'][i, :, :, :] for i in range(n_clusters)]}
+    rfs_list = {}
+    for sub in subs:
+        rfs_list[sub] = [rfs[sub][i, :, :, :] for i in range(n_clusters)]
     return rfs_list
 
 
@@ -342,7 +335,7 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
         splt = sns.catplot(
             x='Subfield', y='area', kind='box', data=data_queried)
         splt.fig.axes[0].set_yscale('log')
-        splt.fig.axes[0].set_ylabel('RF Area (pixels)')
+        splt.fig.axes[0].set_ylabel('RF Area (pixels$^2$)')
         splt.fig.axes[0].set_ylim([1e-1, 1e4])
 
     elif plot_type == 'hist':
@@ -354,9 +347,7 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
         splt = plt.figure(figsize=(12, 4))
 
         plt.subplot(121)
-        plt.hist(
-            data_queried[data_queried.Subfield == 'ON']['area'], bins=bins,
-            log=True)
+        plt.hist(data_queried[data_queried.Subfield == 'ON']['area'], bins=bins, log=True)
         plt.xlabel('RF Area (pixels)')
         plt.xscale('log')
         plt.xlim([xmin, xmax])
@@ -365,9 +356,7 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
         plt.title('ON Subfield')
 
         plt.subplot(122)
-        plt.hist(
-            data_queried[data_queried.Subfield == 'OFF']['area'], bins=bins,
-            log=True)
+        plt.hist(data_queried[data_queried.Subfield == 'OFF']['area'], bins=bins, log=True)
         plt.xlabel('RF Area (pixels)')
         plt.xscale('log')
         plt.xlim([xmin, xmax])
@@ -385,34 +374,41 @@ if __name__ == '__main__':
     from oneibl.one import ONE
     import alf.io as ioalf
 
-    BINSIZE = 0.025  # sec
-    LAGS = 8  # number of bins for calculating RF
+    # user options
+    BINSIZE = 0.05  # sec
+    LAGS = 4  # number of bins for calculating RF
+    METHOD = 'corr'  # 'corr' | 'sta'
 
-    # get the data from flatiron and the current folder (note: this dataset doesn't work! none do)
+    # get the data from flatiron and the current folder
     one = ONE()
-    eid = one.search(subject='ZM_1887', date='2019-07-19', number=1)
+    eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
     D = one.load(eid[0], clobber=False, download_only=True)
     session_path = Path(D.local_path[0]).parent
 
     # load objects
     spikes = ioalf.load_object(session_path, 'spikes')
     rfmap = ioalf.load_object(session_path, '_iblcertif_.rfmap')
-
     rf_stim_times = rfmap['rfmap.times.00']
-    rf_stim = rfmap['rfmap.stim.00'].astype('float')
+    rf_stim = rfmap['rfmap.stims.00'].astype('float')
 
-    # method in Durand et al 2016
-    rfs = compute_rfs(
-        spikes.times, spikes.clusters,
-        rfmap['rfmap.times.00'], rfmap['rfmap.stims.00'].astype('float'),
-        lags=LAGS, binsize=BINSIZE)
+    # compute receptive fields
+    if METHOD == 'sta':
+        # method in Durand et al 2016; ~9 min for 700 units on a single cpu core
+        print('computing receptive fields...', end='')
+        rfs = compute_rfs(
+            spikes.times, spikes.clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+        print('done')
+    elif METHOD == 'corr':
+        # reverse correlation method; ~3 min for 700 units on a single cpu core
+        print('computing receptive fields...', end='')
+        rfs = compute_rfs_corr(
+            spikes.times, spikes.clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+        print('done')
+    else:
+        raise NotImplementedError('The %s method to compute rfs is not implemented' % METHOD)
 
-    # reverse correlation method
-    # rfs = compute_rfs_corr(
-    #     spikes.times, spikes.clusters,
-    #     rfmap['rfmap.times.00'], rfmap['rfmap.stim.00'].astype('float'),
-    #     lags = LAGS, binsize = BINSIZE)
-
+    print('computing receptive field areas...', end='')
     rf_areas = compute_rf_areas(rfs)
+    print('done')
 
     fig = plot_rf_distributions(rf_areas, plot_type='hist')
