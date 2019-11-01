@@ -1,6 +1,7 @@
 """
 Import human data into DJ
 Anne Urai, CSHL, 2019
+With thanks to Steven Gluf for digitizing the data
 """
 
 import pandas as pd
