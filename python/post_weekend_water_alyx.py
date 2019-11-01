@@ -18,7 +18,7 @@ from IPython import embed as shell
 # run this script to post adlib CA water for all CSHL mice on Friday, Saturday and Sunday
 one = ONE(base_url='https://alyx.internationalbrainlab.org')
 
-days = 'today'
+days = 'tomorrow'
 # days = sys.argv[1]
 print(days)
 
