@@ -11,7 +11,7 @@ import matplotlib as mpl
 
 # # import wrappers etc
 # from ibl_pipeline import reference, subject, action, acquisition, data, behavior
-# from ibl_pipeline.utils import psychofit as psy
+from ibl_pipeline.utils import psychofit as psy
 
 # ================================================================== #
 # DEFINE PSYCHFUNCFIT TO WORK WITH FACETGRID IN SEABORN
