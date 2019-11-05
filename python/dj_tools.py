@@ -4,14 +4,14 @@ import numpy as np
 import sys, os, time
 import matplotlib.pyplot as plt
 import seaborn as sns
-import datajoint as dj
+# import datajoint as dj
 from IPython import embed as shell # for debugging
 from scipy.special import erf # for psychometric functions
 import matplotlib as mpl
 
-# import wrappers etc
-from ibl_pipeline import reference, subject, action, acquisition, data, behavior
-from ibl_pipeline.utils import psychofit as psy
+# # import wrappers etc
+# from ibl_pipeline import reference, subject, action, acquisition, data, behavior
+# from ibl_pipeline.utils import psychofit as psy
 
 # ================================================================== #
 # DEFINE PSYCHFUNCFIT TO WORK WITH FACETGRID IN SEABORN

@@ -10,7 +10,7 @@ from IPython import embed as shell # for debugging
 import re
 
 # import wrappers etc
-from ibl_pipeline import subject
+from ibl_pipeline import subject, behavior
 
 # =========================================================
 # DEFINE THE SCHEMA
