@@ -107,6 +107,8 @@ def scatterplot(xs, ys, xlabel, ylabel, id_line=False, fontsize=15):
 
 
 def plot_cdfs(prefs, xlabel, fontsize=15):
+    from scipy.stats import ks_2samp
+    _, p = ks_2samp(prefs['beg'], prefs['end'])
     fig = plt.figure(figsize=(6, 6))
     for epoch in list(prefs.keys()):
         vals = prefs[epoch]
@@ -117,6 +119,7 @@ def plot_cdfs(prefs, xlabel, fontsize=15):
     plt.xticks(fontsize=fontsize)
     plt.ylabel('Probability', fontsize=fontsize)
     plt.yticks(fontsize=fontsize)
+    plt.title('KS p-value = %1.2e' % p)
     plt.legend(fontsize=fontsize, loc='upper left')
     plt.show()
     return fig
