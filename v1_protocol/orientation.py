@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
     # get the data from flatiron and the current folder (note: this dataset doesn't work! none do)
     one = ONE()
-    eid = one.search(subject='ZM_1887', date='2019-07-19', number=1)
+    eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
     D = one.load(eid[0], clobber=False, download_only=True)
     session_path = Path(D.local_path[0]).parent
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
     # compare orientation preference at beginning/end of session
     fig1 = scatterplot(
-        ori_pref['end'], ori_pref['end'], 'Ori pref (beginning)', 'Ori pref (end)', id_line=True)
+        ori_pref['beg'], ori_pref['end'], 'Ori pref (beginning)', 'Ori pref (end)', id_line=True)
 
     # cdf of orientation preference
     fig2 = plot_cdfs(ori_pref, 'Orientation preference')
