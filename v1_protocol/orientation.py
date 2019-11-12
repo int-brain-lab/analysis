@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def bin_responses(spike_times, spike_clusters, stim_times, stim_values):
+def bin_responses(spike_times, spike_clusters, stim_times, stim_values, output_fr=True):
     """
-    Compute spike counts during grating presentation
+    Compute firing rates during grating presentation
 
     :param spike_times: array of spike times
     :type spike_times: array-like
@@ -15,6 +15,8 @@ def bin_responses(spike_times, spike_clusters, stim_times, stim_values):
     :type stim_times: array-like
     :param stim_values: grating orientations in radians
     :type stim_values: array-like
+    :param output_fr: True to output firing rate, False to output spike count over stim presentation
+    :type: bool
     :return: number of spikes for each clusterduring stimulus presentation
     :rtype: array of shape `(n_clusters, n_stims, n_stim_reps)`
     """
@@ -45,7 +47,8 @@ def bin_responses(spike_times, spike_clusters, stim_times, stim_values):
         r = np.bincount(ind2d, minlength=nx * ny, weights=None).reshape(ny, nx)
         # store
         bs_idxs = np.isin(cluster_ids, yscale)
-        responses[bs_idxs, i_stim, i_rep] = r[:, 0]
+        scale = bin_size if output_fr else 1.0
+        responses[bs_idxs, i_stim, i_rep] = r[:, 0] / scale
     return responses
 
 
