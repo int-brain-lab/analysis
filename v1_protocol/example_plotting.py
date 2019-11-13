@@ -119,7 +119,7 @@ def are_neurons_responsive(
         x = stimulus_counts[i, :]
         y = spontaneous_counts[i, :]
         try:
-            _, p = scipy.stats.wilcoxon(x, y)
+            _, p = scipy.stats.ranksums(x, y)
         except ValueError:
             pass
         responsive[i] = p < p_value_threshold
