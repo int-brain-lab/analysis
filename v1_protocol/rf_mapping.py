@@ -16,7 +16,7 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
     :param lags: temporal dimension of receptive field
     :param binsize: length of each lag (seconds)
     :return: dictionary of "on" and "off" receptive fields (values are lists); each rf is
-        [t, y_pix, x_pix]
+        [n_bins, y_pix, x_pix]
     """
 
     from brainbox.processing import bincount2D
@@ -66,7 +66,7 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
     # turn into list
     rfs_list = {}
     for sub in subs:
-        rfs_list[sub] = [rfs[sub][i, :, :, :] for i in range(n_clusters)]
+        rfs_list[sub] = [np.transpose(rfs[sub][i, :, :, :], (2, 0, 1)) for i in range(n_clusters)]
     return rfs_list
 
 
@@ -82,7 +82,7 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
     :param lags: temporal dimension of receptive field
     :param binsize: length of each lag (seconds)
     :return: dictionary of "on" and "off" receptive fields (values are lists); each
-        rf is [t, y_pix, x_pix]
+        rf is [n_bins, y_pix, x_pix]
     """
 
     from brainbox.processing import bincount2D
@@ -136,17 +136,16 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
     # turn into list
     rfs_list = {}
     for sub in subs:
-        rfs_list[sub] = [rfs[sub][i, :, :, :] for i in range(n_clusters)]
+        rfs_list[sub] = [np.transpose(rfs[sub][i, :, :, :], (2, 0, 1)) for i in range(n_clusters)]
     return rfs_list
 
 
 def find_peak_responses(rfs):
     """
-    Find peak response across time, space, and receptive field type ("on" and
-    "off")
+    Find peak response across time, space, and receptive field type ("on" and "off")
 
     :param rfs: dictionary of receptive fields (output of `compute_rfs`); each
-        rf is of size [t, y_pix, y_pix]
+        rf is of size [n_bins, y_pix, y_pix]
     :return: dictionary containing peak rf time slice for both "on" and "off"
         rfs (values are lists)
     """
@@ -156,9 +155,9 @@ def find_peak_responses(rfs):
         # loop over clusters
         for sub in subs:
             # max over space for each time point
-            s_max = np.max(sub, axis=(0, 1))
+            s_max = np.max(sub, axis=(1, 2))
             # take time point with largest max
-            rfs_peak[sub_type].append(sub[:, :, np.argmax(s_max)])
+            rfs_peak[sub_type].append(sub[np.argmax(s_max), :, :])
     return rfs_peak
 
 
@@ -173,7 +172,7 @@ def interpolate_rfs(rfs, bin_scale):
     """
     from scipy.interpolate import interp2d
     rfs_interp = {'on': [], 'off': []}
-    x_pix, y_pix = rfs['on'][0].shape
+    y_pix, x_pix = rfs['on'][0].shape
     x_grid = np.arange(x_pix)
     y_grid = np.arange(y_pix)
     x_grid_new = np.arange(-0.5, x_pix, bin_scale)
