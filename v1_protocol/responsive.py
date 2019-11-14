@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.stats
+import random
 
 
 def _get_spike_counts_in_bins(spike_times, spike_clusters, intervals=None):
@@ -38,7 +39,8 @@ def _get_spike_counts_in_bins(spike_times, spike_clusters, intervals=None):
 
 def are_neurons_responsive(
         spike_times, spike_clusters,
-        stimulus_intervals=None, spontaneous_period=None, p_value_threshold=.05):
+        stimulus_intervals=None, stimulus_types=None, spontaneous_period=None,
+        p_value_threshold=.05):
     """Return which neurons are responsive after specific stimulus events, compared to
     spontaneous activity, according to a Wilcoxon test.
 
@@ -48,6 +50,9 @@ def are_neurons_responsive(
     :type spike_clusters: 1D array, same length as spike_times
     :type stimulus_intervals: the times of the stimulus events onsets and offsets
     :param stimulus_intervals: 2D array
+    :type stimulus_types: the identity of stimuli, responsiveness will be calculated
+    for each stimulus type individually
+    :param stimulus_intervals: 1D array, same length as stimulus_intervals
     :type spontaneous_period: the period of spontaneous activity
     :param spontaneous_period: 1D array with 2 elements
     :param p_value_threshold: the threshold for the p value in the Wilcoxon test.
@@ -65,28 +70,42 @@ def are_neurons_responsive(
     spontaneous_counts = _get_spike_counts_in_bins(
         spike_times, spike_clusters, spontaneous_intervals)
     assert stimulus_counts.shape == stimulus_counts.shape
-    # Generate the responsive vector (for every neuron, whether it is responsive).
+    assert stimulus_intervals.shape[0] == stimulus_types.shape[0]
+    # Generate the responsive vector (for every neuron, whether it is responsive)
     responsive = np.zeros(stimulus_counts.shape[0], dtype=np.bool)
     n_neurons = stimulus_counts.shape[0]
     for i in range(n_neurons):
-        x = stimulus_counts[i, :]
-        y = spontaneous_counts[i, :]
-        try:
-            _, p = scipy.stats.ranksums(x, y)
-        except ValueError:
-            pass
+        stim_sig = np.zeros(np.unique(stimulus_types).shape)
+        for j, stim in enumerate(np.unique(stimulus_types)):
+            x = stimulus_counts[i, stimulus_types == stim]
+            y = spontaneous_counts[i, random.sample(
+                    range(spontaneous_counts.shape[1]), np.sum(stimulus_types == stim))]
+            try:
+                _, stim_sig[j] = scipy.stats.ranksums(x, y)
+            except ValueError:
+                pass
+        _, p = scipy.stats.combine_pvalues(stim_sig)
         responsive[i] = p < p_value_threshold
     return responsive
 
 
 if __name__ == '__main__':
     from pathlib import Path
-    path = Path("~/Downloads/FlatIron/mainenlab/Subjects/ZM_2104/2019-09-19/001/alf/").expanduser()
-    odsgratings = np.load(path / '_iblcertif_.odsgratings.times.00.npy')
+    # path = Path("~/Downloads/FlatIron/mainenlab/Subjects
+    # /ZM_2104/2019-09-19/001/alf/").expanduser()
+    path = Path("/media/guido/data/Flatiron/mainenlab/Subjects/ZM_2104/2019-09-19/001/alf/")
+    odsgratings_times = np.load(path / '_iblcertif_.odsgratings.times.00.npy')
+    odsgratings_stims = np.load(path / '_iblcertif_.odsgratings.stims.00.npy')
+    reversal_times = np.load(path / '_iblcertif_.reversal.times.00.npy')
     spontaneous = np.load(path / '_iblcertif_.spontaneous.times.00.npy')
     spike_times = np.load(path / 'spikes.times.npy')
     spike_clusters = np.load(path / 'spikes.clusters.npy')
 
-    resp = are_neurons_responsive(spike_times, spike_clusters, odsgratings, spontaneous)
+    # Append contrast reversing checkerboard stims to orientations
+    stim_times = np.append(odsgratings_times, np.reshape(reversal_times[0:20], [10, 2]), axis=0)
+    stim_types = np.append(odsgratings_stims, np.ones(10)*10)
+
+    resp = are_neurons_responsive(spike_times, spike_clusters, stim_times, stim_types, spontaneous)
+
     print(resp)
     print(resp.mean())

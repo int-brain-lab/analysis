@@ -7,6 +7,7 @@ import alf.io
 import scipy.stats
 import pandas as pd
 import seaborn as sns
+import random
 plt.ion()
 
 
@@ -72,56 +73,53 @@ def are_neurons_responsive(
         spike_times,
         spike_clusters,
         stimulus_intervals=None,
+        stimulus_types=None,
         spontaneous_period=None,
         p_value_threshold=.05):
-    """
-    Return which neurons are responsive after
-    specific stimulus events, compared to
+    """Return which neurons are responsive after specific stimulus events, compared to
     spontaneous activity, according to a Wilcoxon test.
+
     :param spike_times: times of spikes, in seconds
     :type spike_times: 1D array
     :param spike_clusters: spike neurons
     :type spike_clusters: 1D array, same length as spike_times
-    :type stimulus_intervals: the times of
-        the stimulus events onsets and offsets
+    :type stimulus_intervals: the times of the stimulus events onsets and offsets
     :param stimulus_intervals: 2D array
+    :type stimulus_types: the identity of stimuli, responsiveness will be calculated
+    for each stimulus type individually
+    :param stimulus_intervals: 1D array, same length as stimulus_intervals
     :type spontaneous_period: the period of spontaneous activity
     :param spontaneous_period: 1D array with 2 elements
-    :param p_value_threshold: the threshold for the
-        p value in the Wilcoxon test.
+    :param p_value_threshold: the threshold for the p value in the Wilcoxon test.
     :type p_value_threshold: float
-    :rtype: 1D boolean array with `n_neurons`
-        elements (clusters are sorted by increasing cluster
-        id as appearing in spike_clusters).
+    :rtype: 1D boolean array with `n_neurons` elements (clusters are sorted by increasing cluster
+    id as appearing in spike_clusters).
     """
-    stimulus_counts = _get_spike_counts_in_bins(
-        spike_times, spike_clusters, stimulus_intervals)
+    stimulus_counts = _get_spike_counts_in_bins(spike_times, spike_clusters, stimulus_intervals)
     # Find spontaneous intervals.
     stimulus_durations = np.diff(stimulus_intervals, axis=1).squeeze()
     t0, t1 = spontaneous_period
-    spontaneous_starts = np.linspace(
-        t0,
-        t1 - stimulus_durations.max(),
-        len(stimulus_intervals))
-    spontaneous_intervals = np.c_[
-        spontaneous_starts,
-        spontaneous_starts +
-        stimulus_durations]
+    spontaneous_starts = np.linspace(t0, t1 - stimulus_durations.max(), len(stimulus_intervals))
+    spontaneous_intervals = np.c_[spontaneous_starts, spontaneous_starts + stimulus_durations]
     # Count the spontaneous counts.
     spontaneous_counts = _get_spike_counts_in_bins(
         spike_times, spike_clusters, spontaneous_intervals)
     assert stimulus_counts.shape == stimulus_counts.shape
-    # Generate the responsive vector (for every neuron, whether it is
-    # responsive).
+    assert stimulus_intervals.shape[0] == stimulus_types.shape[0]
+    # Generate the responsive vector (for every neuron, whether it is responsive)
     responsive = np.zeros(stimulus_counts.shape[0], dtype=np.bool)
     n_neurons = stimulus_counts.shape[0]
     for i in range(n_neurons):
-        x = stimulus_counts[i, :]
-        y = spontaneous_counts[i, :]
-        try:
-            _, p = scipy.stats.ranksums(x, y)
-        except ValueError:
-            pass
+        stim_sig = np.zeros(np.unique(stimulus_types).shape)
+        for j, stim in enumerate(np.unique(stimulus_types)):
+            x = stimulus_counts[i, stimulus_types == stim]
+            y = spontaneous_counts[i, random.sample(
+                    range(spontaneous_counts.shape[1]), np.sum(stimulus_types == stim))]
+            try:
+                _, stim_sig[j] = scipy.stats.ranksums(x, y)
+            except ValueError:
+                pass
+        _, p = scipy.stats.combine_pvalues(stim_sig)
         responsive[i] = p < p_value_threshold
     return responsive
 
@@ -435,7 +433,7 @@ def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
     """
     Compute receptive field areas as described in:
     Durand et al. 2016
-    "A Comparison of Visual Response Properties 
+    "A Comparison of Visual Response Properties
     in the Lateral Geniculate Nucleus
     and Primary Visual Cortex of Awake and Anesthetized Mice"
     :param rfs: dictionary of receptive fields (dict keys are 'on' and 'off');
@@ -534,17 +532,24 @@ if __name__ == "__main__":
     session_path = alf_path
     path = alf_path
     odsgratings = np.load(path / '_iblcertif_.odsgratings.times.00.npy')
+    odsorientations = np.load(path / '_iblcertif_.odsgratings.stims.00.npy')
+    reversals = np.load(path / '_iblcertif_.reversal.times.00.npy')
     spontaneous = np.load(path / '_iblcertif_.spontaneous.times.00.npy')
     spike_times = np.load(path / 'spikes.times.npy')
     spike_clusters = np.load(path / 'spikes.clusters.npy')
 
+    # Append contrast reversing checkerboard stims to orientations
+    stim_times = np.append(odsgratings, np.reshape(reversals[0:20], [10, 2]), axis=0)
+    stim_types = np.append(odsorientations, np.ones(10)*10)
+
     resp = are_neurons_responsive(
         spike_times,
         spike_clusters,
-        odsgratings,
+        stim_times,
+        stim_types,
         spontaneous)
     # print(resp)
-    print("Fraction of responsive neurons: ", resp.mean())
+    print("Fraction of responsive neurons: %.2f" % resp.mean())
 
     spikes = alf.io.load_object(alf_path, 'spikes')
 
