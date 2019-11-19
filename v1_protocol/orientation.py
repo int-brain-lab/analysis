@@ -330,7 +330,7 @@ def plot_polar_psth_and_rasters(
                 '%s OSI = %1.2f\n' % (epoch.capitalize(), osi[epoch]))
         else:
             title_str = str(
-                'Cluster %i\n%s OSI = %1.2f\n' % (cluster, epoch.capitalize(), osi[epoch]))
+                '\n Cluster %i\n%s OSI = %1.2f\n \n' % (cluster, epoch.capitalize(), osi[epoch]))
         ax0.set_title(title_str)
 
         m = mean_responses[epoch]
@@ -754,7 +754,7 @@ def plot_random_psths_and_rasters(
     import seaborn as sns
     sns.set_context('paper')
 
-    fig = plt.figure(figsize=(13, 16))
+    fig = plt.figure(figsize=(15, 16))
     cluster_idxs = mean_responses.keys()
     n_clusters = len(cluster_idxs)
     n_cols = int(np.ceil(np.sqrt(n_clusters)))
@@ -769,7 +769,7 @@ def plot_random_psths_and_rasters(
             mean_responses[cluster_idx], binned_spikes[cluster_idx], osis[cluster_idx],
             grating_vals, on_idx, off_idx, bin_size, cluster=cluster_idx, grid_spec=gs0, fig=fig)
     gs.tight_layout(fig)
-
+    plt.subplots_adjust(wspace = 0.6, hspace = 0.6)
     if save_file is None:
         plt.show()
     else:
