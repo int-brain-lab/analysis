@@ -172,7 +172,7 @@ def plot_value_by_depth(values, depths, xlabel, ylabel, window=25, linewidth=1, 
         x = None
         running_average = None
 
-    ax.scatter(values, depths, c=[[0.1, 0.1, 0.1]], s=5)
+    ax.scatter(values, depths, marker='.', c=[[0.1, 0.1, 0.1]], s=5)
     # plot center line at 1
     ax.axvline(x=1, ymin=0.02, ymax=0.98, color=[0.7, 0.7, 0.7], linewidth=linewidth)
     # plot running average
