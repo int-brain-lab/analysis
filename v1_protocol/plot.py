@@ -240,3 +240,84 @@ def um_selected_plots(clusters):
         >>> wf2 = bb.io.extract_waveforms('path\\to\\ephys_bin_file', ts2, ch)
         >>> s = bb.metrics.wf_similarity(wf1, wf2)
     '''
+
+def raster_complete(R, times, Clusters):
+    '''
+    Plot a rasterplot for the complete recording
+    (might be slow, restrict R if so),
+    ordered by insertion depth, with
+
+    :param R: multidimensional binned neural activity
+    :param times: ttl time stamps in sec
+    :param Cluster: cluster ids
+    '''
+
+    T_BIN = 0.005
+    plt.imshow(R, aspect='auto', cmap='binary', vmax=T_BIN / 0.001 / 4,
+               origin='lower', extent=np.r_[times[[0, -1]], Clusters[[0, -1]]])
+
+    plt.xlabel('Time (s)')
+    plt.ylabel('Cluster #; ordered by depth')
+    plt.show()
+
+    # plt.savefig('/home/mic/Rasters/%s.png' %(trial_number))
+    # plt.close('all')
+    plt.tight_layout()
+
+def plot_rf_distributions(rf_areas, plot_type='box'):
+    """
+    :param rf_areas:
+    :param plot_type: 'box' | 'hist'
+    :return: figure handle
+    """
+
+    # put results into dataframe for easier plotting
+    results = []
+    for sub_type, areas in rf_areas.items():
+        for i, area in enumerate(areas):
+            results.append(pd.DataFrame({
+                'cluster_id': i,
+                'area': area,
+                'Subfield': sub_type.upper()}, index=[0]))
+    results_pd = pd.concat(results, ignore_index=True)
+    # leave out non-responsive clusters
+    data_queried = results_pd[results_pd.area != 0]
+
+    if plot_type == 'box':
+
+        splt = sns.catplot(
+            x='Subfield', y='area', kind='box', data=data_queried)
+        splt.fig.axes[0].set_yscale('log')
+        splt.fig.axes[0].set_ylabel('RF Area (pixels$^2$)')
+        splt.fig.axes[0].set_ylim([1e-1, 1e4])
+
+    elif plot_type == 'hist':
+        bins = 10 ** (np.arange(-1, 4.25, 0.25))
+        xmin = 1e-1
+        xmax = 1e4
+        ymin = 1e0
+        ymax = 1e3
+        splt = plt.figure(figsize=(12, 4))
+
+        plt.subplot(121)
+        plt.hist(data_queried[data_queried.Subfield ==
+                              'ON']['area'], bins=bins, log=True)
+        plt.xlabel('RF Area (pixels)')
+        plt.xscale('log')
+        plt.xlim([xmin, xmax])
+        plt.ylim([ymin, ymax])
+        plt.ylabel('Cluster count')
+        plt.title('ON Subfield')
+
+        plt.subplot(122)
+        plt.hist(data_queried[data_queried.Subfield ==
+                              'OFF']['area'], bins=bins, log=True)
+        plt.xlabel('RF Area (pixels)')
+        plt.xscale('log')
+        plt.xlim([xmin, xmax])
+        plt.ylim([ymin, ymax])
+        plt.title('OFF Subfield')
+
+    plt.show()
+
+    return splt
