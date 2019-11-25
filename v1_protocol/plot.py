@@ -3,13 +3,13 @@ Creates summary metrics and plots for units in a recording session.
 
 This module assumes that the 'analysis', 'iblscripts', and 'ibllib' repositories from
 https://github.com/int-brain-lab are directories in the current working folder. These directories
-should be on the 'certification', 'certification', 'brainbox' branches, respectively.
+should be on the 'cert_master_fn', 'certification', and 'brainbox' branches, respectively.
 
 This module assumes that the required data for a particular eid is already saved in the CACHE_DIR
 specified by `.one_params` (the default location to which ONE saves data when running the `load`
 method). 
 
-To download *all* data for a particular eid:
+It is recommended to download *all* data for a particular eid:
     `from oneibl.one import ONE`
     `one = ONE()`
     # get eid
@@ -36,7 +36,6 @@ Run this as a script from within python (navigate to this directory and run):
 `exec(open('plot.py').read())`
 or in a terminal, outside of python (navigate to this directory and run):
 `python plot.py`
-
 """
 
 import sys
@@ -137,18 +136,28 @@ def gen_figures(eid, probe='probe_00', clusters=[], grating_response_summary=Tru
             if i[:10] == '_iblcertif':
                 shutil.copy(alf_path + '\\' + i, alf_probe_path)        
     
-    if grating_response_summary:
-        orientation.plot_grating_figures(alf_probe_path, save_dir=save_dir,
-                                         pre_time=grating_response_params['pre_t'],
-                                         post_time=grating_response_params['post_t'],
-                                         bin_size=grating_response_params['bin_t'],
-                                         smoothing=grating_response_params['sigma'],
-                                         cluster_idxs=clusters, n_rand_clusters=20)
+    if grating_response_summary and grating_response_selected:
+        orientation.plot_grating_figures(
+            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+            post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
+            smoothing=grating_response_params['sigma'], cluster_idxs=clusters, n_rand_clusters=5)
+    elif grating_response_summary:
+        orientation.plot_grating_figures(
+            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+            post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
+            smoothing=grating_response_params['sigma'], cluster_idxs=clusters, n_rand_clusters=5,
+            only_summary=True)
+    elif grating_response_selected:
+        orientation.plot_grating_figures(
+            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+            post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
+            smoothing=grating_response_params['sigma'], cluster_idxs=clusters, n_rand_clusters=5,
+            only_selected=True)            
 
 
-def summary_plots(eid):
+def um_summary_plots():
     '''
-    Computes metrics and creates plots for all units in a given recording session.
+    Computes summary metrics and creates plots for all units in a given recording session.
 
     Parameters
     ----------
@@ -189,3 +198,45 @@ def summary_plots(eid):
         >>> s = bb.metrics.wf_similarity(wf1, wf2)
     '''
 
+def um_selected_plots(clusters):
+    '''
+    Computes metrics and creates plots for specified units in a given recording session.
+
+    Parameters
+    ----------
+    eid : string
+        The experiment ID, for a given recording session- the UUID of the session as per Alyx.
+
+    Returns
+    -------
+    m: bunch
+        A bunch containing metrics as fields. 
+
+    See Also
+    --------
+    brainbox.metrics.metrics
+    brainbox.plot.plot
+    
+
+    Examples
+    --------
+    1) Compute the similarity between the first and last 100 waveforms for unit1, across the 20
+    channels around the channel of max amplitude.
+        >>> import brainbox as bb
+        >>> import alf.io as aio
+        >>> import ibllib.ephys.spikes as e_spks
+        # Get a spikes bunch, a clusters bunch, a units bunch, the channels around the max amp
+        # channel for the unit, two sets of timestamps for the units, and the two corresponding
+        # sets of waveforms for those two sets of timestamps. Then compute `s`.
+        >>> e_spks.ks2_to_alf('path\\to\\ks_output', 'path\\to\\alf_output')
+        >>> spks = aio.load_object('path\\to\\alf_output', 'spikes')
+        >>> clstrs = aio.load_object('path\\to\\alf_output', 'clusters')
+        >>> max_ch = max_ch = clstrs['channels'][1]
+        >>> ch = np.arange(max_ch - 10, max_ch + 10)
+        >>> units = bb.processing.get_units_bunch(spks)
+        >>> ts1 = units['times']['1'][:100]
+        >>> ts2 = units['times']['1'][-100:]
+        >>> wf1 = bb.io.extract_waveforms('path\\to\\ephys_bin_file', ts1, ch)
+        >>> wf2 = bb.io.extract_waveforms('path\\to\\ephys_bin_file', ts2, ch)
+        >>> s = bb.metrics.wf_similarity(wf1, wf2)
+    '''
