@@ -391,7 +391,7 @@ def plot_polar_psth_and_rasters(
 
 def plot_grating_figures(
         session_path, save_dir=None, format='png', pre_time=0.5, post_time=2.5, bin_size=0.005,
-        smoothing=0.025, n_rand_clusters=20):
+        smoothing=0.025, cluster_idxs=[], n_rand_clusters=20):
     """
     Produces two summary figures for the oriented grating protocol; the first summary figure
     contains plots that compare different measures during the first and second grating protocols,
@@ -408,7 +408,10 @@ def plot_grating_figures(
         stimulus)
     :param bin_size: size of bins for raster plots/psths
     :param smoothing: size of smoothing kernel (sec)
-    :param n_rand_clusters: number of random clusters to plot psths/rasters for
+    :param cluster_idxs: the clusters for which to plot psths/rasters. If [], then
+        `n_rand_clusters` random clusters are chosen.
+    :param n_rand_clusters: The number of random clusters to choose for which to plot psths/rasters
+        if `clusters` is [].
     :return: None
     """
 
@@ -577,11 +580,12 @@ def plot_grating_figures(
     # -------------------------------------------------
     # compute psths and rasters for individual clusters
     # -------------------------------------------------
-    print('computing psths and rasters for random clusters...', end='', flush=True)
-    if n_rand_clusters < len(cluster_ids):
-        cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
-    else:
-        cluster_idxs = cluster_ids
+    print('computing psths and rasters for clusters...', end='', flush=True)
+    if not(cluster_idxs):
+        if (n_rand_clusters < len(cluster_ids)):
+            cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
+        else:
+            cluster_idxs = cluster_ids
     mean_responses = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
     osis = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
     binned = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
@@ -613,12 +617,15 @@ def plot_grating_figures(
     plot_summary_figure(
         ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
         ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
+    
+    import pdb
+    pdb.set_trace()
 
     if save_dir is None:
         save_file = None
     else:
         save_file = os.path.join(save_dir, 'grating_random_responses.' + format)
-    plot_random_psths_and_rasters(
+    plot_psths_and_rasters(
         mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
         off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
     print('done')
@@ -746,7 +753,7 @@ def plot_summary_figure(
         plt.savefig(save_file, dpi=300)
 
 
-def plot_random_psths_and_rasters(
+def plot_psths_and_rasters(
         mean_responses, binned_spikes, osis, grating_vals, on_idx, off_idx, bin_size,
         save_file=None):
 

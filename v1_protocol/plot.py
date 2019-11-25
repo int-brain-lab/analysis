@@ -41,9 +41,10 @@ or in a terminal, outside of python (navigate to this directory and run):
 
 import sys
 # Add `ibllib` and `iblscripts` to path.
-sys.path.extend(['.\\ibllib', '.\\iblscripts'])
+sys.path.extend(['.\\ibllib', '.\\iblscripts', '.\\analysis'])
 from pathlib import Path
 import os
+import shutil
 import glob
 import json
 import numpy as np
@@ -52,22 +53,29 @@ import seaborn as sns
 import scipy.stats
 import pandas as pd
 from oneibl.one import ONE
-import alf.io
+import alf.io as aio
 import brainbox as bb
 from brainbox.processing import bincount2D
 # Import code for extracting stimulus info to get v1 certification files (`_iblcertif_`).
 from deploy.serverpc.certification import certification_pipeline
+import v1_protocol.orientation as orientation
 
 
-def gen_figures(eid, clusters=[], grating_response_summary=True, grating_response_selected=False,
-                unit_metrics_summary=True, unit_metrics_selected=False, extract_stim_info=True):
+def gen_figures(eid, probe='probe_00', clusters=[], grating_response_summary=True,
+                grating_response_selected=False, unit_metrics_summary=True,
+                unit_metrics_selected=False, extract_stim_info=True,
+                grating_response_params={'pre_t':0.5, 'post_t':2.5, 'bin_t':0.005, 'sigma':0.025},
+                save_dir=None):
     '''
-    Generates figures for the V1 certification protocol.
+    Generates figures for the V1 certification protocol for a given eid and probe from a recording
+    session.
 
     Parameters
     ----------
     eid : string
-        The experiment ID for a given recording session: the UUID of the session as per Alyx.
+        The experiment ID for a recording session: the UUID of the session as per Alyx.
+    probe : string
+        The probe whose data will be used to generate the figures.
     clusters : array-like
         The clusters for which to generate `grating_response_ind` and/or `unit_metrics_ind`.
     grating_response_summary : bool
@@ -80,8 +88,18 @@ def gen_figures(eid, clusters=[], grating_response_summary=True, grating_respons
     unit_metrics_selected : bool
         A flag for returning a figure with single unit metrics plots for the selected units in
         `clusters`.
+    summary_metrics : list
+        The summary metrics plots to generate for the `unit_metrics_summary` figure.
+    selected_metrics : list
+        The selected metrics plots to generate for the `unit_metrics_selected` figure.
     extract_stim_info : bool
         A flag for extracting stimulus info from the recording session into an alf directory.
+    grating_response_params : dict
+        Parameters for generating rasters based on time of grating stimulus presentation. 
+        `pre_t` is the time (s) shown before grating onset.
+        `post_t` is the time (s) shown after grating onset.
+        `bin_t` is the bin width (s) used to determine the number of spikes/bin 
+        `sigma` is the width (s) of the smoothing kernel used to determine the number of spikes/bin
 
     Returns
     -------
@@ -97,24 +115,35 @@ def gen_figures(eid, clusters=[], grating_response_summary=True, grating_respons
 
     Examples
     --------
+    1) Generate grating response summary and unit metrics summary figures for "good units"
+    (returned by compute.good_units), and grating response selected and unit metrics selected
+    for the first 5 good units.
     '''
     
-    # Get necessary data via ONE
+    # Get necessary data via ONE:
     one = ONE()
-    dtypes = []
+    # Get important local paths from `eid`.
+    spikes_path = one.load(eid, dataset_types='spikes.amps', clobber=False, download_only=True)[0]
+    alf_dir_part = np.where([part == 'alf' for part in Path(spikes_path).parts])[0][0]
+    session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
+    alf_path = session_path + '\\alf'
+    alf_probe_path = alf_path + '\\' + probe
+
     if extract_stim_info:
-        dtypes.extend([
-            '_spikeglx_sync.channels',
-            '_spikeglx_sync.polarities',
-            '_spikeglx_sync.times',
-            '_iblrig_RFMapStim.raw',
-            '_iblrig_codeFiles.raw',
-            '_iblrig_taskSettings.raw'])
-        spikes_path = one.load(eid, dataset_types='spikes.amps', \
-                               clobber=False, download_only=True)[0]
-        alf_dir_part = np.where([part == 'alf' for part in Path(spikes_path).parts])[0][0]
-        session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
+        # Get stimulus info and save in `alf_path`
         certification_pipeline.extract_stimulus_info_to_alf(session_path, save=True)
+        # Copy `'_iblcertif'` files over to `alf_probe_path`
+        for i in os.listdir(alf_path):
+            if i[:10] == '_iblcertif':
+                shutil.copy(alf_path + '\\' + i, alf_probe_path)        
+    
+    if grating_response_summary:
+        orientation.plot_grating_figures(alf_probe_path, save_dir=save_dir,
+                                         pre_time=grating_response_params['pre_t'],
+                                         post_time=grating_response_params['post_t'],
+                                         bin_size=grating_response_params['bin_t'],
+                                         smoothing=grating_response_params['sigma'],
+                                         cluster_idxs=clusters, n_rand_clusters=20)
 
 
 def summary_plots(eid):
