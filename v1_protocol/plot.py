@@ -1,15 +1,15 @@
 """
 Creates summary metrics and plots for units in a recording session.
 
-This module assumes that the 'analysis', 'iblscripts', and 'ibllib' repositories from
+***3 Things to check before using this code***
+
+1) This module assumes that the 'analysis', 'iblscripts', and 'ibllib' repositories from
 https://github.com/int-brain-lab are directories in the current working folder. These directories
 should be on the 'cert_master_fn', 'certification', and 'brainbox' branches, respectively.
 
-This module assumes that the required data for a particular eid is already saved in the CACHE_DIR
+2) This module assumes that the required data for a particular eid is already saved in the CACHE_DIR
 specified by `.one_params` (the default location to which ONE saves data when running the `load`
-method). 
-
-It is recommended to download *all* data for a particular eid:
+method). It is recommended to download *all* data for a particular eid:
     `from oneibl.one import ONE`
     `one = ONE()`
     # get eid
@@ -17,7 +17,14 @@ It is recommended to download *all* data for a particular eid:
     # download data
     one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
 
-List of required data (alf objects) depending on the figures to be generated:
+3) Ensure you have the required, up-to-date versions of the following 3rd party package
+dependencies in your environment: opencv-python, phylib, spikemetrics. If in doubt, in your OS
+terminal run:
+    `pip install opencv-python`
+    `pip install --upgrade git+https://github.com/cortex-lab/phylib.git@master`
+    `pip install git+https://github.com/SpikeInterface/spikemetrics@master`
+
+Here is a list of required data (alf objects) depending on the figures to be generated:
 required for any figure:
     clusters
     spikes
@@ -60,9 +67,9 @@ from deploy.serverpc.certification import certification_pipeline
 import v1_protocol.orientation as orientation
 
 
-def gen_figures(eid, probe='probe_00', clusters=[], grating_response_summary=True,
-                grating_response_selected=False, unit_metrics_summary=True,
-                unit_metrics_selected=False, extract_stim_info=True,
+def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=True,
+                grating_response_summary=True, grating_response_selected=False,
+                unit_metrics_summary=True, unit_metrics_selected=False,
                 grating_response_params={'pre_t':0.5, 'post_t':2.5, 'bin_t':0.005, 'sigma':0.025},
                 save_dir=None):
     '''
@@ -75,18 +82,18 @@ def gen_figures(eid, probe='probe_00', clusters=[], grating_response_summary=Tru
         The experiment ID for a recording session: the UUID of the session as per Alyx.
     probe : string
         The probe whose data will be used to generate the figures.
-    clusters : array-like
+    cluster_ids : array-like
         The clusters for which to generate `grating_response_ind` and/or `unit_metrics_ind`.
     grating_response_summary : bool
         A flag for returning a figure with summary grating response plots based on all units.
     grating_response_selected : bool
         A flag for returning a figure with grating response plots for the selected units in 
-        `clusters`.
+        `cluster_ids`.
     unit_metrics_summary : bool
         A flag for returning a figure with summary metrics plots based on all units.
     unit_metrics_selected : bool
         A flag for returning a figure with single unit metrics plots for the selected units in
-        `clusters`.
+        `cluster_ids`.
     summary_metrics : list
         The summary metrics plots to generate for the `unit_metrics_summary` figure.
     selected_metrics : list
@@ -140,24 +147,31 @@ def gen_figures(eid, probe='probe_00', clusters=[], grating_response_summary=Tru
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_idxs=clusters, n_rand_clusters=5)
+            smoothing=grating_response_params['sigma'], cluster_idxs=cluster_ids,
+            n_rand_clusters=5)
     elif grating_response_summary:
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_idxs=clusters, n_rand_clusters=5,
-            only_summary=True)
+            smoothing=grating_response_params['sigma'], cluster_idxs=cluster_ids,
+            n_rand_clusters=5, only_summary=True)
     elif grating_response_selected:
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_idxs=clusters, n_rand_clusters=5,
-            only_selected=True)            
+            smoothing=grating_response_params['sigma'], cluster_idxs=cluster_ids,
+            n_rand_clusters=5, only_selected=True)
+    
+    if unit_metrics_summary:
+        um_summary_plots()
+        
+    if unit_metrics_selected:
+        um_selected_plots()
 
 
 def um_summary_plots():
     '''
-    Computes summary metrics and creates plots for all units in a given recording session.
+    Computes/creates summary metrics and plots for all units in a given recording session.
 
     Parameters
     ----------
@@ -200,7 +214,7 @@ def um_summary_plots():
 
 def um_selected_plots(clusters):
     '''
-    Computes metrics and creates plots for specified units in a given recording session.
+    Computes/creates metrics and plots for specified units in a given recording session.
 
     Parameters
     ----------
@@ -321,3 +335,12 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
     plt.show()
 
     return splt
+
+
+if __name__ == '__main__':
+
+    # Prompt user for eid
+    
+    # Generate grating response summary and unit metrics summary figures for "good units", and
+    # grating response selected and unit metrics selected figures for the first 5 good units.
+    print('end')
