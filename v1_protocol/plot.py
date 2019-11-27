@@ -193,8 +193,8 @@ def um_summary_plots(eid):
     brainbox.plot.plot
     '''
 
-#    rf_mapping_old.histograms_rf_areas(eid)
-#    complete_raster_depth_per_spike.scatter_with_boundary_times(eid)
+    rf_mapping_old.histograms_rf_areas(eid)
+    complete_raster_depth_per_spike.scatter_with_boundary_times(eid)
     one = ONE()
     D = one.load(eid[0], clobber=False, download_only=True)
     alf_path = Path(D.local_path[0]).parent
