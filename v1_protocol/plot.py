@@ -63,12 +63,13 @@ import alf.io as aio
 import brainbox as bb
 from brainbox.processing import bincount2D
 # Import code for extracting stimulus info to get v1 certification files (`_iblcertif_`).
-from deploy.serverpc.certification import certification_pipeline
-import v1_protocol.orientation as orientation
+import certification_pipeline
+import orientation
+from oneibl.one import ONE
 
 
-def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=True,
-                grating_response_summary=True, grating_response_selected=False,
+def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=False,
+                grating_response_summary=False, grating_response_selected=False,
                 unit_metrics_summary=True, unit_metrics_selected=False,
                 grating_response_params={'pre_t':0.5, 'post_t':2.5, 'bin_t':0.005, 'sigma':0.025},
                 save_dir=None):
@@ -132,8 +133,8 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=True,
     spikes_path = one.load(eid, dataset_types='spikes.amps', clobber=False, download_only=True)[0]
     alf_dir_part = np.where([part == 'alf' for part in Path(spikes_path).parts])[0][0]
     session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
-    alf_path = session_path + '\\alf'
-    alf_probe_path = alf_path + '\\' + probe
+    alf_path = session_path + '/alf'
+    alf_probe_path = alf_path + '/' + probe
 
     if extract_stim_info:
         # Get stimulus info and save in `alf_path`
@@ -141,7 +142,7 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=True,
         # Copy `'_iblcertif'` files over to `alf_probe_path`
         for i in os.listdir(alf_path):
             if i[:10] == '_iblcertif':
-                shutil.copy(alf_path + '\\' + i, alf_probe_path)        
+                shutil.copy(alf_path + '/' + i, alf_probe_path)        
     
     if grating_response_summary and grating_response_selected:
         orientation.plot_grating_figures(
@@ -163,13 +164,16 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=True,
             n_rand_clusters=5, only_selected=True)
     
     if unit_metrics_summary:
-        um_summary_plots()
+        um_summary_plots(eid)
         
     if unit_metrics_selected:
         um_selected_plots()
 
 
-def um_summary_plots():
+import complete_raster_depth_per_spike
+import rf_mapping_old
+
+def um_summary_plots(eid):
     '''
     Computes/creates summary metrics and plots for all units in a given recording session.
 
@@ -187,30 +191,18 @@ def um_summary_plots():
     --------
     brainbox.metrics.metrics
     brainbox.plot.plot
-    
-
-    Examples
-    --------
-    1) Compute the similarity between the first and last 100 waveforms for unit1, across the 20
-    channels around the channel of max amplitude.
-        >>> import brainbox as bb
-        >>> import alf.io as aio
-        >>> import ibllib.ephys.spikes as e_spks
-        # Get a spikes bunch, a clusters bunch, a units bunch, the channels around the max amp
-        # channel for the unit, two sets of timestamps for the units, and the two corresponding
-        # sets of waveforms for those two sets of timestamps. Then compute `s`.
-        >>> e_spks.ks2_to_alf('path\\to\\ks_output', 'path\\to\\alf_output')
-        >>> spks = aio.load_object('path\\to\\alf_output', 'spikes')
-        >>> clstrs = aio.load_object('path\\to\\alf_output', 'clusters')
-        >>> max_ch = max_ch = clstrs['channels'][1]
-        >>> ch = np.arange(max_ch - 10, max_ch + 10)
-        >>> units = bb.processing.get_units_bunch(spks)
-        >>> ts1 = units['times']['1'][:100]
-        >>> ts2 = units['times']['1'][-100:]
-        >>> wf1 = bb.io.extract_waveforms('path\\to\\ephys_bin_file', ts1, ch)
-        >>> wf2 = bb.io.extract_waveforms('path\\to\\ephys_bin_file', ts2, ch)
-        >>> s = bb.metrics.wf_similarity(wf1, wf2)
     '''
+
+#    rf_mapping_old.histograms_rf_areas(eid)
+#    complete_raster_depth_per_spike.scatter_with_boundary_times(eid)
+    one = ONE()
+    D = one.load(eid[0], clobber=False, download_only=True)
+    alf_path = Path(D.local_path[0]).parent
+    spikes = aio.load_object(alf_path, 'spikes')
+    bb.plot.feat_vars(spikes)
+
+
+
 
 def um_selected_plots(clusters):
     '''
