@@ -3,9 +3,9 @@ Creates summary metrics and plots for units in a recording session.
 
 ***3 Things to check before using this code***
 
-1) This module assumes that the 'analysis', 'iblscripts', and 'ibllib' repositories from
-https://github.com/int-brain-lab are directories in the current working folder. These directories
-should be on the 'cert_master_fn', 'certification', and 'brainbox' branches, respectively.
+1) This module assumes that all scripts of v1_protocol are in the current working folder. 
+It further assumes the newest version of ibllib, brainbox branch, to be installed in a terminal via
+pip install git+https://github.com/int-brain-lab/ibllib.git@brainbox
 
 2) This module assumes that the required data for a particular eid is already saved in the CACHE_DIR
 specified by `.one_params` (the default location to which ONE saves data when running the `load`
