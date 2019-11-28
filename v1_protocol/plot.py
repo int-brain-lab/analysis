@@ -133,8 +133,8 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=False,
     spikes_path = one.load(eid, dataset_types='spikes.amps', clobber=False, download_only=True)[0]
     alf_dir_part = np.where([part == 'alf' for part in Path(spikes_path).parts])[0][0]
     session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
-    alf_path = session_path + '/alf'
-    alf_probe_path = alf_path + '/' + probe
+    alf_path = os.path.abspath(session_path + '\\alf')
+    alf_probe_path = os.path.abspath(alf_path + '\\' + probe)
 
     if extract_stim_info:
         # Get stimulus info and save in `alf_path`
@@ -142,7 +142,7 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=False,
         # Copy `'_iblcertif'` files over to `alf_probe_path`
         for i in os.listdir(alf_path):
             if i[:10] == '_iblcertif':
-                shutil.copy(alf_path + '/' + i, alf_probe_path)        
+                shutil.copy(os.path.abspath(alf_path + '\\' + i), alf_probe_path)
     
     if grating_response_summary and grating_response_selected:
         orientation.plot_grating_figures(
