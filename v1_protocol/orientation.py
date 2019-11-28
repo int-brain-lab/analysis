@@ -389,9 +389,10 @@ def plot_polar_psth_and_rasters(
     return fig
 
 
-def plot_grating_figures(session_path, save_dir=None, format='png', pre_time=0.5, post_time=2.5,
-                         bin_size=0.005, smoothing=0.025, cluster_idxs=[], n_rand_clusters=20,
-                         only_summary=False, only_selected=False):
+def plot_grating_figures(
+    session_path, save_dir=None, format='png', pre_time=0.5, post_time=2.5, bin_size=0.005,
+    smoothing=0.025, cluster_ids_summary=None, cluster_ids_selected=None, n_rand_clusters=20,
+    only_summary=False, only_selected=False):
     """
     Produces two summary figures for the oriented grating protocol; the first summary figure
     contains plots that compare different measures during the first and second grating protocols,
@@ -408,8 +409,14 @@ def plot_grating_figures(session_path, save_dir=None, format='png', pre_time=0.5
         stimulus)
     :param bin_size: size of bins for raster plots/psths
     :param smoothing: size of smoothing kernel (sec)
-    :param cluster_idxs: the clusters for which to plot psths/rasters. If [], then
-        `n_rand_clusters` random clusters are chosen.
+    cluster_ids_summary : array-like (optional)
+        The clusters for which to generate `grating_response_summary` and/or `unit_metrics_summary`
+        (if `None` and `auto_filt_cl == True`, clusters will be chosen via the filter parameters in
+        `auto_filt_cl_params`)
+    :param cluster_ids_summary: The clusters for which to plot summary psths/rasters. If `None`
+        then all clusters are used.
+    :param cluster_ids_selected: The clusters for which to plot single unit psths/rasters. If `None`
+        then `n_rand_clusters` random clusters from `cluster_ids_summary` are chosen.
     :param n_rand_clusters: The number of random clusters to choose for which to plot psths/rasters
         if `clusters` is [].
     :param only_summary: A flag for only plotting the plots in the summary figure
@@ -457,7 +464,8 @@ def plot_grating_figures(session_path, save_dir=None, format='png', pre_time=0.5
     for epoch in epochs:
         mask_times |= (spikes.times >= grating_times[epoch].min()) & \
                       (spikes.times <= grating_times[epoch].max())
-    cluster_ids = np.unique(spikes.clusters[mask_times])
+    cluster_ids = cluster_ids_summary if cluster_ids_summary \
+                                      else np.unique(spikes.clusters[mask_times])
 
     # only calculate responsiveness for clusters that were active during gratings
     mask_clust = np.isin(spikes.clusters, cluster_ids)
@@ -585,11 +593,11 @@ def plot_grating_figures(session_path, save_dir=None, format='png', pre_time=0.5
     # -------------------------------------------------
     if not(only_summary):
         print('computing psths and rasters for clusters...', end='', flush=True)
-        if not(cluster_idxs):
+        if not(cluster_ids_selected):
             if (n_rand_clusters < len(cluster_ids)):
                 cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
-            else:
-                cluster_idxs = cluster_ids
+        else:
+            cluster_idxs = cluster_ids_selected
         mean_responses = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
         osis = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
         binned = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}

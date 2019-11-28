@@ -6,7 +6,7 @@ Creates summary metrics and plots for units in a recording session.
 1) This module assumes that your working directory can access the latest 'ibllib' - 'brainbox'
 branch, and the latest 'iblscripts' - 'certification' branch. If in doubt, in your OS terminal run:
     `pip install --upgrade git+https://github.com/int-brain-lab/ibllib.git@brainbox`
-    `pip install --upgrade git+https://github.com/int-brain-lab/iblscripts.git@iblscripts`
+    `pip install --upgrade git+https://github.com/int-brain-lab/iblscripts.git@certification`
 
 2) This module assumes that the required data for a particular eid is already saved in the
 CACHE_DIR specified by `.one_params` (the default location to which ONE saves data when running the
@@ -37,19 +37,14 @@ if grating_response_summary or grating_response_ind:
 if using waveform metrics in unit_metrics_ind:
     ephysData.raw
 
-When running this module as a script... 
-
+When running this module as a script:
 Run this as a script from within python:
 `run path\to\plot`
 or in a terminal, outside of python:
 `python path\to\plot.py`
 """
 
-import sys
 import os
-# Add `ibllib`, `iblscripts`, and `analysis` repos to path.
-sys.path.extend([os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
-                 os.path.abspath('.\\analysis')])
 from pathlib import Path
 import shutil
 import glob
@@ -63,51 +58,77 @@ from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
 from brainbox.processing import bincount2D
-# Import code for extracting stimulus info to get v1 certification files (`_iblcertif_`).
 import certification_pipeline
 import orientation
-from oneibl.one import ONE
+import complete_raster_depth_per_spike
+import rf_mapping_old
+
+# Add `ibllib`, `iblscripts`, and `analysis` repos to path:
+# import sys
+# sys.path.extend(
+#     [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
+#      os.path.abspath('.\\analysis')])
 
 
-def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=False,
-                grating_response_summary=False, grating_response_selected=False,
-                unit_metrics_summary=True, unit_metrics_selected=False,
-                grating_response_params={'pre_t':0.5, 'post_t':2.5, 'bin_t':0.005, 'sigma':0.025},
-                save_dir=None):
+def gen_figures(
+    eid, probe='probe_00', cluster_ids_summary=None, cluster_ids_selected=None, auto_filt_cl=True,
+    extract_stim_info=True, grating_response_summary=True, grating_response_selected=True,
+    unit_metrics_summary=True, unit_metrics_selected=False,
+    grating_response_params={'pre_t':0.5, 'post_t':2.5, 'bin_t':0.005, 'sigma':0.025},
+    auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
+    save_dir=None):
     '''
-    Generates figures for the V1 certification protocol for a given eid and probe from a recording
-    session.
+    Generates figures for the V1 certification protocol for a given eid, probe, and clusters from a
+    recording session.
 
     Parameters
     ----------
     eid : string
         The experiment ID for a recording session: the UUID of the session as per Alyx.
-    probe : string
+    probe : string (optional)
         The probe whose data will be used to generate the figures.
-    cluster_ids : array-like
+    cluster_ids_summary : array-like (optional)
+        The clusters for which to generate `grating_response_summary` and/or `unit_metrics_summary`
+        (if `None` and `auto_filt_cl == True`, clusters will be chosen via the filter parameters in
+        `auto_filt_cl_params`)
+    cluster_ids_selected : array-like (optional)
         The clusters for which to generate `grating_response_ind` and/or `unit_metrics_ind`.
-    grating_response_summary : bool
-        A flag for returning a figure with summary grating response plots based on all units.
-    grating_response_selected : bool
-        A flag for returning a figure with grating response plots for the selected units in 
-        `cluster_ids`.
-    unit_metrics_summary : bool
-        A flag for returning a figure with summary metrics plots based on all units.
-    unit_metrics_selected : bool
-        A flag for returning a figure with single unit metrics plots for the selected units in
-        `cluster_ids`.
-    summary_metrics : list
-        The summary metrics plots to generate for the `unit_metrics_summary` figure.
-    selected_metrics : list
-        The selected metrics plots to generate for the `unit_metrics_selected` figure.
-    extract_stim_info : bool
+        (if `None`, up to 5 cluster ids will be selected from `cluster_ids_summary`)
+    auto_filt_cl : bool (optional)
+        A flag for automatically filtering clusters (by calling `brainbox.processing.filter_units`)
+        to set `cluster_ids_summary`.
+    extract_stim_info : bool (optional)
         A flag for extracting stimulus info from the recording session into an alf directory.
+    grating_response_summary : bool (optional)
+        A flag for returning a figure with summary grating response plots for `cluster_ids_summary`
+    grating_response_selected : bool (optional)
+        A flag for returning a figure with single grating response plots for `cluster_ids_selected` 
+    unit_metrics_summary : bool (optional)
+        A flag for returning a figure with summary metrics plots for `cluster_ids_summary`.
+    unit_metrics_selected : bool (optional)
+        A flag for returning a figure with single unit metrics plots for `cluster_ids_selected`.
+    summary_metrics : list (optional)
+        The summary metrics plots to generate for the `unit_metrics_summary` figure. Possible
+        values can include: 
+    selected_metrics : list (optional)
+        The selected metrics plots to generate for the `unit_metrics_selected` figure. Possible
+        values can include: 
     grating_response_params : dict
-        Parameters for generating rasters based on time of grating stimulus presentation. 
-        `pre_t` is the time (s) shown before grating onset.
-        `post_t` is the time (s) shown after grating onset.
-        `bin_t` is the bin width (s) used to determine the number of spikes/bin 
-        `sigma` is the width (s) of the smoothing kernel used to determine the number of spikes/bin
+        Parameters for generating rasters based on time of grating stimulus presentation:
+        'pre_t' : the time (s) shown before grating onset.
+        'post_t' : the time (s) shown after grating onset.
+        'bin_t' : the bin width (s) used to determine the number of spikes/bin 
+        'sigma' : the width (s) of the smoothing kernel used to determine the number of spikes/bin
+    auto_filt_cl_params : dict
+        Parameters used in the call to `brainbox.processing.filter_units` for filtering clusters:
+        'min_amp' : The minimum mean amplitude (in uV) of the spikes in the unit
+        'min_fr' : The minimum firing rate (in Hz) of the unit
+        'max_fpr' : The maximum false positive rate of the unit (using the fp formula in
+                    Hill et al. (2011) J Neurosci 31: 8699-8705)
+        'rp' : The refractory period (in s) of the unit. Used to calculate `max_fp`
+    save_dir : string
+        The path to which to save generated figures. (if `None`, figures will not be automatically
+        saved)
 
     Returns
     -------
@@ -116,16 +137,34 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=False,
 
     See Also
     --------
-    orientation
     deploy.serverpc.certification.certification_pipeline
+    orientation
+    complete_raster_depth_per_spike
+    rf_mapping_old
     brainbox.metrics.metrics
     brainbox.plot.plot
 
     Examples
     --------
-    1) Generate grating response summary and unit metrics summary figures for "good units"
-    (returned by compute.good_units), and grating response selected and unit metrics selected
-    for the first 5 good units.
+    1) Generate grating response summary and unit metrics summary figures for all "good units" for
+    a particular eid and 'probe_00', and grating response selected and unit metrics selected
+    figures for the first 5 good units.
+        # Add `ibllib`, `iblscripts`, and `analysis` repos to path if necessary:
+        >>> import sys
+        >>> import os
+        >>> sys.path.extend(
+                [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
+                 os.path.abspath('.\\analysis')])
+        # Get eid from ONE and load necessary dataset_types (this data should already be
+        # downloaded to local):
+        >>> from oneibl.one import ONE
+        >>> one = ONE()
+        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
+        # Get "good units" from spike sorted data for `eid`
+        >>> spks_path = one.load(eid, dataset_types='spikes.amps',
+                                 clobber=False, download_only=True)[0]
+        >>> import brainbox as bb
+        >>> filtered_units = np.where(bb.processing.filter_units(spks))[0]
     '''
     
     # Get necessary data via ONE:
@@ -149,20 +188,20 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=False,
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_idxs=cluster_ids,
-            n_rand_clusters=5)
+            smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
+            cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5)
     elif grating_response_summary:
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_idxs=cluster_ids,
-            n_rand_clusters=5, only_summary=True)
+            smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
+            cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_summary=True)
     elif grating_response_selected:
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_idxs=cluster_ids,
-            n_rand_clusters=5, only_selected=True)
+            smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
+            cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_selected=True)
     
     if unit_metrics_summary:
         um_summary_plots(eid)
@@ -170,9 +209,6 @@ def gen_figures(eid, probe='probe_00', cluster_ids=[], extract_stim_info=False,
     if unit_metrics_selected:
         um_selected_plots()
 
-
-import complete_raster_depth_per_spike
-import rf_mapping_old
 
 def um_summary_plots(eid):
     '''
@@ -332,7 +368,7 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
 
 if __name__ == '__main__':
 
-    # Prompt user for eid
+    # Prompt user for eid and probe.
     
     # Generate grating response summary and unit metrics summary figures for "good units", and
     # grating response selected and unit metrics selected figures for the first 5 good units.
