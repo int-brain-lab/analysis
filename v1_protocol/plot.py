@@ -3,13 +3,14 @@ Creates summary metrics and plots for units in a recording session.
 
 ***3 Things to check before using this code***
 
-1) This module assumes that all scripts of v1_protocol are in the current working folder. 
-It further assumes the newest version of ibllib, brainbox branch, to be installed in a terminal via
-pip install git+https://github.com/int-brain-lab/ibllib.git@brainbox
+1) This module assumes that your working directory can access the latest 'ibllib' - 'brainbox'
+branch, and the latest 'iblscripts' - 'certification' branch. If in doubt, in your OS terminal run:
+    `pip install --upgrade git+https://github.com/int-brain-lab/ibllib.git@brainbox`
+    `pip install --upgrade git+https://github.com/int-brain-lab/iblscripts.git@iblscripts`
 
-2) This module assumes that the required data for a particular eid is already saved in the CACHE_DIR
-specified by `.one_params` (the default location to which ONE saves data when running the `load`
-method). It is recommended to download *all* data for a particular eid:
+2) This module assumes that the required data for a particular eid is already saved in the
+CACHE_DIR specified by `.one_params` (the default location to which ONE saves data when running the
+ `load` method). It is recommended to download *all* data for a particular eid:
     `from oneibl.one import ONE`
     `one = ONE()`
     # get eid
@@ -18,11 +19,10 @@ method). It is recommended to download *all* data for a particular eid:
     one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
 
 3) Ensure you have the required, up-to-date versions of the following 3rd party package
-dependencies in your environment: opencv-python, phylib, spikemetrics. If in doubt, in your OS
+dependencies in your environment: opencv-python, phylib. If in doubt, in your OS
 terminal run:
     `pip install opencv-python`
     `pip install --upgrade git+https://github.com/cortex-lab/phylib.git@master`
-    `pip install git+https://github.com/SpikeInterface/spikemetrics@master`
 
 Here is a list of required data (alf objects) depending on the figures to be generated:
 required for any figure:
@@ -39,17 +39,18 @@ if using waveform metrics in unit_metrics_ind:
 
 When running this module as a script... 
 
-Run this as a script from within python (navigate to this directory and run):
-`exec(open('plot.py').read())`
-or in a terminal, outside of python (navigate to this directory and run):
-`python plot.py`
+Run this as a script from within python:
+`run path\to\plot`
+or in a terminal, outside of python:
+`python path\to\plot.py`
 """
 
 import sys
-# Add `ibllib` and `iblscripts` to path.
-sys.path.extend(['.\\ibllib', '.\\iblscripts', '.\\analysis'])
-from pathlib import Path
 import os
+# Add `ibllib`, `iblscripts`, and `analysis` repos to path.
+sys.path.extend([os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
+                 os.path.abspath('.\\analysis')])
+from pathlib import Path
 import shutil
 import glob
 import json
