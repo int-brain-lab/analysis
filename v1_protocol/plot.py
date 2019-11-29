@@ -47,17 +47,14 @@ or in a terminal, outside of python:
 import os
 from pathlib import Path
 import shutil
-import glob
-import json
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import scipy.stats
+import scipy.stats as stats
 import pandas as pd
 from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
-from brainbox.processing import bincount2D
 from deploy.serverpc.certification import certification_pipeline
 from v1_protocol import orientation
 from v1_protocol import complete_raster_depth_per_spike
@@ -112,20 +109,20 @@ def gen_figures(
     selected_metrics : list (optional)
         The selected metrics plots to generate for the `unit_metrics_selected` figure. Possible
         values can include: 
-    grating_response_params : dict
+    grating_response_params : dict (optional)
         Parameters for generating rasters based on time of grating stimulus presentation:
         'pre_t' : the time (s) shown before grating onset.
         'post_t' : the time (s) shown after grating onset.
         'bin_t' : the bin width (s) used to determine the number of spikes/bin 
         'sigma' : the width (s) of the smoothing kernel used to determine the number of spikes/bin
-    auto_filt_cl_params : dict
+    auto_filt_cl_params : dict (optional)
         Parameters used in the call to `brainbox.processing.filter_units` for filtering clusters:
         'min_amp' : The minimum mean amplitude (in uV) of the spikes in the unit
         'min_fr' : The minimum firing rate (in Hz) of the unit
         'max_fpr' : The maximum false positive rate of the unit (using the fp formula in
                     Hill et al. (2011) J Neurosci 31: 8699-8705)
         'rp' : The refractory period (in s) of the unit. Used to calculate `max_fp`
-    save_dir : string
+    save_dir : string (optional)
         The path to which to save generated figures. (if `None`, figures will not be automatically
         saved)
 
@@ -162,7 +159,8 @@ def gen_figures(
         >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
         # Generate all V1 certification figures for `eid`'s 'probe_00'
         >>> from v1_protocol import plot as v1_plot
-        >>> m = v1.plot(eid, 'probe_00')
+        # *Note: 'probe_right' for this eid, new naming convention is 'probe_00', 'probe_01', etc.
+        >>> m = v1_plot.gen_figures(eid, 'probe_right')
     
     2) For a given eid's 'probe_01' in a particular recording session, generate grating response
     summary and unit metrics summary figures (where the time shown before a grating is 1s, the time
@@ -183,13 +181,13 @@ def gen_figures(
         >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
         # Generate summary V1 certification figures for `eid`'s 'probe_01' for filtered units:
         >>> from v1_protocol import plot as v1_plot
-        >>> m = v1.plot(eid, 'probe_00',
-                        grating_response_summary=True, grating_response_selected=False,
-                        unit_metrics_summary=True, unit_metrics_selected=False,
-                        grating_response_params={'pre_t': 1, 'post_t': 4,
-                                                 'bin_t': 0.01, 'sigma': 0.05},
-                        auto_filt_cl_params={'min_amp': 50, 'min_fr': 2,
-                                             'max_fpr': 0, 'rp': 0.002})
+        # *Note: 'probe_right' for this eid, new naming convention is 'probe_00', 'probe_01', etc.
+        >>> m = v1_plot.gen_figures(
+                    eid, 'probe_right',
+                    grating_response_summary=True, grating_response_selected=False,
+                    unit_metrics_summary=True, unit_metrics_selected=False,
+                    grating_response_params={'pre_t': 1, 'post_t': 4, 'bin_t': .01, 'sigma': .05},
+                    auto_filt_cl_params={'min_amp': 50, 'min_fr': 2, 'max_fpr': 0, 'rp': .002})
     
     3) For a given eid's 'probe_01' in a particular recording session, generate only grating
     response selected and unit metrics selected figures based on the grating response parameters
@@ -221,14 +219,17 @@ def gen_figures(
         # Generate selected V1 certification figures for `eid`'s 'probe_01' for filtered units:
         >>> from v1_protocol import plot as v1_plot
         >>> save_dir = pwd
-        >>> m = v1.plot(eid, 'probe_00', cluster_ids_selected=filtered_units, auto_filt_cl=False,
-                        grating_response_summary=False, grating_response_selected=True,
-                        unit_metrics_summary=False, unit_metrics_selected=True,
-                        grating_response_params={'pre_t': 1, 'post_t': 4,
-                                                 'bin_t': 0.01, 'sigma': 0.05},
-                        save_dir=save_dir)
+        # *Note: 'probe_right' for this eid, new naming convention is 'probe_00', 'probe_01', etc.
+        >>> m = v1_plot.gen_figures(
+                    eid, 'probe_right', cluster_ids_selected=filtered_units, auto_filt_cl=False,
+                    grating_response_summary=False, grating_response_selected=True,
+                    unit_metrics_summary=False, unit_metrics_selected=True,
+                    grating_response_params={'pre_t': 1, 'post_t': 4, 'bin_t': 0.01, 'sigma': .05},
+                    save_dir=save_dir)
     '''
 
+    import pdb
+    pdb.set_trace()
     # Get necessary data via ONE:
     one = ONE()
     # Get important local paths from `eid`.
@@ -237,6 +238,10 @@ def gen_figures(
     session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
     alf_path = os.path.abspath(session_path + '\\alf')
     alf_probe_path = os.path.abspath(alf_path + '\\' + probe)
+    # Ensure `alf_probe_path` exists:
+    if not(os.path.isdir(alf_probe_path)):
+        raise FileNotFoundError("The path to 'probe' ({}) does not exist! Check the 'probe' name."
+                                .format(alf_probe_path))
 
     if extract_stim_info:  # get stimulus info and save in `alf_path`
         certification_pipeline.extract_stimulus_info_to_alf(session_path, save=True)
