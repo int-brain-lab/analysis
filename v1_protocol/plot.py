@@ -295,7 +295,7 @@ def gen_figures(
         um_selected_plots(eid, cluster_ids_selected)
 
 
-def um_summary_plots(eid, clusters):
+def um_summary_plots(eid, cluster_ids_summary):
     '''
     Computes/creates summary metrics and plots in a figure for all units in a recording session.
 
@@ -319,7 +319,7 @@ def um_summary_plots(eid, clusters):
 
     # TODO the function calls in the next two lines should accept a `clusters` input arg
     rf_mapping_old.histograms_rf_areas(eid)  
-    complete_raster_depth_per_spike.scatter_with_boundary_times(eid)
+    complete_raster_depth_per_spike.scatter_with_boundary_times(eid, cluster_ids_summary=cluster_ids_summary)
     one = ONE()
     D = one.load(eid[0], clobber=False, download_only=True)
     alf_path = Path(D.local_path[0]).parent
