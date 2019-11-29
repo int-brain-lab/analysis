@@ -62,7 +62,6 @@ from deploy.serverpc.certification import certification_pipeline
 from v1_protocol import orientation
 from v1_protocol import complete_raster_depth_per_spike
 from v1_protocol import rf_mapping_old
-
 # Add `ibllib`, `iblscripts`, and `analysis` repos to path:
 # import sys
 # sys.path.extend(
@@ -216,8 +215,9 @@ def gen_figures(
         >>> probe_dir_part = np.where([part == 'probe_01' for part in Path(spks_path).parts])[0][0]
         >>> alf_probe_path = os.path.join(*Path(spks_path).parts[:probe_dir_part+1])
         >>> spks = aio.load_object(alf_probe_path, 'spikes')
-        >>> filtered_units = bb.processing.filter_units(spks, params={'min_amp': 50, 'min_fr': 2,
-                                                                      'max_fpr': 0, 'rp': 0.002})
+        >>> filtered_units = \
+                np.where(bb.processing.filter_units(spks, params={'min_amp': 50, 'min_fr': 2,
+                                                                  'max_fpr': 0, 'rp': 0.002}))[0]
         # Generate selected V1 certification figures for `eid`'s 'probe_01' for filtered units:
         >>> from v1_protocol import plot as v1_plot
         >>> save_dir = pwd
@@ -228,7 +228,7 @@ def gen_figures(
                                                  'bin_t': 0.01, 'sigma': 0.05},
                         save_dir=save_dir)
     '''
-    
+
     # Get necessary data via ONE:
     one = ONE()
     # Get important local paths from `eid`.
@@ -238,26 +238,42 @@ def gen_figures(
     alf_path = os.path.abspath(session_path + '\\alf')
     alf_probe_path = os.path.abspath(alf_path + '\\' + probe)
 
-    if extract_stim_info:
-        # Get stimulus info and save in `alf_path`
+    if extract_stim_info:  # get stimulus info and save in `alf_path`
         certification_pipeline.extract_stimulus_info_to_alf(session_path, save=True)
         # Copy `'_iblcertif'` files over to `alf_probe_path`
         for i in os.listdir(alf_path):
             if i[:10] == '_iblcertif':
                 shutil.copy(os.path.abspath(alf_path + '\\' + i), alf_probe_path)
-    
+
+    # Set `cluster_ids_summary` and `cluster_ids_selected`
+    if not(cluster_ids_summary):  # filter all clusters according to `auto_filt_cl_params`
+        spks = aio.load_object(alf_probe_path, 'spikes')
+        cluster_ids_summary = \
+            np.where(bb.processing.filter_units(spks, params=auto_filt_cl_params))[0]
+        if cluster_ids_summary.size == 0:
+            raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in the\
+                             'auto_filt_cl_params' input arg.")
+    if not (cluster_ids_selected):  # select up to 5 units from `cluster_ids_summary`
+        if len(cluster_ids_summary) > 4:
+            cluster_ids_selected = np.random.choice(cluster_ids_summary, size=5, replace=False)
+        else:
+            cluster_ids_selected = cluster_ids_summary
+
+    # Generate both summary & selected grating figures
     if grating_response_summary and grating_response_selected:
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
             smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
             cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5)
+    # Generate just summary grating figure
     elif grating_response_summary:
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
             smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
             cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_summary=True)
+    # Generate just selected grating figure
     elif grating_response_selected:
         orientation.plot_grating_figures(
             alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
@@ -265,21 +281,25 @@ def gen_figures(
             smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
             cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_selected=True)
     
+    # Generate summary unit metrics figure
     if unit_metrics_summary:
         um_summary_plots(eid, cluster_ids_summary)
-        
+    
+    # Generate selected unit metrics figure
     if unit_metrics_selected:
-        um_selected_plots()
+        um_selected_plots(eid, cluster_ids_selected)
 
 
 def um_summary_plots(eid, clusters):
     '''
-    Computes/creates summary metrics and plots for all units in a given recording session.
+    Computes/creates summary metrics and plots in a figure for all units in a recording session.
 
     Parameters
     ----------
     eid : string
         The experiment ID, for a given recording session- the UUID of the session as per Alyx.
+    clusters : array-like
+        The clusters for which to generate the metrics summary plots.
 
     Returns
     -------
@@ -302,14 +322,16 @@ def um_summary_plots(eid, clusters):
     bb.plot.feat_vars(spikes)
 
 
-def um_selected_plots(clusters):
+def um_selected_plots(eid, clusters):
     '''
-    Computes/creates metrics and plots for specified units in a given recording session.
+    Computes/creates metrics and plots in a figure for specified units in a recording session.
 
     Parameters
     ----------
     eid : string
         The experiment ID, for a given recording session- the UUID of the session as per Alyx.
+    clusters : array-like
+        The clusters for which to generate the metrics selected unit plots.
 
     Returns
     -------
@@ -324,25 +346,6 @@ def um_selected_plots(clusters):
 
     Examples
     --------
-    1) Compute the similarity between the first and last 100 waveforms for unit1, across the 20
-    channels around the channel of max amplitude.
-        >>> import brainbox as bb
-        >>> import alf.io as aio
-        >>> import ibllib.ephys.spikes as e_spks
-        # Get a spikes bunch, a clusters bunch, a units bunch, the channels around the max amp
-        # channel for the unit, two sets of timestamps for the units, and the two corresponding
-        # sets of waveforms for those two sets of timestamps. Then compute `s`.
-        >>> e_spks.ks2_to_alf('path\\to\\ks_output', 'path\\to\\alf_output')
-        >>> spks = aio.load_object('path\\to\\alf_output', 'spikes')
-        >>> clstrs = aio.load_object('path\\to\\alf_output', 'clusters')
-        >>> max_ch = max_ch = clstrs['channels'][1]
-        >>> ch = np.arange(max_ch - 10, max_ch + 10)
-        >>> units = bb.processing.get_units_bunch(spks)
-        >>> ts1 = units['times']['1'][:100]
-        >>> ts2 = units['times']['1'][-100:]
-        >>> wf1 = bb.io.extract_waveforms('path\\to\\ephys_bin_file', ts1, ch)
-        >>> wf2 = bb.io.extract_waveforms('path\\to\\ephys_bin_file', ts2, ch)
-        >>> s = bb.metrics.wf_similarity(wf1, wf2)
     '''
 
 
