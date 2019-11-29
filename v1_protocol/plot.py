@@ -1,7 +1,7 @@
 """
 Creates summary metrics and plots for units in a recording session.
 
-***3 Things to check before using this code***
+*** 3 Things to check before using this code ***
 
 1) This module assumes that your working directory can access the latest 'ibllib' - 'brainbox'
 branch, and the latest 'iblscripts' - 'certification' branch. If in doubt, in your OS terminal run:
@@ -10,7 +10,7 @@ branch, and the latest 'iblscripts' - 'certification' branch. If in doubt, in yo
 
 2) This module assumes that the required data for a particular eid is already saved in the
 CACHE_DIR specified by `.one_params` (the default location to which ONE saves data when running the
- `load` method). It is recommended to download *all* data for a particular eid:
+`load` method). It is recommended to download *all* data for a particular eid:
     `from oneibl.one import ONE`
     `one = ONE()`
     # get eid
@@ -58,10 +58,10 @@ from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
 from brainbox.processing import bincount2D
-import certification_pipeline
-import orientation
-import complete_raster_depth_per_spike
-import rf_mapping_old
+from deploy.serverpc.certification import certification_pipeline
+from v1_protocol import orientation
+from v1_protocol import complete_raster_depth_per_spike
+from v1_protocol import rf_mapping_old
 
 # Add `ibllib`, `iblscripts`, and `analysis` repos to path:
 # import sys
@@ -74,7 +74,7 @@ def gen_figures(
     eid, probe='probe_00', cluster_ids_summary=None, cluster_ids_selected=None, auto_filt_cl=True,
     extract_stim_info=True, grating_response_summary=True, grating_response_selected=True,
     unit_metrics_summary=True, unit_metrics_selected=False,
-    grating_response_params={'pre_t':0.5, 'post_t':2.5, 'bin_t':0.005, 'sigma':0.025},
+    grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
     save_dir=None):
     '''
@@ -146,25 +146,87 @@ def gen_figures(
 
     Examples
     --------
-    1) Generate grating response summary and unit metrics summary figures for all "good units" for
-    a particular eid and 'probe_00', and grating response selected and unit metrics selected
-    figures for the first 5 good units.
-        # Add `ibllib`, `iblscripts`, and `analysis` repos to path if necessary:
+    1) For a given eid's 'probe_00' in a particular recording session, generate grating response
+    summary and unit metrics summary figures for the default filtered subset of units (see
+    `brainbox.processing.filter_units`) and grating response selected and unit metrics selected
+    figures for 5 of the filtered subset of units.
+        # Add `ibllib`, `iblscripts`, and `analysis` repos to path *if necessary*:
         >>> import sys
         >>> import os
         >>> sys.path.extend(
                 [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
                  os.path.abspath('.\\analysis')])
         # Get eid from ONE and load necessary dataset_types (this data should already be
-        # downloaded to local):
+        # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
         >>> from oneibl.one import ONE
         >>> one = ONE()
         >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
-        # Get "good units" from spike sorted data for `eid`
-        >>> spks_path = one.load(eid, dataset_types='spikes.amps',
-                                 clobber=False, download_only=True)[0]
+        # Generate all V1 certification figures for `eid`'s 'probe_00'
+        >>> from v1_protocol import plot as v1_plot
+        >>> m = v1.plot(eid, 'probe_00')
+    
+    2) For a given eid's 'probe_01' in a particular recording session, generate grating response
+    summary and unit metrics summary figures (where the time shown before a grating is 1s, the time
+    shown after a grating is 4s, the bin size used to compute the grating responses is 10 ms, and 
+    the smoothing kernel used is 50 ms) for a filtered subset of units (where the minimum mean
+    amplitude must be > 50 uV, the minimum firing rate must be > 2 Hz, and there is no upper limit
+    to the estimated false positive ratio).
+        # Add `ibllib`, `iblscripts`, and `analysis` repos to path *if necessary*:
+        >>> import sys
+        >>> import os
+        >>> sys.path.extend(
+                [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
+                 os.path.abspath('.\\analysis')])
+        # Get eid from ONE and load necessary dataset_types (this data should already be
+        # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
+        >>> from oneibl.one import ONE
+        >>> one = ONE()
+        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
+        # Generate summary V1 certification figures for `eid`'s 'probe_01' for filtered units:
+        >>> from v1_protocol import plot as v1_plot
+        >>> m = v1.plot(eid, 'probe_00',
+                        grating_response_summary=True, grating_response_selected=False,
+                        unit_metrics_summary=True, unit_metrics_selected=False,
+                        grating_response_params={'pre_t': 1, 'post_t': 4,
+                                                 'bin_t': 0.01, 'sigma': 0.05},
+                        auto_filt_cl_params={'min_amp': 50, 'min_fr': 2,
+                                             'max_fpr': 0, 'rp': 0.002})
+    
+    3) For a given eid's 'probe_01' in a particular recording session, generate only grating
+    response selected and unit metrics selected figures based on the grating response parameters
+    and unit filtering parameters in example 2), and save these figures to the working directory.
+        # Add `ibllib`, `iblscripts`, and `analysis` repos to path *if necessary*:
+        >>> import sys
+        >>> import os
+        >>> sys.path.extend(
+                [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
+                 os.path.abspath('.\\analysis')])
+        # Get eid from ONE and load necessary dataset_types (this data should already be
+        # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
+        >>> from oneibl.one import ONE
+        >>> one = ONE()
+        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
+        # Get filtered subset of units:
+        >>> from pathlib import Path
+        >>> import numpy as np
+        >>> import alf.io as aio
         >>> import brainbox as bb
-        >>> filtered_units = np.where(bb.processing.filter_units(spks))[0]
+        >>> spks_path = one.load(eid, dataset_types='spikes.amps', clobber=False,
+                                 download_only=True)[0]
+        >>> probe_dir_part = np.where([part == 'probe_01' for part in Path(spks_path).parts])[0][0]
+        >>> alf_probe_path = os.path.join(*Path(spks_path).parts[:probe_dir_part+1])
+        >>> spks = aio.load_object(alf_probe_path, 'spikes')
+        >>> filtered_units = bb.processing.filter_units(spks, params={'min_amp': 50, 'min_fr': 2,
+                                                                      'max_fpr': 0, 'rp': 0.002})
+        # Generate selected V1 certification figures for `eid`'s 'probe_01' for filtered units:
+        >>> from v1_protocol import plot as v1_plot
+        >>> save_dir = pwd
+        >>> m = v1.plot(eid, 'probe_00', cluster_ids_selected=filtered_units, auto_filt_cl=False,
+                        grating_response_summary=False, grating_response_selected=True,
+                        unit_metrics_summary=False, unit_metrics_selected=True,
+                        grating_response_params={'pre_t': 1, 'post_t': 4,
+                                                 'bin_t': 0.01, 'sigma': 0.05},
+                        save_dir=save_dir)
     '''
     
     # Get necessary data via ONE:
@@ -239,8 +301,6 @@ def um_summary_plots(eid):
     bb.plot.feat_vars(spikes)
 
 
-
-
 def um_selected_plots(clusters):
     '''
     Computes/creates metrics and plots for specified units in a given recording session.
@@ -284,6 +344,7 @@ def um_selected_plots(clusters):
         >>> s = bb.metrics.wf_similarity(wf1, wf2)
     '''
 
+
 def raster_complete(R, times, Clusters):
     '''
     Plot a rasterplot for the complete recording
@@ -306,6 +367,7 @@ def raster_complete(R, times, Clusters):
     # plt.savefig('/home/mic/Rasters/%s.png' %(trial_number))
     # plt.close('all')
     plt.tight_layout()
+
 
 def plot_rf_distributions(rf_areas, plot_type='box'):
     """
