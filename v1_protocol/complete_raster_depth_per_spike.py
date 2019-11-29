@@ -6,7 +6,7 @@ import alf.io
 import scipy.stats
 plt.ion()
 
-def scatter_raster(spikes, boundary_times=None, downsample_factor=25):
+def scatter_raster(spikes, cluster_ids_summary=None, boundary_times=None, downsample_factor=25):
  
     '''
     Create a scatter plot, time vs depth for each spike
@@ -22,21 +22,40 @@ def scatter_raster(spikes, boundary_times=None, downsample_factor=25):
     :type boundary_times: dict 
     :param downsample_factor: n, only every nth spike is kept 
     :type downsample_factor: int
+    :param cluster_ids_summary: clusters that should be plot 
+    :type cluster_ids_summary: list
     :rtype: plot
     '''    
+     
+    if cluster_ids_summary == None:
+        print('All clsuters are shown')
+        uclusters = np.unique(spikes['clusters'])
+        # downsample 
+        z = spikes['clusters'][::downsample_factor]
+        x = spikes['times'][::downsample_factor]
+        y = spikes['depths'][::downsample_factor]
+
+
+    if cluster_ids_summary != None:
+        print('Only a subset of all clusters is shown')
+        Mask = np.isin(spikes['clusters'], cluster_ids_summary)
  
-    fig, ax = plt.subplots()
- 
-    uclusters = np.unique(spikes['clusters'])
+        Clusters = spikes['clusters'][Mask]
+        Times = spikes['times'][Mask]
+        Depths = spikes['depths'][Mask]
+
+        uclusters = np.unique(Clusters)
+        # downsample 
+        z = Clusters[::downsample_factor]
+        x = Times[::downsample_factor]
+        y = Depths[::downsample_factor]
+   
+
+    fig, ax = plt.subplots() 
+    
     cols = ['c','b','g','y','k','r','m']
     cols_cat = (cols*int(len(uclusters)/len(cols)+10))[:len(uclusters)]
     col_dict = dict(zip(uclusters, cols_cat))
-
-    # downsample 
-    z = spikes['clusters'][::downsample_factor]
-    x = spikes['times'][::downsample_factor]
-    y = spikes['depths'][::downsample_factor]
-
     cols_int =[col_dict[x] for x in z]
 
     plt.scatter(x, y, marker='o', s=0.01, c = cols_int)
@@ -48,7 +67,6 @@ def scatter_raster(spikes, boundary_times=None, downsample_factor=25):
             plt.text(boundary_times[i][0]+0.1,0,i+', start',rotation=90)
 #            plt.axvline(boundary_times[i][1], linestyle='--', c='r')
 #            plt.text(boundary_times[i][1]+0.1,0,i+', end',rotation=90) 
-
 
     plt.ylabel('depth [um]')
     plt.xlabel('time [sec]')
@@ -81,7 +99,7 @@ def get_stimulus_type_boundary_times(alf_path):
     return T2
 
 
-def scatter_with_boundary_times(eid):
+def scatter_with_boundary_times(eid, cluster_ids_summary=None):
 
     one = ONE()
     #eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
@@ -90,7 +108,7 @@ def scatter_with_boundary_times(eid):
     alf_path = Path(D.local_path[0]).parent
     T2 = get_stimulus_type_boundary_times(alf_path)
     spikes = alf.io.load_object(alf_path, 'spikes')
-    scatter_raster(spikes, boundary_times=T2)
+    scatter_raster(spikes, cluster_ids_summary=cluster_ids_summary, boundary_times=T2)
 
 
 
@@ -106,6 +124,5 @@ def scatter_with_boundary_times(eid):
 #    T2 = get_stimulus_type_boundary_times(alf_path)
 #    spikes = alf.io.load_object(alf_path, 'spikes')
 #    scatter_raster(spikes, boundary_times=T2)
-
 
 
