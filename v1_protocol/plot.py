@@ -266,13 +266,13 @@ def gen_figures(
             cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_selected=True)
     
     if unit_metrics_summary:
-        um_summary_plots(eid)
+        um_summary_plots(eid, cluster_ids_summary)
         
     if unit_metrics_selected:
         um_selected_plots()
 
 
-def um_summary_plots(eid):
+def um_summary_plots(eid, clusters):
     '''
     Computes/creates summary metrics and plots for all units in a given recording session.
 
@@ -292,7 +292,8 @@ def um_summary_plots(eid):
     brainbox.plot.plot
     '''
 
-    rf_mapping_old.histograms_rf_areas(eid)
+    # TODO the function calls in the next two lines should accept a `clusters` input arg
+    rf_mapping_old.histograms_rf_areas(eid)  
     complete_raster_depth_per_spike.scatter_with_boundary_times(eid)
     one = ONE()
     D = one.load(eid[0], clobber=False, download_only=True)
