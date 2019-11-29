@@ -3,8 +3,9 @@ Creates summary metrics and plots for units in a recording session.
 
 *** 3 Things to check before using this code ***
 
-1) This module assumes that your working directory can access the latest 'ibllib' - 'brainbox'
-branch, and the latest 'iblscripts' - 'certification' branch. If in doubt, in your OS terminal run:
+1) This module assumes that you are on the 'cert_master_fn' branch of the 'analysis' repo and that
+the working directory can access the latest 'ibllib' - 'brainbox' branch, and the latest
+'iblscripts' - 'certification' branch. If in doubt, in your OS terminal run:
     `pip install --upgrade git+https://github.com/int-brain-lab/ibllib.git@brainbox`
     `pip install --upgrade git+https://github.com/int-brain-lab/iblscripts.git@certification`
 
@@ -25,17 +26,17 @@ terminal run:
     `pip install --upgrade git+https://github.com/cortex-lab/phylib.git@master`
 
 Here is a list of required data (alf objects) depending on the figures to be generated:
-required for any figure:
-    clusters
-    spikes
-if grating_response_summary or grating_response_ind:
-    ephysData.raw
-    _spikeglx_sync
-    _iblrig_RFMapStim
-    _iblrig_codeFiles
-    _iblrig_taskSettings
-if using waveform metrics in unit_metrics_ind:
-    ephysData.raw
+    a) required for any figure:
+        clusters
+        spikes
+    b) if grating_response_summary or grating_response_ind:
+        ephysData.raw
+        _spikeglx_sync
+        _iblrig_RFMapStim
+        _iblrig_codeFiles
+        _iblrig_taskSettings
+    c) if using waveform metrics in unit_metrics_ind:
+        ephysData.raw
 
 When running this module as a script:
 Run this as a script from within python:
@@ -67,7 +68,7 @@ from v1_protocol import rf_mapping_old
 
 
 def gen_figures(
-    eid, probe='probe_00', cluster_ids_summary=None, cluster_ids_selected=None, auto_filt_cl=True,
+    eid, probe='probe00', cluster_ids_summary=[], cluster_ids_selected=[], auto_filt_cl=True,
     extract_stim_info=True, grating_response_summary=True, grating_response_selected=True,
     unit_metrics_summary=True, unit_metrics_selected=False,
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
@@ -85,11 +86,11 @@ def gen_figures(
         The probe whose data will be used to generate the figures.
     cluster_ids_summary : array-like (optional)
         The clusters for which to generate `grating_response_summary` and/or `unit_metrics_summary`
-        (if `None` and `auto_filt_cl == True`, clusters will be chosen via the filter parameters in
+        (if `[]` and `auto_filt_cl == True`, clusters will be chosen via the filter parameters in
         `auto_filt_cl_params`)
     cluster_ids_selected : array-like (optional)
         The clusters for which to generate `grating_response_ind` and/or `unit_metrics_ind`.
-        (if `None`, up to 5 cluster ids will be selected from `cluster_ids_summary`)
+        (if `[]`, up to 5 cluster ids will be selected from `cluster_ids_summary`)
     auto_filt_cl : bool (optional)
         A flag for automatically filtering clusters (by calling `brainbox.processing.filter_units`)
         to set `cluster_ids_summary`.
@@ -142,7 +143,7 @@ def gen_figures(
 
     Examples
     --------
-    1) For a given eid's 'probe_00' in a particular recording session, generate grating response
+    1) For a given eid and probe in a particular recording session, generate grating response
     summary and unit metrics summary figures for the default filtered subset of units (see
     `brainbox.processing.filter_units`) and grating response selected and unit metrics selected
     figures for 5 of the filtered subset of units.
@@ -156,11 +157,11 @@ def gen_figures(
         # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
         >>> from oneibl.one import ONE
         >>> one = ONE()
-        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
-        # Generate all V1 certification figures for `eid`'s 'probe_00'
+        >>> eid = one.search(subject='ZM_2407', date='2019-11-05', number=3)[0]
+        # Generate all V1 certification figures for the `eid` and `probe`
         >>> from v1_protocol import plot as v1_plot
-        # *Note: 'probe_right' for this eid, new naming convention is 'probe_00', 'probe_01', etc.
-        >>> m = v1_plot.gen_figures(eid, 'probe_right')
+        # *Note: 'probe_00' for this eid, new naming convention is 'probe00', 'probe01', etc.
+        >>> m = v1_plot.gen_figures(eid, 'probe_00')
     
     2) For a given eid's 'probe_01' in a particular recording session, generate grating response
     summary and unit metrics summary figures (where the time shown before a grating is 1s, the time
@@ -179,9 +180,9 @@ def gen_figures(
         >>> from oneibl.one import ONE
         >>> one = ONE()
         >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
-        # Generate summary V1 certification figures for `eid`'s 'probe_01' for filtered units:
+        # Generate summary V1 certification figures for the `eid` and `probe` for filtered units:
         >>> from v1_protocol import plot as v1_plot
-        # *Note: 'probe_right' for this eid, new naming convention is 'probe_00', 'probe_01', etc.
+        # *Note: 'probe_right' for this eid, new naming convention is 'probe00', 'probe01', etc.
         >>> m = v1_plot.gen_figures(
                     eid, 'probe_right',
                     grating_response_summary=True, grating_response_selected=False,
@@ -216,10 +217,10 @@ def gen_figures(
         >>> filtered_units = \
                 np.where(bb.processing.filter_units(spks, params={'min_amp': 50, 'min_fr': 2,
                                                                   'max_fpr': 0, 'rp': 0.002}))[0]
-        # Generate selected V1 certification figures for `eid`'s 'probe_01' for filtered units:
+        # Generate selected V1 certification figures for the `eid` and `probe` for filtered units:
         >>> from v1_protocol import plot as v1_plot
         >>> save_dir = pwd
-        # *Note: 'probe_right' for this eid, new naming convention is 'probe_00', 'probe_01', etc.
+        # *Note: 'probe_right' for this eid, new naming convention is 'probe00', 'probe01', etc.
         >>> m = v1_plot.gen_figures(
                     eid, 'probe_right', cluster_ids_selected=filtered_units, auto_filt_cl=False,
                     grating_response_summary=False, grating_response_selected=True,
@@ -228,8 +229,6 @@ def gen_figures(
                     save_dir=save_dir)
     '''
 
-    import pdb
-    pdb.set_trace()
     # Get necessary data via ONE:
     one = ONE()
     # Get important local paths from `eid`.
@@ -252,13 +251,16 @@ def gen_figures(
 
     # Set `cluster_ids_summary` and `cluster_ids_selected`
     if not(cluster_ids_summary):  # filter all clusters according to `auto_filt_cl_params`
+        print("'cluster_ids_summary' left empty, selecting filtered units.'", flush=True)
         spks = aio.load_object(alf_probe_path, 'spikes')
         cluster_ids_summary = \
             np.where(bb.processing.filter_units(spks, params=auto_filt_cl_params))[0]
         if cluster_ids_summary.size == 0:
-            raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in the\
-                             'auto_filt_cl_params' input arg.")
-    if not (cluster_ids_selected):  # select up to 5 units from `cluster_ids_summary`
+            raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
+                             'auto_filt_cl_params'.")
+    if not(cluster_ids_selected):  # select up to 5 units from `cluster_ids_summary`
+        print("'cluster_ids_selected' left empty, selecting up to 5 units from\
+              'cluster_ids_summary'.", flush=True)
         if len(cluster_ids_summary) > 4:
             cluster_ids_selected = np.random.choice(cluster_ids_summary, size=5, replace=False)
         else:
@@ -285,7 +287,7 @@ def gen_figures(
             post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
             smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
             cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_selected=True)
-    
+
     # Generate summary unit metrics figure
     if unit_metrics_summary:
         um_summary_plots(eid, cluster_ids_summary)
@@ -295,7 +297,7 @@ def gen_figures(
         um_selected_plots(eid, cluster_ids_selected)
 
 
-def um_summary_plots(eid, cluster_ids_summary):
+def um_summary_plots(eid, clusters):
     '''
     Computes/creates summary metrics and plots in a figure for all units in a recording session.
 
@@ -317,9 +319,9 @@ def um_summary_plots(eid, cluster_ids_summary):
     brainbox.plot.plot
     '''
 
-    # TODO the function calls in the next two lines should accept a `clusters` input arg
+    # TODO the function call to `histograms_rf_areas` below should accept a `clusters` input arg
     rf_mapping_old.histograms_rf_areas(eid)  
-    complete_raster_depth_per_spike.scatter_with_boundary_times(eid, cluster_ids_summary=cluster_ids_summary)
+    complete_raster_depth_per_spike.scatter_with_boundary_times(eid, clusters)
     one = ONE()
     D = one.load(eid[0], clobber=False, download_only=True)
     alf_path = Path(D.local_path[0]).parent

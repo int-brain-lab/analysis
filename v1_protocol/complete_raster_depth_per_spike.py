@@ -6,7 +6,7 @@ import alf.io
 import scipy.stats
 plt.ion()
 
-def scatter_raster(spikes, cluster_ids_summary=None, boundary_times=None, downsample_factor=25):
+def scatter_raster(spikes, clusters=[], boundary_times=None, downsample_factor=25):
  
     '''
     Create a scatter plot, time vs depth for each spike
@@ -22,23 +22,21 @@ def scatter_raster(spikes, cluster_ids_summary=None, boundary_times=None, downsa
     :type boundary_times: dict 
     :param downsample_factor: n, only every nth spike is kept 
     :type downsample_factor: int
-    :param cluster_ids_summary: clusters that should be plot 
-    :type cluster_ids_summary: list
+    :param clusters: clusters that should be plot 
+    :type clusters: list
     :rtype: plot
     '''    
      
-    if cluster_ids_summary == None:
+    if not(clusters):
         print('All clsuters are shown')
         uclusters = np.unique(spikes['clusters'])
         # downsample 
         z = spikes['clusters'][::downsample_factor]
         x = spikes['times'][::downsample_factor]
         y = spikes['depths'][::downsample_factor]
-
-
-    if cluster_ids_summary != None:
+    else:
         print('Only a subset of all clusters is shown')
-        Mask = np.isin(spikes['clusters'], cluster_ids_summary)
+        Mask = np.isin(spikes['clusters'], clusters)
  
         Clusters = spikes['clusters'][Mask]
         Times = spikes['times'][Mask]
@@ -99,7 +97,7 @@ def get_stimulus_type_boundary_times(alf_path):
     return T2
 
 
-def scatter_with_boundary_times(eid, cluster_ids_summary=None):
+def scatter_with_boundary_times(eid, clusters=[]):
 
     one = ONE()
     #eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
@@ -108,7 +106,7 @@ def scatter_with_boundary_times(eid, cluster_ids_summary=None):
     alf_path = Path(D.local_path[0]).parent
     T2 = get_stimulus_type_boundary_times(alf_path)
     spikes = alf.io.load_object(alf_path, 'spikes')
-    scatter_raster(spikes, cluster_ids_summary=cluster_ids_summary, boundary_times=T2)
+    scatter_raster(spikes, clusters=clusters, boundary_times=T2)
 
 
 
