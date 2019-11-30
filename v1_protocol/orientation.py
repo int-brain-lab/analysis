@@ -1,6 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os
+import alf.io as ioalf
+from brainbox.processing import bincount2D
+from brainbox.singlecell import calculate_peths
+try:
+    from responsive import are_neurons_responsive
+except:
+    from v1_protocol.responsive import are_neurons_responsive
 
 def bin_responses(spike_times, spike_clusters, stim_times, stim_values, output_fr=True):
     """
@@ -390,8 +397,8 @@ def plot_polar_psth_and_rasters(
 
 
 def plot_grating_figures(
-    session_path, save_dir=None, format='png', pre_time=0.5, post_time=2.5, bin_size=0.005,
-    smoothing=0.025, cluster_ids_summary=[], cluster_ids_selected=[], n_rand_clusters=20,
+    session_path, cluster_ids_summary, cluster_ids_selected, save_dir=None, format='png',
+    pre_time=0.5, post_time=2.5, bin_size=0.005, smoothing=0.025, n_rand_clusters=20,
     only_summary=False, only_selected=False):
     """
     Produces two summary figures for the oriented grating protocol; the first summary figure
@@ -401,6 +408,8 @@ def plot_grating_figures(
     PSTHs and corresponding rasters for a random subset of visually responsive clusters.
 
     :param session_path: absolute path to experimental session directory
+    :param cluster_ids_summary: The clusters for which to plot summary psths/rasters.
+    :param cluster_ids_selected: The clusters for which to plot single unit psths/rasters.
     :param save_dir: if NoneType, figures are displayed; else a string defining the absolute
         filepath to the directory in which figures will be saved
     :param format: file format, i.e. 'png' | 'pdf' | 'jpg'
@@ -409,10 +418,6 @@ def plot_grating_figures(
         stimulus)
     :param bin_size: size of bins for raster plots/psths
     :param smoothing: size of smoothing kernel (sec)
-    :param cluster_ids_summary: The clusters for which to plot summary psths/rasters. If `[]`
-        then all clusters are used.
-    :param cluster_ids_selected: The clusters for which to plot single unit psths/rasters. If `[]`
-        then up to `n_rand_clusters` random clusters from `cluster_ids_summary` are chosen.
     :param n_rand_clusters: The number of random clusters to choose for which to plot psths/rasters
         if `clusters` is [].
     :param only_summary: A flag for only plotting the plots in the summary figure
@@ -420,71 +425,43 @@ def plot_grating_figures(
     :return: None
     """
 
-    import os
-    import alf.io as ioalf
-    from brainbox.processing import bincount2D
-    from brainbox.singlecell import calculate_peths
-    try:
-        from responsive import are_neurons_responsive
-    except:
-        from v1_protocol.responsive import are_neurons_responsive
-
+    cluster_ids = cluster_ids_summary
+    cluster_idxs = cluster_ids_selected
+    epochs = ['beg', 'end']
+    
     # -------------------------
     # load required alf objects
-    # -------------------------
+    # -------------------------  
     print('loading alf objects...', end='', flush=True)
     spikes = ioalf.load_object(session_path, 'spikes')
     clusters = ioalf.load_object(session_path, 'clusters')
-
     gratings = ioalf.load_object(session_path, '_iblcertif_.odsgratings')
+    spontaneous = ioalf.load_object(session_path, '_iblcertif_.spontaneous')
     grating_times = {
         'beg': gratings['odsgratings.times.00'],
         'end': gratings['odsgratings.times.01']}
     grating_vals = {
         'beg': gratings['odsgratings.stims.00'],
         'end': gratings['odsgratings.stims.01']}
-
-    spontaneous = ioalf.load_object(session_path, '_iblcertif_.spontaneous')
     spont_times = {
         'beg': spontaneous['spontaneous.times.00'],
         'end': spontaneous['spontaneous.times.01']}
-    print('done')
-
-    # ---------------------------------
-    # find visually responsive clusters
-    # ---------------------------------
-    print('finding visually responsive clusters...', end='', flush=True)
-    epochs = ['beg', 'end']
-    # speed up downstream computations by restricting data to relevant time periods
-    mask_times = np.full(spikes.times.shape, fill_value=False)
-    for epoch in epochs:
-        mask_times |= (spikes.times >= grating_times[epoch].min()) & \
-                      (spikes.times <= grating_times[epoch].max())
-    cluster_ids = cluster_ids_summary if len(cluster_ids_summary) > 0 \
-                                      else np.unique(spikes.clusters[mask_times])
-
-    # only calculate responsiveness for clusters that were active during gratings
-    import pdb
-    pdb.set_trace()
-    mask_clust = np.isin(spikes.clusters, cluster_ids)
-    resp = {epoch: [] for epoch in epochs}
-    for epoch in epochs:
-        resp[epoch] = are_neurons_responsive(
-            spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
-            grating_vals[epoch], spont_times[epoch])
-    resp_agg = resp['beg'] & resp['end']
-
-    # remove non-responsive clusters
-    cluster_ids = cluster_ids[resp_agg]
-    # update mask to select for responsive clusters
-    mask_clust = np.isin(spikes.clusters, cluster_ids)
-    print('done')
 
     # --------------------------
     # calculate relevant metrics
     # --------------------------
     print('calcuating mean responses to gratings...', end='', flush=True)
     # calculate mean responses to gratings
+    mask_clust = np.isin(spikes.clusters, cluster_ids)  # update mask for responsive clusters
+    mask_times = np.full(spikes.times.shape, fill_value=False)
+    for epoch in epochs:
+        mask_times |= (spikes.times >= grating_times[epoch].min()) & \
+                      (spikes.times <= grating_times[epoch].max())
+    resp = {epoch: [] for epoch in epochs}
+    for epoch in epochs:
+        resp[epoch] = are_neurons_responsive(
+            spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
+            grating_vals[epoch], spont_times[epoch])
     responses = {epoch: [] for epoch in epochs}
     for epoch in epochs:
         responses[epoch] = bin_responses(
@@ -520,7 +497,7 @@ def plot_grating_figures(
     # aggregate clusters
     clusters_binned = {epoch: [] for epoch in epochs}
     frac_responsive = {epoch: [] for epoch in epochs}
-    cids = np.unique(spikes.clusters[mask_times])
+    cids = cluster_ids
     for epoch in epochs:
         # just look at responsive clusters during this epoch
         cids_tmp = cids[resp[epoch]]
@@ -792,6 +769,72 @@ def plot_psths_and_rasters(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
+
+
+def get_vr_clusters(session_path, n_selected_cl):
+    '''
+    Gets visually responsive clusters
+    
+    Parameters
+    ----------
+    session_path : pathlib path
+        The path to to the appropriate alf directory.
+    n_selected_cl : int
+        The number of clusters to return in `vr_clusters_selected`
+    
+    Returns
+    -------
+    clusters_vr : ndarray
+        The visually responsive clusters.
+    clusters_selected_vr : ndarray
+        A subset of `n_selected_cl` `vr_clusters`
+    '''
+    
+    print('finding visually responsive clusters...', end='', flush=True)
+
+    # -------------------------
+    # load required alf objects
+    # -------------------------
+    spikes = ioalf.load_object(session_path, 'spikes')
+    gratings = ioalf.load_object(session_path, '_iblcertif_.odsgratings')
+    spontaneous = ioalf.load_object(session_path, '_iblcertif_.spontaneous')
+    grating_times = {
+        'beg': gratings['odsgratings.times.00'],
+        'end': gratings['odsgratings.times.01']}
+    grating_vals = {
+        'beg': gratings['odsgratings.stims.00'],
+        'end': gratings['odsgratings.stims.01']}
+    spont_times = {
+        'beg': spontaneous['spontaneous.times.00'],
+        'end': spontaneous['spontaneous.times.01']}
+
+    # ---------------------------------
+    # find visually responsive clusters
+    # ---------------------------------
+    epochs = ['beg', 'end']
+    # speed up downstream computations by restricting data to relevant time periods
+    mask_times = np.full(spikes.times.shape, fill_value=False)
+    for epoch in epochs:
+        mask_times |= (spikes.times >= grating_times[epoch].min()) & \
+                      (spikes.times <= grating_times[epoch].max())
+    clusters = np.unique(spikes.clusters[mask_times])
+
+    # only calculate responsiveness for clusters that were active during gratings
+    mask_clust = np.isin(spikes.clusters, clusters)
+    resp = {epoch: [] for epoch in epochs}
+    for epoch in epochs:
+        resp[epoch] = are_neurons_responsive(
+            spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
+            grating_vals[epoch], spont_times[epoch])
+    resp_agg = resp['beg'] & resp['end']
+    # remove non-responsive clusters
+    clusters_vr = clusters[resp_agg]
+    print('done')
+    if n_selected_cl < len(clusters_vr):
+        clusters_selected_vr = np.random.choice(clusters_vr, size=n_selected_cl, replace=False)
+    else:
+        clusters_selected_vr = clusters_vr
+    return clusters_vr, clusters_selected_vr
 
 
 if __name__ == '__main__':

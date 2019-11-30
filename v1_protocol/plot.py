@@ -68,8 +68,8 @@ from v1_protocol import rf_mapping_old
 
 
 def gen_figures(
-    eid, probe='probe00', cluster_ids_summary=[], cluster_ids_selected=[], auto_filt_cl=True,
-    extract_stim_info=True, grating_response_summary=True, grating_response_selected=True,
+    eid, probe='probe00', cluster_ids_summary=[], cluster_ids_selected=[], n_selected_cl=5,
+    extract_stim_info=True, grating_response_summary=True, grating_response_selected=False,
     unit_metrics_summary=True, unit_metrics_selected=False,
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
@@ -86,14 +86,13 @@ def gen_figures(
         The probe whose data will be used to generate the figures.
     cluster_ids_summary : array-like (optional)
         The clusters for which to generate `grating_response_summary` and/or `unit_metrics_summary`
-        (if `[]` and `auto_filt_cl == True`, clusters will be chosen via the filter parameters in
-        `auto_filt_cl_params`)
+        (if `[]`, clusters will be chosen via the filter parameters in `auto_filt_cl_params`,
+        which is used in a call to `brainbox.processing.filter_units`)
     cluster_ids_selected : array-like (optional)
         The clusters for which to generate `grating_response_ind` and/or `unit_metrics_ind`.
-        (if `[]`, up to 5 cluster ids will be selected from `cluster_ids_summary`)
-    auto_filt_cl : bool (optional)
-        A flag for automatically filtering clusters (by calling `brainbox.processing.filter_units`)
-        to set `cluster_ids_summary`.
+        (if `[]`, up to `n_selected_cl` cluster ids will be selected from `cluster_ids_summary`)
+    n_selected_cl : int
+        The max number of `cluster_ids_selected` to choose if `cluster_ids_selected == []`.
     extract_stim_info : bool (optional)
         A flag for extracting stimulus info from the recording session into an alf directory.
     grating_response_summary : bool (optional)
@@ -144,9 +143,8 @@ def gen_figures(
     Examples
     --------
     1) For a given eid and probe in a particular recording session, generate grating response
-    summary and unit metrics summary figures for the default filtered subset of units (see
-    `brainbox.processing.filter_units`) and grating response selected and unit metrics selected
-    figures for 5 of the filtered subset of units.
+    summary and unit metrics summary figures for the all units, and grating response selected and
+    unit metrics selected figures for 5 randomly chosen units.
         # Add `ibllib`, `iblscripts`, and `analysis` repos to path *if necessary*:
         >>> import sys
         >>> import os
@@ -157,11 +155,15 @@ def gen_figures(
         # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
         >>> from oneibl.one import ONE
         >>> one = ONE()
-        >>> eid = one.search(subject='ZM_2407', date='2019-11-05', number=3)[0]
+        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
         # Generate all V1 certification figures for the `eid` and `probe`
         >>> from v1_protocol import plot as v1_plot
-        # *Note: 'probe_00' for this eid, new naming convention is 'probe00', 'probe01', etc.
-        >>> m = v1_plot.gen_figures(eid, 'probe_00')
+        # *Note: 'probe_right' for this eid, new naming convention is 'probe00', 'probe01', etc.
+        # `auto_filt_cl_params` here is relaxed so that all units are included.
+        >>> m = v1_plot.gen_figures(eid, 'probe_right', 
+                                    grating_response_selected=True, unit_metrics_selected=True,
+                                    auto_filt_cl_params={'min_amp': 0, 'min_fr': 0,
+                                                         'max_fpr': 100, 'rp': 0.002})
     
     2) For a given eid's 'probe_01' in a particular recording session, generate grating response
     summary and unit metrics summary figures (where the time shown before a grating is 1s, the time
@@ -258,35 +260,49 @@ def gen_figures(
         if cluster_ids_summary.size == 0:
             raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
                              'auto_filt_cl_params'.")
-    if not(cluster_ids_selected):  # select up to 5 units from `cluster_ids_summary`
-        print("'cluster_ids_selected' left empty, selecting up to 5 units from\
-              'cluster_ids_summary'.", flush=True)
-        if len(cluster_ids_summary) > 4:
-            cluster_ids_selected = np.random.choice(cluster_ids_summary, size=5, replace=False)
-        else:
+    if not(cluster_ids_selected):
+        print("'cluster_ids_selected' left empty, selecting up to {} units from\
+              'cluster_ids_summary'.".format(n_selected_cl), flush=True)
+        if len(cluster_ids_summary) <= (n_selected_cl):  # select all of `cluster_ids_summary`
             cluster_ids_selected = cluster_ids_summary
+        else:  # select up to 5 units from `cluster_ids_summary`
+            cluster_ids_selected = np.random.choice(cluster_ids_summary,
+                                                    size=n_selected_cl, replace=False)
 
+    # Get visually responsive clusters and create appropriate figures
+    if grating_response_summary or grating_response_selected:
+        cluster_ids_summary_vr, cluster_ids_selected_vr = \
+            orientation.get_vr_clusters(alf_probe_path, n_selected_cl)
     # Generate both summary & selected grating figures
-    if grating_response_summary and grating_response_selected:
-        orientation.plot_grating_figures(
-            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-            post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
-            cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5)
-    # Generate just summary grating figure
-    elif grating_response_summary:
-        orientation.plot_grating_figures(
-            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-            post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
-            cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_summary=True)
-    # Generate just selected grating figure
-    elif grating_response_selected:
-        orientation.plot_grating_figures(
-            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-            post_time=grating_response_params['post_t'], bin_size=grating_response_params['bin_t'],
-            smoothing=grating_response_params['sigma'], cluster_ids_summary=cluster_ids_summary,
-            cluster_ids_selected=cluster_ids_selected, n_rand_clusters=5, only_selected=True)
+        if grating_response_summary and grating_response_selected:
+            orientation.plot_grating_figures(
+                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+                post_time=grating_response_params['post_t'],
+                bin_size=grating_response_params['bin_t'],
+                smoothing=grating_response_params['sigma'],
+                cluster_ids_summary=cluster_ids_summary_vr,
+                cluster_ids_selected=cluster_ids_selected_vr,
+                n_rand_clusters=5)
+        # Generate just summary grating figure
+        elif grating_response_summary:
+            orientation.plot_grating_figures(
+                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+                post_time=grating_response_params['post_t'],
+                bin_size=grating_response_params['bin_t'],
+                smoothing=grating_response_params['sigma'],
+                cluster_ids_summary=cluster_ids_summary_vr,
+                cluster_ids_selected=cluster_ids_selected_vr,
+                n_rand_clusters=5, only_summary=True)
+        # Generate just selected grating figure
+        elif grating_response_selected:
+            orientation.plot_grating_figures(
+                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+                post_time=grating_response_params['post_t'],
+                bin_size=grating_response_params['bin_t'],
+                smoothing=grating_response_params['sigma'],
+                cluster_ids_summary=cluster_ids_summary_vr,
+                cluster_ids_selected=cluster_ids_selected_vr,
+                n_rand_clusters=5, only_selected=True)
 
     # Generate summary unit metrics figure
     if unit_metrics_summary:
