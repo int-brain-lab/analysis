@@ -19,9 +19,8 @@ CACHE_DIR specified by `.one_params` (the default location to which ONE saves da
     # download data
     one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
 
-3) Ensure you have the required, up-to-date versions of the following 3rd party package
-dependencies in your environment: opencv-python, phylib. If in doubt, in your OS
-terminal run:
+3) Ensure that you have the required, up-to-date versions of the following 3rd party package
+dependencies in your environment: opencv-python, phylib. If in doubt, in your OS terminal run:
     `pip install opencv-python`
     `pip install --upgrade git+https://github.com/cortex-lab/phylib.git@master`
 
@@ -46,6 +45,8 @@ or in a terminal, outside of python:
 
 TODO combine summary figures into one figure
 TODO add session info to figures
+TODO metrics to add: 1) chebyshev's inequality, 2) cluster residuals, 3) silhouette, 4) d_prime,
+    5) nn_hit_rate, 6) nn_miss_rate, 7) iso distance, 8) l_ratio
 """
 
 import os
@@ -63,17 +64,15 @@ from deploy.serverpc.certification import certification_pipeline
 from v1_protocol import orientation
 from v1_protocol import complete_raster_depth_per_spike
 from v1_protocol import rf_mapping_old
-# Add `ibllib`, `iblscripts`, and `analysis` repos to path:
-# import sys
-# sys.path.extend(
-#     [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
-#      os.path.abspath('.\\analysis')])
 
 
 def gen_figures(
     eid, probe='probe00', cluster_ids_summary=[], cluster_ids_selected=[], n_selected_cl=5,
     extract_stim_info=True, grating_response_summary=True, grating_response_selected=False,
     unit_metrics_summary=True, unit_metrics_selected=False,
+    summary_metrics = ['rf', 'raster', 'feat_vars', 's', 'cv_fr', 'spks_missed', 'isi_viol',
+                       'max_drift', 'cum_drift'],
+    selected_metrics = ['s', 'cv_fr', 'spks_missed', 'isi_viol', 'max_drift', 'cum_drift'],
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
     rf_params={'bin_sz': .05, 'lags': 4, 'method': 'corr'},
@@ -109,10 +108,25 @@ def gen_figures(
         A flag for returning a figure with single unit metrics plots for `cluster_ids_selected`.
     summary_metrics : list (optional)
         The summary metrics plots to generate for the `unit_metrics_summary` figure. Possible
-        values can include: 
+        values can include:
+        'rf' :
+        'raster' :
+        'feat_vars' :
+        's' : 
+        'cv_fr' :
+        'spks_missed' : 
+        'isi_viol' :
+        'max_drift' :
+        'cum_drift' :
     selected_metrics : list (optional)
         The selected metrics plots to generate for the `unit_metrics_selected` figure. Possible
         values can include: 
+        's' : 
+        'cv_fr' :
+        'spks_missed' : 
+        'isi_viol' :
+        'max_drift' :
+        'cum_drift' :
     grating_response_params : dict (optional)
         Parameters for generating rasters based on time of grating stimulus presentation:
         'pre_t' : the time (s) shown before grating onset.
@@ -248,6 +262,7 @@ def gen_figures(
     session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
     alf_path = os.path.join(session_path, 'alf')
     alf_probe_path = os.path.join(alf_path, probe)
+    ephys_file_path = os.path.join(session_path, 'raw_ephys_data', probe)
     # Ensure `alf_probe_path` exists:
     if not(os.path.isdir(alf_probe_path)):
         raise FileNotFoundError("The path to 'probe' ({}) does not exist! Check the 'probe' name."
@@ -315,11 +330,11 @@ def gen_figures(
 
     # Generate summary unit metrics figure
     if unit_metrics_summary:
-        um_summary_plots(alf_probe_path, cluster_ids_summary, rf_params)
+        um_summary_plots(alf_probe_path, cluster_ids_summary, rf_params, ephys_file_path)
     
     # Generate selected unit metrics figure
     if unit_metrics_selected:
-        um_selected_plots(alf_probe_path, cluster_ids_selected)
+        um_selected_plots(alf_probe_path, cluster_ids_selected, ephys_file_path)
 
 
 def um_summary_plots(alf_probe_path, clusters, rf_params):
@@ -332,6 +347,11 @@ def um_summary_plots(alf_probe_path, clusters, rf_params):
         The absolute path to an 'alf/probe' directory.
     clusters : array-like
         The clusters for which to generate the metrics summary plots.
+    rf_params : dict
+        Parameters used for the receptive field summary plot:
+        'bin_sz' : the bin width (s) used
+        'lags' : number of bins for calculating receptive field
+        'method' : 'corr' or 'sta'
 
     Returns
     -------
@@ -344,10 +364,18 @@ def um_summary_plots(alf_probe_path, clusters, rf_params):
     brainbox.plot.plot
     '''
 
+    # rf histograms
     rf_mapping_old.histograms_rf_areas(alf_probe_path, clusters, rf_params)
+    # raster
     complete_raster_depth_per_spike.scatter_with_boundary_times(alf_probe_path, clusters)
+    # variances of amplitudes barplot
     spikes = aio.load_object(alf_probe_path, 'spikes')
     bb.plot.feat_vars(spikes)
+    # waveform spatiotemporal correlation values bar plot
+    
+    # coefficient of variation of firing rates bar plot
+    
+    # % missing spikes bar plot
 
 
 def um_selected_plots(alf_probe_path, clusters):
