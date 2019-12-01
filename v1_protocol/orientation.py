@@ -407,7 +407,7 @@ def plot_grating_figures(
     clusters, PSTHs, firing rate histograms, etc. The second summary figure contains plots of polar
     PSTHs and corresponding rasters for a random subset of visually responsive clusters.
 
-    :param session_path: absolute path to experimental session directory
+    :param session_path: absolute path to 'alf/probe' directory
     :param cluster_ids_summary: The clusters for which to plot summary psths/rasters.
     :param cluster_ids_selected: The clusters for which to plot single unit psths/rasters.
     :param save_dir: if NoneType, figures are displayed; else a string defining the absolute
@@ -777,8 +777,8 @@ def get_vr_clusters(session_path, n_selected_cl):
     
     Parameters
     ----------
-    session_path : pathlib path
-        The path to to the appropriate alf directory.
+    session_path : str
+        The path to to the appropriate 'alf/probe' directory.
     n_selected_cl : int
         The number of clusters to return in `vr_clusters_selected`
     

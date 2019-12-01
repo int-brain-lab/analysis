@@ -43,6 +43,9 @@ Run this as a script from within python:
 `run path\to\plot`
 or in a terminal, outside of python:
 `python path\to\plot.py`
+
+TODO combine summary figures into one figure
+TODO add session info to figures
 """
 
 import os
@@ -73,6 +76,7 @@ def gen_figures(
     unit_metrics_summary=True, unit_metrics_selected=False,
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
+    rf_params={'bin_sz': .05, 'lags': 4, 'method': 'corr'},
     save_dir=None):
     '''
     Generates figures for the V1 certification protocol for a given eid, probe, and clusters from a
@@ -117,11 +121,16 @@ def gen_figures(
         'sigma' : the width (s) of the smoothing kernel used to determine the number of spikes/bin
     auto_filt_cl_params : dict (optional)
         Parameters used in the call to `brainbox.processing.filter_units` for filtering clusters:
-        'min_amp' : The minimum mean amplitude (in uV) of the spikes in the unit
-        'min_fr' : The minimum firing rate (in Hz) of the unit
-        'max_fpr' : The maximum false positive rate of the unit (using the fp formula in
+        'min_amp' : the minimum mean amplitude (in uV) of the spikes in the unit
+        'min_fr' : the minimum firing rate (in Hz) of the unit
+        'max_fpr' : the maximum false positive rate of the unit (using the fp formula in
                     Hill et al. (2011) J Neurosci 31: 8699-8705)
-        'rp' : The refractory period (in s) of the unit. Used to calculate `max_fp`
+        'rp' : the refractory period (in s) of the unit. Used to calculate `max_fp`
+    rf_params : dict (optional)
+        Parameters used for the receptive field summary plot:
+        'bin_sz' : the bin width (s) used
+        'lags' : number of bins for calculating receptive field
+        'method' : 'corr' or 'sta'
     save_dir : string (optional)
         The path to which to save generated figures. (if `None`, figures will not be automatically
         saved)
@@ -237,8 +246,8 @@ def gen_figures(
     spikes_path = one.load(eid, dataset_types='spikes.amps', clobber=False, download_only=True)[0]
     alf_dir_part = np.where([part == 'alf' for part in Path(spikes_path).parts])[0][0]
     session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
-    alf_path = os.path.abspath(session_path + '\\alf')
-    alf_probe_path = os.path.abspath(alf_path + '\\' + probe)
+    alf_path = os.path.join(session_path, 'alf')
+    alf_probe_path = os.path.join(alf_path, probe)
     # Ensure `alf_probe_path` exists:
     if not(os.path.isdir(alf_probe_path)):
         raise FileNotFoundError("The path to 'probe' ({}) does not exist! Check the 'probe' name."
@@ -249,10 +258,10 @@ def gen_figures(
         # Copy `'_iblcertif'` files over to `alf_probe_path`
         for i in os.listdir(alf_path):
             if i[:10] == '_iblcertif':
-                shutil.copy(os.path.abspath(alf_path + '\\' + i), alf_probe_path)
+                shutil.copy(os.path.join(alf_path, i), alf_probe_path)
 
     # Set `cluster_ids_summary` and `cluster_ids_selected`
-    if not(cluster_ids_summary):  # filter all clusters according to `auto_filt_cl_params`
+    if len(cluster_ids_summary) == 0:  # filter all clusters according to `auto_filt_cl_params`
         print("'cluster_ids_summary' left empty, selecting filtered units.'", flush=True)
         spks = aio.load_object(alf_probe_path, 'spikes')
         cluster_ids_summary = \
@@ -260,7 +269,7 @@ def gen_figures(
         if cluster_ids_summary.size == 0:
             raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
                              'auto_filt_cl_params'.")
-    if not(cluster_ids_selected):
+    if len(cluster_ids_selected) == 0:
         print("'cluster_ids_selected' left empty, selecting up to {} units from\
               'cluster_ids_summary'.".format(n_selected_cl), flush=True)
         if len(cluster_ids_summary) <= (n_selected_cl):  # select all of `cluster_ids_summary`
@@ -306,21 +315,21 @@ def gen_figures(
 
     # Generate summary unit metrics figure
     if unit_metrics_summary:
-        um_summary_plots(eid, cluster_ids_summary)
+        um_summary_plots(alf_probe_path, cluster_ids_summary, rf_params)
     
     # Generate selected unit metrics figure
     if unit_metrics_selected:
-        um_selected_plots(eid, cluster_ids_selected)
+        um_selected_plots(alf_probe_path, cluster_ids_selected)
 
 
-def um_summary_plots(eid, clusters):
+def um_summary_plots(alf_probe_path, clusters, rf_params):
     '''
     Computes/creates summary metrics and plots in a figure for all units in a recording session.
 
     Parameters
     ----------
-    eid : string
-        The experiment ID, for a given recording session- the UUID of the session as per Alyx.
+    alf_probe_path : string
+        The absolute path to an 'alf/probe' directory.
     clusters : array-like
         The clusters for which to generate the metrics summary plots.
 
@@ -335,24 +344,20 @@ def um_summary_plots(eid, clusters):
     brainbox.plot.plot
     '''
 
-    # TODO the function call to `histograms_rf_areas` below should accept a `clusters` input arg
-    rf_mapping_old.histograms_rf_areas(eid)  
-    complete_raster_depth_per_spike.scatter_with_boundary_times(eid, clusters)
-    one = ONE()
-    D = one.load(eid[0], clobber=False, download_only=True)
-    alf_path = Path(D.local_path[0]).parent
-    spikes = aio.load_object(alf_path, 'spikes')
+    rf_mapping_old.histograms_rf_areas(alf_probe_path, clusters, rf_params)
+    complete_raster_depth_per_spike.scatter_with_boundary_times(alf_probe_path, clusters)
+    spikes = aio.load_object(alf_probe_path, 'spikes')
     bb.plot.feat_vars(spikes)
 
 
-def um_selected_plots(eid, clusters):
+def um_selected_plots(alf_probe_path, clusters):
     '''
     Computes/creates metrics and plots in a figure for specified units in a recording session.
 
     Parameters
     ----------
-    eid : string
-        The experiment ID, for a given recording session- the UUID of the session as per Alyx.
+    alf_probe_path : string
+        The absolute path to an 'alf/probe' directory.
     clusters : array-like
         The clusters for which to generate the metrics selected unit plots.
 

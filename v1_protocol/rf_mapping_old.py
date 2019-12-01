@@ -361,39 +361,40 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
     return splt
 
 
-def histograms_rf_areas(eid):
-
-    
+def histograms_rf_areas(session_path, clusters=[], params={'bin_sz': .05, 'lags': 4,
+                                                           'method': 'corr'}):
 
     # user options
-    BINSIZE = 0.05  # sec
-    LAGS = 4  # number of bins for calculating RF
-    METHOD = 'corr'  # 'corr' | 'sta'
-
-    # get the data from flatiron and the current folder
-    one = ONE()
-    #eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
-    D = one.load(eid[0], clobber=False, download_only=True)
-    session_path = Path(D.local_path[0]).parent
+    BINSIZE = params['bin_sz']  # sec
+    LAGS = params['lags']  # number of bins for calculating RF
+    METHOD = params['method']  # 'corr' | 'sta'
 
     # load objects
     spikes = alf.io.load_object(session_path, 'spikes')
     rfmap = alf.io.load_object(session_path, '_iblcertif_.rfmap')
     rf_stim_times = rfmap['rfmap.times.00']
     rf_stim = rfmap['rfmap.stims.00'].astype('float')
+    
+    # Get mask for spikes
+    if len(clusters) == 0:  # assume we are using all clusters
+        mask = np.ones_like(spikes['times'])
+        print('All clusters are shown')
+    else:  # use given subset of clusters
+        mask = np.isin(spikes['clusters'], clusters)
+        print('Only a subset of all clusters is shown')
 
     # compute receptive fields
     if METHOD == 'sta':
         # method in Durand et al 2016; ~9 min for 700 units on a single cpu core
         print('computing receptive fields...', end='')
-        rfs = compute_rfs(
-            spikes.times, spikes.clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+        rfs = compute_rfs(spikes.times[mask], spikes.clusters[mask], rf_stim_times, rf_stim,
+                          lags=LAGS, binsize=BINSIZE)
         print('done')
     elif METHOD == 'corr':
         # reverse correlation method; ~3 min for 700 units on a single cpu core
         print('computing receptive fields...', end='')
-        rfs = compute_rfs_corr(
-            spikes.times, spikes.clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+        rfs = compute_rfs_corr(spikes.times[mask], spikes.clusters[mask], rf_stim_times, rf_stim,
+                               lags=LAGS, binsize=BINSIZE)
         print('done')
     else:
         raise NotImplementedError('The %s method to compute rfs is not implemented' % METHOD)

@@ -27,8 +27,8 @@ def scatter_raster(spikes, clusters=[], boundary_times=None, downsample_factor=2
     :rtype: plot
     '''    
      
-    if not(clusters):
-        print('All clsuters are shown')
+    if len(clusters) == 0:
+        print('All clusters are shown')
         uclusters = np.unique(spikes['clusters'])
         # downsample 
         z = spikes['clusters'][::downsample_factor]
@@ -97,15 +97,12 @@ def get_stimulus_type_boundary_times(alf_path):
     return T2
 
 
-def scatter_with_boundary_times(eid, clusters=[]):
+def scatter_with_boundary_times(alf_probe_path, clusters=[]):
 
-    one = ONE()
     #eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
     #eid = one.search(subject='ZM_2407', date='2019-11-05', number=3) #depth per spike but no times
-    D = one.load(eid[0], clobber=False, download_only=True)
-    alf_path = Path(D.local_path[0]).parent
-    T2 = get_stimulus_type_boundary_times(alf_path)
-    spikes = alf.io.load_object(alf_path, 'spikes')
+    T2 = get_stimulus_type_boundary_times(alf_probe_path)
+    spikes = alf.io.load_object(alf_probe_path, 'spikes')
     scatter_raster(spikes, clusters=clusters, boundary_times=T2)
 
 
