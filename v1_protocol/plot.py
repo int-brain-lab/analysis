@@ -345,7 +345,7 @@ def um_summary_plots(alf_probe_path, clusters, rf_params):
     ----------
     alf_probe_path : string
         The absolute path to an 'alf/probe' directory.
-    clusters : array-like
+    clusters : list
         The clusters for which to generate the metrics summary plots.
     rf_params : dict
         Parameters used for the receptive field summary plot:
@@ -365,7 +365,7 @@ def um_summary_plots(alf_probe_path, clusters, rf_params):
     '''
 
     # rf histograms
-    rf_mapping_old.histograms_rf_areas(alf_probe_path, clusters, rf_params)
+    rf_mapping_old.histograms_rf_areas(alf_probe_path, clusters)
     # raster
     complete_raster_depth_per_spike.scatter_with_boundary_times(alf_probe_path, clusters)
     # variances of amplitudes barplot
