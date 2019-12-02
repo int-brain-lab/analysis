@@ -399,22 +399,42 @@ def plot_grating_figures(session_path, save_dir=None, format='png', pre_time=0.5
     clusters, PSTHs, firing rate histograms, etc. The second summary figure contains plots of polar
     PSTHs and corresponding rasters for a random subset of visually responsive clusters.
 
-    :param session_path: absolute path to experimental session directory
-    :param save_dir: if NoneType, figures are displayed; else a string defining the absolute
-        filepath to the directory in which figures will be saved
-    :param format: file format, i.e. 'png' | 'pdf' | 'jpg'
-    :param pre_time: time (sec) to plot before grating presentation onset
-    :param post_time: time (sec) to plot after grating presentation onset (should include length of
-        stimulus)
-    :param bin_size: size of bins for raster plots/psths
-    :param smoothing: size of smoothing kernel (sec)
-    :param cluster_idxs: the clusters for which to plot psths/rasters. If [], then
-        `n_rand_clusters` random clusters are chosen.
-    :param n_rand_clusters: The number of random clusters to choose for which to plot psths/rasters
-        if `clusters` is [].
-    :param only_summary: A flag for only plotting the plots in the summary figure
-    :param only_selected: A flag for only plotting the plots in the selected units figure
-    :return: None
+    Parameters
+    ----------
+    session_path : str
+        absolute path to experimental session directory
+    save_dir : str or NoneType
+        if NoneType, figures are displayed; else a string defining the absolute filepath to the
+        directory in which figures will be saved
+    format : str
+        file format, i.e. 'png' | 'pdf' | 'jpg'
+    pre_time : float
+        time (sec) to plot before grating presentation onset
+    post_time : float
+        time (sec) to plot after grating presentation onset (should include length of stimulus)
+    bin_size : float
+        size of bins for raster plots/psths
+    smoothing : float
+        size of smoothing kernel (sec)
+    cluster_idxs : list
+        the clusters for which to plot psths/rasters. If [], then `n_rand_clusters` random clusters
+        are chosen.
+    n_rand_clusters : int
+        the number of random clusters to choose for which to plot psths/rasters if `clusters` is []
+    only_summary : bool
+        a flag for only plotting the plots in the summary figure
+    only_selected : bool
+        a flag for only plotting the plots in the selected units figure
+
+    Returns
+    -------
+    dict
+        - 'cluster_ids' (list): clusters used for summary plots
+        - 'selected_cluster_ids' (list): [] if only_summary else cluster_idxs,
+        - 'osi' (dict): keys 'beg', 'end' point to arrays of osis during these epochs
+        - 'orientation_pref' (dict): keys 'beg', 'end' point to arrays of orientation preference
+        - 'frac_resp_by_depth' (dict): fraction of responsive clusters by depth
+
     """
 
     import os
@@ -632,6 +652,18 @@ def plot_grating_figures(session_path, save_dir=None, format='png', pre_time=0.5
             mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
             off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
         print('done')
+
+    # -----------------------------
+    # package up and return metrics
+    # -----------------------------
+    metrics = {
+        'cluster_ids': cluster_ids,
+        'selected_cluster_ids': [] if only_summary else cluster_idxs,
+        'osi': osi,
+        'orientation_pref': ori_pref,
+        'frac_resp_by_depth': responsive,
+    }
+    return metrics
 
 
 def plot_summary_figure(
