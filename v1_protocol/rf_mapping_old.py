@@ -1,145 +1,34 @@
-"""
-Peforms computations on spikes.
-
-This module contains functions used as helper functions to generate args for `plot.py`
-"""
-
-from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import scipy.stats
 import pandas as pd
 from oneibl.one import ONE
+from pathlib import Path
 import alf.io
-import brainbox as bb
-from brainbox.processing import bincount2D
-
-
-def get_good_units():
-    pass
-
-
-def _get_spike_counts_in_bins(spike_times, spike_clusters, intervals=None):
-    """
-    Return the number of spikes in a sequence of time intervals, for each neuron.
-    
-    :param spike_times: times of spikes, in seconds
-    :type spike_times: 1D array
-    :param spike_clusters: spike neurons
-    :type spike_clusters: 1D array, same length as spike_times
-    :type intervals: the times of the events onsets and offsets
-    :param interval: 2D array
-    :rtype: 2D array of shape `(n_neurons, n_intervals)`
-    """
-    # Check inputs.
-    assert spike_times.ndim == spike_clusters.ndim == 1
-    assert spike_times.shape == spike_clusters.shape
-    intervals = np.atleast_2d(intervals)
-    assert intervals.ndim == 2
-    assert intervals.shape[1] == 2
-    n_intervals = intervals.shape[0]
-
-    # For each neuron and each interval, the number of spikes in the interval.
-    neuron_ids = np.unique(spike_clusters)
-    n_neurons = len(neuron_ids)
-    counts = np.zeros((n_neurons, n_intervals), dtype=np.uint32)
-    for j in range(n_intervals):
-        t0, t1 = intervals[j, :]
-        # Count the number of spikes in the window, for each neuron.
-        x = np.bincount(
-            spike_clusters[(t0 <= spike_times) & (spike_times < t1)],
-            minlength=neuron_ids.max() + 1)
-        counts[:, j] = x[neuron_ids]
-    # value (i, j) is the number of spikes of neuron `neurons[i]` in interval
-    # #j
-    return counts
-
-
-def are_neurons_responsive(spike_times, spike_clusters, stimulus_intervals=None,
-                           spontaneous_period=None, p_value_threshold=.05):
-    """
-    Return which neurons are responsive after specific stimulus events, compared to spontaneous
-    activity, according to a Wilcoxon test.
-    
-    :param spike_times: times of spikes, in seconds
-    :type spike_times: 1D array
-    :param spike_clusters: spike neurons
-    :type spike_clusters: 1D array, same length as spike_times
-    :type stimulus_intervals: the times of
-        the stimulus events onsets and offsets
-    :param stimulus_intervals: 2D array
-    :type spontaneous_period: the period of spontaneous activity
-    :param spontaneous_period: 1D array with 2 elements
-    :param p_value_threshold: the threshold for the
-        p value in the Wilcoxon test.
-    :type p_value_threshold: float
-    :rtype: 1D boolean array with `n_neurons`
-        elements (clusters are sorted by increasing cluster
-        id as appearing in spike_clusters).
-    """
-    stimulus_counts = _get_spike_counts_in_bins(
-        spike_times, spike_clusters, stimulus_intervals)
-    # Find spontaneous intervals.
-    stimulus_durations = np.diff(stimulus_intervals, axis=1).squeeze()
-    t0, t1 = spontaneous_period
-    spontaneous_starts = np.linspace(
-        t0,
-        t1 - stimulus_durations.max(),
-        len(stimulus_intervals))
-    spontaneous_intervals = np.c_[
-        spontaneous_starts,
-        spontaneous_starts +
-        stimulus_durations]
-    # Count the spontaneous counts.
-    spontaneous_counts = _get_spike_counts_in_bins(
-        spike_times, spike_clusters, spontaneous_intervals)
-    assert stimulus_counts.shape == stimulus_counts.shape
-    # Generate the responsive vector (for every neuron, whether it is
-    # responsive).
-    responsive = np.zeros(stimulus_counts.shape[0], dtype=np.bool)
-    n_neurons = stimulus_counts.shape[0]
-    for i in range(n_neurons):
-        x = stimulus_counts[i, :]
-        y = spontaneous_counts[i, :]
-        try:
-            _, p = scipy.stats.wilcoxon(x, y)
-        except ValueError:
-            pass
-        responsive[i] = p < p_value_threshold
-    return responsive
 
 
 def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, binsize=0.025):
     """
     Compute receptive fields from locally sparse noise stimulus for all recorded neurons; uses a
-    PSTH-like approach that averages responses from each neuron for each pixel flip.
-    
+    PSTH-like approach that averages responses from each neuron for each pixel flip
     :param spike_times: array of spike times
-    :param spike_clusters: array of cluster ids associated
-        with each entry of `spike_times`
+    :param spike_clusters: array of cluster ids associated with each entry of `spike_times`
     :param stimulus_times: (M,) array of stimulus presentation times
     :param stimulus: (M, y_pix, x_pix) array of pixel values
     :param lags: temporal dimension of receptive field
     :param binsize: length of each lag (seconds)
-    :return: dictionary of "on" and "off"
-        receptive fields (values are lists);
-        each rf is [t, y_pix, x_pix]
+    :return: dictionary of "on" and "off" receptive fields (values are lists); each rf is
+        [t, y_pix, x_pix]
     """
+
+    from brainbox.processing import bincount2D
 
     cluster_ids = np.unique(spike_clusters)
     n_clusters = len(cluster_ids)
     _, y_pix, x_pix = stimulus.shape
     stimulus = stimulus.astype('float')
     subs = ['on', 'off']
-    rfs = {
-        sub: np.zeros(
-            shape=(
-                n_clusters,
-                y_pix,
-                x_pix,
-                lags +
-                1)) for sub in subs}
+    rfs = {sub: np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)) for sub in subs}
     flips = {sub: np.zeros(shape=(y_pix, x_pix)) for sub in subs}
 
     gray = np.median(stimulus)
@@ -150,8 +39,7 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
             continue
         # find pixels that flipped
         frame_change = stimulus[i, :, :] - gray
-        ys, xs = np.where((frame_change != 0) & (
-            stimulus[i - 1, :, :] == gray))
+        ys, xs = np.where((frame_change != 0) & (stimulus[i - 1, :, :] == gray))
         # loop over changed pixels
         for y, x in zip(ys, xs):
             if frame_change[y, x] > 0:  # gray -> white
@@ -163,11 +51,9 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
             t_end = t + binsize * lags
             idxs_t = (spike_times >= t_beg) & (spike_times < t_end)
             binned_spikes, _, cluster_idxs = bincount2D(
-                spike_times[idxs_t], spike_clusters[idxs_t],
-                xbin=binsize, xlim=[t_beg, t_end])
+                spike_times[idxs_t], spike_clusters[idxs_t], xbin=binsize, xlim=[t_beg, t_end])
             # insert these binned spikes into the rfs
-            _, cluster_idxs, _ = np.intersect1d(
-                cluster_ids, cluster_idxs, return_indices=True)
+            _, cluster_idxs, _ = np.intersect1d(cluster_ids, cluster_idxs, return_indices=True)
             rfs[sub][cluster_idxs, y, x, :] += binned_spikes
             # record flip
             flips[sub][y, x] += 1
@@ -188,18 +74,16 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
 
 def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, binsize=0.025):
     """
-    Compute receptive fields from locally sparse noise stimulus for all recorded neurons; uses a
-    reverse correlation approach.
-    
+    Compute receptive fields from locally sparse noise stimulus for all
+    recorded neurons; uses a reverse correlation approach
     :param spike_times: array of spike times
-    :param spike_clusters: array of cluster ids associated
-        with each entry of `spikes`
+    :param spike_clusters: array of cluster ids associated with each entry of `spikes`
     :param stimulus_times: (M,) array of stimulus presentation times
     :param stimulus: (M, y_pix, x_pix) array of pixel values
     :param lags: temporal dimension of receptive field
     :param binsize: length of each lag (seconds)
-    :return: dictionary of "on" and "off" receptive
-        fields (values are lists); each rf is [t, y_pix, x_pix]
+    :return: dictionary of "on" and "off" receptive fields (values are lists); each
+        rf is [t, y_pix, x_pix]
     """
 
     from brainbox.processing import bincount2D
@@ -217,14 +101,7 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
     gray = np.median(stimulus)
 
     subs = ['on', 'off']
-    rfs = {
-        sub: np.zeros(
-            shape=(
-                n_clusters,
-                y_pix,
-                x_pix,
-                lags +
-                1)) for sub in subs}
+    rfs = {sub: np.zeros(shape=(n_clusters, y_pix, x_pix, lags + 1)) for sub in subs}
 
     # for indexing output of convolution
     i_end = binned_spikes.shape[1]
@@ -254,8 +131,7 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
                     # NOTE: scipy's correlate function is appx two orders of
                     # magnitude faster than numpy's correlate function on
                     # relevant data size; perhaps scipy uses FFT? Not in docs.
-                    cc = correlate(
-                        binned_stim, binned_spikes[n, :], mode='full')
+                    cc = correlate(binned_stim, binned_spikes[n, :], mode='full')
                     rfs[sub][n, y, x, :] = cc[i_beg:i_end + 1]
 
     # turn into list
@@ -267,8 +143,8 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
 
 def find_peak_responses(rfs):
     """
-    Find peak response across time, space, and receptive field type ("on" and "off").
-    
+    Find peak response across time, space, and receptive field type ("on" and
+    "off")
     :param rfs: dictionary of receptive fields (output of `compute_rfs`); each
         rf is of size [t, y_pix, y_pix]
     :return: dictionary containing peak rf time slice for both "on" and "off"
@@ -288,12 +164,9 @@ def find_peak_responses(rfs):
 
 def interpolate_rfs(rfs, bin_scale):
     """
-    Bilinear interpolation of receptive fields.
-    
-    :param rfs: dictionary of receptive fields
-        (single time slice)
-    :param bin_scale: scaling factor to determine
-        number of bins for interpolation;
+    Bilinear interpolation of receptive fields
+    :param rfs: dictionary of receptive fields (single time slice)
+    :param bin_scale: scaling factor to determine number of bins for interpolation;
         e.g. bin_scale=0.5 doubles the number of bins in both directions
     :return: dictionary of interpolated receptive fields (values are lists)
     """
@@ -315,8 +188,8 @@ def interpolate_rfs(rfs, bin_scale):
 
 def extract_blob(array, y, x):
     """
-    Extract contiguous blob of `True` values in a boolean array starting at the point (y, x).
-    
+    Extract contiguous blob of `True` values in a boolean array starting at the
+    point (y, x)
     :param array: 2D boolean array
     :param y: initial y pixel
     :param x: initial x pixel
@@ -345,8 +218,7 @@ def extract_blob(array, y, x):
 
 def extract_blobs(array):
     """
-    Extract contiguous blobs of `True` values in a boolean array.
-    
+    Extract contiguous blobs of `True` values in a boolean array
     :param array: 2D boolean array
     :return: list of lists of blob indices
     """
@@ -369,8 +241,8 @@ def extract_blobs(array):
 
 def find_contiguous_pixels(rfs, threshold=0.35):
     """
-    Calculate number of contiguous pixels in a thresholded version of the receptive field.
-    
+    Calculate number of contiguous pixels in a thresholded version of the
+    receptive field
     :param rfs: dictionary of receptive fields (single time slice)
     :param threshold: pixels below this fraction of the maximum firing are set
         to zero before contiguous pixels are calculated
@@ -404,10 +276,10 @@ def find_contiguous_pixels(rfs, threshold=0.35):
 
 def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
     """
-    Compute receptive field areas as described in: Durand et al. 2016, "A Comparison of Visual
-    Response Properties in the Lateral Geniculate Nucleus and Primary Visual Cortex of Awake and
-    Anesthetized Mice".
-    
+    Compute receptive field areas as described in:
+    Durand et al. 2016
+    "A Comparison of Visual Response Properties in the Lateral Geniculate Nucleus
+    and Primary Visual Cortex of Awake and Anesthetized Mice"
     :param rfs: dictionary of receptive fields (dict keys are 'on' and 'off');
         output of `compute_rfs`
     :param bin_scale: scaling for interpolation (e.g. 0.5 doubles bins)
@@ -431,3 +303,160 @@ def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
     contig_pixels = find_contiguous_pixels(peaks_interp, threshold=threshold)
 
     return contig_pixels
+
+
+def plot_rf_distributions(rf_areas, plot_type='box'):
+    """
+    :param rf_areas:
+    :param plot_type: 'box' | 'hist'
+    :return: figure handle
+    """
+
+    # put results into dataframe for easier plotting
+    results = []
+    for sub_type, areas in rf_areas.items():
+        for i, area in enumerate(areas):
+            results.append(pd.DataFrame({
+                'cluster_id': i,
+                'area': area,
+                'Subfield': sub_type.upper()}, index=[0]))
+    results_pd = pd.concat(results, ignore_index=True)
+    # leave out non-responsive clusters
+    data_queried = results_pd[results_pd.area != 0]
+
+    if plot_type == 'box':
+
+        splt = sns.catplot(
+            x='Subfield', y='area', kind='box', data=data_queried)
+        splt.fig.axes[0].set_yscale('log')
+        splt.fig.axes[0].set_ylabel('RF Area (pixels$^2$)')
+        splt.fig.axes[0].set_ylim([1e-1, 1e4])
+
+    elif plot_type == 'hist':
+        bins = 10 ** (np.arange(-1, 4.25, 0.25))
+        xmin = 1e-1
+        xmax = 1e4
+        ymin = 1e0
+        ymax = 1e3
+        splt = plt.figure(figsize=(12, 4))
+
+        plt.subplot(121)
+        plt.hist(data_queried[data_queried.Subfield == 'ON']['area'], bins=bins, log=True)
+        plt.xlabel('RF Area (pixels)')
+        plt.xscale('log')
+        plt.xlim([xmin, xmax])
+        plt.ylim([ymin, ymax])
+        plt.ylabel('Cluster count')
+        plt.title('ON Subfield')
+
+        plt.subplot(122)
+        plt.hist(data_queried[data_queried.Subfield == 'OFF']['area'], bins=bins, log=True)
+        plt.xlabel('RF Area (pixels)')
+        plt.xscale('log')
+        plt.xlim([xmin, xmax])
+        plt.ylim([ymin, ymax])
+        plt.title('OFF Subfield')
+
+    plt.show()
+
+    return splt
+
+
+def histograms_rf_areas(eid, cluster_ids_summary=None):
+    
+    # user options
+    BINSIZE = 0.05  # sec
+    LAGS = 4  # number of bins for calculating RF
+    METHOD = 'corr'  # 'corr' | 'sta'
+
+    # get the data from flatiron and the current folder
+    one = ONE()
+    #eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
+    D = one.load(eid[0], clobber=False, download_only=True)
+    session_path = Path(D.local_path[0]).parent
+
+    # load objects
+    spikes = alf.io.load_object(session_path, 'spikes')
+
+    if cluster_ids_summary == None:
+        print('All clusters are used')
+        Clusters = spikes['clusters']
+        Times = spikes['times']
+
+    if cluster_ids_summary != None:
+        print('Only a subset of all clusters are used')
+        Mask = np.isin(spikes['clusters'], cluster_ids_summary)
+        Clusters = spikes['clusters'][Mask]
+        Times = spikes['times'][Mask]
+
+    rfmap = alf.io.load_object(session_path, '_iblcertif_.rfmap')
+    rf_stim_times = rfmap['rfmap.times.00']
+    rf_stim = rfmap['rfmap.stims.00'].astype('float')
+
+    # compute receptive fields
+    if METHOD == 'sta':
+        # method in Durand et al 2016; ~9 min for 700 units on a single cpu core
+        print('computing receptive fields...', end='')
+        rfs = compute_rfs(
+            Times, Clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+        print('done')
+    elif METHOD == 'corr':
+        # reverse correlation method; ~3 min for 700 units on a single cpu core
+        print('computing receptive fields...', end='')
+        rfs = compute_rfs_corr(
+            Times, Clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+        print('done')
+    else:
+        raise NotImplementedError('The %s method to compute rfs is not implemented' % METHOD)
+
+    print('computing receptive field areas...', end='')
+    rf_areas = compute_rf_areas(rfs)
+    print('done')
+
+    fig = plot_rf_distributions(rf_areas, plot_type='hist')
+
+
+#if __name__ == '__main__':
+
+#    from pathlib import Path
+#    from oneibl.one import ONE
+#    import alf.io as ioalf
+
+#    # user options
+#    BINSIZE = 0.05  # sec
+#    LAGS = 4  # number of bins for calculating RF
+#    METHOD = 'corr'  # 'corr' | 'sta'
+
+#    # get the data from flatiron and the current folder
+#    one = ONE()
+#    eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
+#    D = one.load(eid[0], clobber=False, download_only=True)
+#    session_path = Path(D.local_path[0]).parent
+
+#    # load objects
+#    spikes = ioalf.load_object(session_path, 'spikes')
+#    rfmap = ioalf.load_object(session_path, '_iblcertif_.rfmap')
+#    rf_stim_times = rfmap['rfmap.times.00']
+#    rf_stim = rfmap['rfmap.stims.00'].astype('float')
+
+#    # compute receptive fields
+#    if METHOD == 'sta':
+#        # method in Durand et al 2016; ~9 min for 700 units on a single cpu core
+#        print('computing receptive fields...', end='')
+#        rfs = compute_rfs(
+#            spikes.times, spikes.clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+#        print('done')
+#    elif METHOD == 'corr':
+#        # reverse correlation method; ~3 min for 700 units on a single cpu core
+#        print('computing receptive fields...', end='')
+#        rfs = compute_rfs_corr(
+#            spikes.times, spikes.clusters, rf_stim_times, rf_stim, lags=LAGS, binsize=BINSIZE)
+#        print('done')
+#    else:
+#        raise NotImplementedError('The %s method to compute rfs is not implemented' % METHOD)
+
+#    print('computing receptive field areas...', end='')
+#    rf_areas = compute_rf_areas(rfs)
+#    print('done')
+
+#    fig = plot_rf_distributions(rf_areas, plot_type='hist')
