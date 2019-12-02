@@ -45,6 +45,7 @@ or in a terminal, outside of python:
 
 TODO combine summary figures into one figure
 TODO add session info to figures
+TODO return metrics for grating response summary&selected, raster, and rf plots
 TODO metrics to add: 1) chebyshev's inequality, 2) cluster residuals, 3) silhouette, 4) d_prime,
     5) nn_hit_rate, 6) nn_miss_rate, 7) iso distance, 8) l_ratio
 """
@@ -54,6 +55,7 @@ from pathlib import Path
 import shutil
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import seaborn as sns
 import scipy.stats as stats
 import pandas as pd
@@ -337,7 +339,7 @@ def gen_figures(
         um_selected_plots(alf_probe_path, cluster_ids_selected, ephys_file_path)
 
 
-def um_summary_plots(alf_probe_path, clusters, rf_params):
+def um_summary_plots(alf_probe_path, clusters, rf_params, summary_metrics):
     '''
     Computes/creates summary metrics and plots in a figure for all units in a recording session.
 
@@ -352,6 +354,18 @@ def um_summary_plots(alf_probe_path, clusters, rf_params):
         'bin_sz' : the bin width (s) used
         'lags' : number of bins for calculating receptive field
         'method' : 'corr' or 'sta'
+    summary_metrics : list
+        The summary metrics plots to generate for the `unit_metrics_summary` figure. Possible
+        values can include:
+        'rf' :
+        'raster' :
+        'feat_vars' :
+        's' : 
+        'cv_fr' :
+        'spks_missed' : 
+        'isi_viol' :
+        'max_drift' :
+        'cum_drift' :
 
     Returns
     -------
@@ -362,23 +376,34 @@ def um_summary_plots(alf_probe_path, clusters, rf_params):
     --------
     brainbox.metrics.metrics
     brainbox.plot.plot
+    
+    Examples
+    --------
     '''
 
-    # rf histograms
-    rf_mapping_old.histograms_rf_areas(alf_probe_path, clusters)
-    # raster
-    complete_raster_depth_per_spike.scatter_with_boundary_times(alf_probe_path, clusters)
-    # variances of amplitudes barplot
-    spikes = aio.load_object(alf_probe_path, 'spikes')
-    bb.plot.feat_vars(spikes)
-    # waveform spatiotemporal correlation values bar plot
-    
-    # coefficient of variation of firing rates bar plot
-    
-    # % missing spikes bar plot
+
+    if 'rf' in summary_metrics:  # rf histograms
+        rf_mapping_old.histograms_rf_areas(alf_probe_path, clusters, rf_params)
+    if 'raster' in summary_metrics:  # raster
+        complete_raster_depth_per_spike.scatter_with_boundary_times(alf_probe_path, clusters)
+    if 'feat_vars' in summary_metrics:  # variances of amplitudes barplot
+        spikes = aio.load_object(alf_probe_path, 'spikes')
+        fig_feat_vars, var_vals, _ = bb.plot.feat_vars(spikes)
+    if 's' in summary_metrics:  # waveform spatiotemporal correlation values bar plot
+        
+    if 'cv_fr' in summary_metrics:  # coefficient of variation of firing rates bar plot
+        
+    if 'spks_missed' in summary_metrics:  # fraction missing spikes bar plot
+        
+    if 'isi_viol' in summary_metrics:  # fraction isi violations bar plot
+        
+    if 'max_drift' in summary_metrics:  # max_drift bar plot
+        
+    if 'cum_drift' in summary_metrics:  # cum_drift bar plot
+        
 
 
-def um_selected_plots(alf_probe_path, clusters):
+def um_selected_plots(alf_probe_path, clusters, selected_metrics):
     '''
     Computes/creates metrics and plots in a figure for specified units in a recording session.
 
@@ -388,6 +413,15 @@ def um_selected_plots(alf_probe_path, clusters):
         The absolute path to an 'alf/probe' directory.
     clusters : array-like
         The clusters for which to generate the metrics selected unit plots.
+    selected_metrics : list (optional)
+        The selected metrics plots to generate for the `unit_metrics_selected` figure. Possible
+        values can include: 
+        's' : 
+        'cv_fr' :
+        'spks_missed' : 
+        'isi_viol' :
+        'max_drift' :
+        'cum_drift' :
 
     Returns
     -------
@@ -403,6 +437,15 @@ def um_selected_plots(alf_probe_path, clusters):
     Examples
     --------
     '''
+
+    if 's' in summary_metrics:  # waveforms plot
+        
+    if 'cv_fr' in summary_metrics:  # coefficient of variation of firing rates plot
+        
+    if 'spks_missed' in summary_metrics:  # pdf of missing spikes plot
+        
+    if 'isi_viol' in summary_metrics:  # isi histogram
+        
 
 
 def raster_complete(R, times, Clusters):
