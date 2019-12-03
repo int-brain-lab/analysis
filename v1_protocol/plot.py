@@ -77,7 +77,7 @@ def gen_figures(
     selected_metrics = ['s', 'cv_fr', 'spks_missed', 'isi_viol', 'max_drift', 'cum_drift'],
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
-    rf_params={'bin_sz': .05, 'lags': 4, 'method': 'corr'},
+    rf_params={'bin_sz': .05, 'lags': 4, 'method': 'corr', 'n_depths': 20, 'use_svd': False},
     save_dir=None):
     '''
     Generates figures for the V1 certification protocol for a given eid, probe, and clusters from a
@@ -147,6 +147,9 @@ def gen_figures(
         'bin_sz' : the bin width (s) used
         'lags' : number of bins for calculating receptive field
         'method' : 'corr' or 'sta'
+        'n_depths' : number of depths to aggregate clusters over
+        'use_svd' : `True` plots 1st spatial SVD component of rf; `False` plots time lag with
+                    peak response
     save_dir : string (optional)
         The path to which to save generated figures. (if `None`, figures will not be automatically
         saved)
@@ -334,6 +337,9 @@ def um_summary_plots(alf_probe_path, clusters, rf_params, summary_metrics):
         'bin_sz' : the bin width (s) used
         'lags' : number of bins for calculating receptive field
         'method' : 'corr' or 'sta'
+        'n_depths' : number of depths to aggregate clusters over
+        'use_svd' : `True` plots 1st spatial SVD component of rf; `False` plots time lag with
+                    peak response
     summary_metrics : list
         The summary metrics plots to generate for the `unit_metrics_summary` figure. Possible
         values can include:

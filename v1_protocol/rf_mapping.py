@@ -140,6 +140,40 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
     return rfs_list
 
 
+def compute_rf_svds(rfs, scale='none'):
+    """
+    Perform SVD on the spatiotemporal rfs and return the first spatial and first temporal
+    components. Used for denoising purposes.
+
+    :param rfs: dictionary of "on" and "off" receptive fields (values are lists); each
+        rf is [n_bins, y_pix, x_pix] (output of `compute_rfs` or `compute_rfs_corr`
+    :param scale: scale either the spatial or temporal component (or neither) by the singular value
+        'spatial' | 'temporal' | 'none'
+    :return: dict with 'spatial' and 'temporal' keys; the values are lists of the specified
+        components, on for each input rf
+    """
+    from scipy.linalg import svd
+    rfs_svd = {key1: {key2: [] for key2 in rfs.keys()} for key1 in ['spatial', 'temporal']}
+    n_bins, y_pix, x_pix = rfs['on'][0].shape
+    # loop over rf type
+    for sub_type, subs in rfs.items():
+        # loop over clusters
+        for sub in subs:
+            # reshape take PSTH and rearrange into n_pixels x n_bins
+            sub_reshaped = np.reshape(sub, (n_bins, y_pix * x_pix))
+            # svd
+            u, s, v = svd(sub_reshaped.T)
+            # keep first spatial dim and temporal trace
+            sign = -1 if np.median(v[0, :]) < 0 else 1
+            rfs_svd['spatial'][sub_type].append(sign * np.reshape(u[:, 0], (y_pix, x_pix)))
+            if scale == 'spatial':
+                rfs_svd['spatial'][sub_type][-1] *= s[0]
+            rfs_svd['temporal'][sub_type].append(sign * v[0, :])
+            if scale == 'temporal':
+                rfs_svd['temporal'][sub_type][-1] *= s[0]
+    return rfs_svd
+
+
 def find_peak_responses(rfs):
     """
     Find peak response across time, space, and receptive field type ("on" and "off")
@@ -365,6 +399,132 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
     plt.show()
 
     return splt
+
+
+def plot_rfs_by_depth_wrapper(
+        alf_path, axes=None, cluster_ids=[], method='corr', binsize=0.025, lags=8, n_depths=30,
+        use_svd=False):
+    """
+    Wrapper function to load spikes and rf stimulus info, aggregate clusters over depths, compute
+    rfs, and plot spatial components as a function of linear depth on probe. Must have ibllib
+    package in python path in order to use alf loaders.
+
+    Parameters
+    ----------
+    alf_path : str
+        absolute path to experimental session directory
+    axes : array-like object of matplotlib axes or `NoneType`, optional
+        axes in which to plot the rfs; if `NoneType`, a figure with appropriate axes is created
+    cluster_ids : array-like, optional
+        clusters to use in rf calculation; if empty, all clusters are used
+    method : str, optional
+        method for calculating receptive fields
+        'sta': method used in Durand et al 2016
+        'corr': reverse correlation method; uses convolution and is therefor faster than `'sta'`
+    binsize : float, optional
+        width of bins in seconds for rf computation
+    lags : int, optional
+        number of bins after pixel flip to use for rf computation
+    n_depths : int, optional
+        number of bins to divide probe depth into for aggregating clusters
+    use_svd : bool, optional
+        `True` plots 1st spatial SVD component of rf; `False` plots time lag with peak response
+
+    Returns
+    -------
+    dict
+        depths and associated receptive fields
+
+    """
+
+    import alf.io as ioalf
+
+    # load objects
+    spikes = ioalf.load_object(alf_path, 'spikes')
+    clusters = ioalf.load_object(alf_path, 'clusters')
+    rfmap = ioalf.load_object(alf_path, '_iblcertif_.rfmap')
+    rf_stim_times = rfmap['rfmap.times.00']
+    rf_stim = rfmap['rfmap.stims.00'].astype('float')
+
+    # combine clusters across similar depths
+    min_depth = np.min(clusters['depths'])
+    max_depth = np.max(clusters['depths'])
+    depth_limits = np.linspace(min_depth - 1, max_depth, n_depths + 1)
+    if len(cluster_ids) == 0:
+        times_agg = spikes.times
+        depths_agg = spikes.depths
+    else:
+        clust_mask = np.isin(spikes.clusters, np.array(cluster_ids))
+        times_agg = spikes.times[clust_mask]
+        depths_agg = spikes.depths[clust_mask]
+    clusters_agg = np.full(times_agg.shape, fill_value=np.nan)
+    for d in range(n_depths):
+        lo_limit = depth_limits[d]
+        up_limit = depth_limits[d + 1]
+        clusters_agg[(lo_limit < depths_agg) & (depths_agg <= up_limit)] = d
+
+    print('computing receptive fields...', end='')
+    if method == 'sta':
+        # method in Durand et al 2016
+        rfs = compute_rfs(
+            times_agg, clusters_agg, rf_stim_times, rf_stim, lags=lags, binsize=binsize)
+    elif method == 'corr':
+        # reverse correlation method
+        rfs = compute_rfs_corr(
+            times_agg, clusters_agg, rf_stim_times, rf_stim, lags=lags, binsize=binsize)
+    else:
+        raise NotImplementedError
+
+    # get single spatial footprint of rf
+    if use_svd:
+        rfs_spatial = compute_rf_svds(rfs, scale='spatial')['spatial']
+    else:
+        rfs_spatial = find_peak_responses(rfs)
+    rfs_interp = interpolate_rfs(rfs_spatial, bin_scale=0.5)
+    print('done')
+
+    plot_rfs_by_depth(rfs_interp, axes=axes)
+
+    return {'depths': depths_agg, 'rfs': rfs_interp}
+
+
+def plot_rfs_by_depth(rfs, axes=None):
+    """
+
+    Parameters
+    ----------
+    rfs : dict
+        dict of "on" and "off" rfs (values are lists); each rf is of shape `(ypix, xpix)`
+    axes : array of matplotlib axes or NoneType, optional
+        matplotlib axes to plot into; if `NoneType`, a figure will be created and returned
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        matplotlib figure handle if `axes=None`
+
+    """
+
+    if axes is None:
+        fig, axes = plt.subplots(1, len(rfs.keys()), figsize=(3, 12))
+
+    for i, sub_type in enumerate(rfs.keys()):
+        rf_array = np.vstack(rfs[sub_type])
+        n_rfs = len(rfs[sub_type])
+        ypix, xpix = rfs[sub_type][0].shape
+        vmin = np.min(rf_array)
+        vmax = np.max(rf_array)
+        imshow_kwargs = {'vmin': vmin, 'vmax': vmax, 'aspect': 'auto', 'cmap': 'Greys_r'}
+        axes[i].imshow(rf_array, **imshow_kwargs)
+        axes[i].set_xticks([])
+        axes[i].set_yticks([])
+        axes[i].set_title('%s subfield' % sub_type.upper())
+        for n in range(1, n_rfs):
+            axes[i].axhline(n * ypix - 1, 0, xpix, color=[0, 0, 0], linewidth=0.5)
+    plt.tight_layout()
+
+    if axes is None:
+        return fig
 
 
 if __name__ == '__main__':
