@@ -398,9 +398,9 @@ def plot_polar_psth_and_rasters(
 
 
 def plot_grating_figures(
-    session_path, cluster_ids_summary, cluster_ids_selected, save_dir=None, format='png',
-    pre_time=0.5, post_time=2.5, bin_size=0.005, smoothing=0.025, n_rand_clusters=20,
-    only_summary=False, only_selected=False):
+        session_path, cluster_ids_summary, cluster_ids_selected, save_dir=None, format='png',
+        pre_time=0.5, post_time=2.5, bin_size=0.005, smoothing=0.025, n_rand_clusters=20,
+        plot_summary=True, plot_selected=True):
     """
     Produces two summary figures for the oriented grating protocol; the first summary figure
     contains plots that compare different measures during the first and second grating protocols,
@@ -413,9 +413,11 @@ def plot_grating_figures(
     session_path : str
         absolute path to experimental session directory
     cluster_ids_summary : list
-        the clusters for which to plot summary psths/rasters
+        the clusters for which to plot summary psths/rasters; if empty, all clusters with responses
+        during the grating presentations are used
     cluster_ids_selected : list
-        the clusters for which to plot individual psths/rasters
+        the clusters for which to plot individual psths/rasters; if empty, `n_rand_clusters` are
+        randomly chosen
     save_dir : str or NoneType
         if NoneType, figures are displayed; else a string defining the absolute filepath to the
         directory in which figures will be saved
@@ -432,10 +434,10 @@ def plot_grating_figures(
     n_rand_clusters : int
         the number of random clusters to choose for which to plot psths/rasters if
         `cluster_ids_slected` is empty
-    only_summary : bool
-        a flag for only plotting the plots in the summary figure
-    only_selected : bool
-        a flag for only plotting the plots in the selected units figure
+    plot_summary : bool
+        a flag for plotting the summary figure
+    plot_selected : bool
+        a flag for plotting the selected units figure
 
     Returns
     -------
@@ -475,11 +477,13 @@ def plot_grating_figures(
     # --------------------------
     print('calcuating mean responses to gratings...', end='', flush=True)
     # calculate mean responses to gratings
-    mask_clust = np.isin(spikes.clusters, cluster_ids)  # update mask for responsive clusters
     mask_times = np.full(spikes.times.shape, fill_value=False)
     for epoch in epochs:
         mask_times |= (spikes.times >= grating_times[epoch].min()) & \
                       (spikes.times <= grating_times[epoch].max())
+    if len(cluster_ids) == 0:
+        cluster_ids = np.unique(spikes.clusters[mask_times])
+    mask_clust = np.isin(spikes.clusters, cluster_ids)
     resp = {epoch: [] for epoch in epochs}
     for epoch in epochs:
         resp[epoch] = are_neurons_responsive(
@@ -564,7 +568,7 @@ def plot_grating_figures(
     print('done')
     
     # compute rasters for entire orientation sequence at beg/end epoch
-    if not(only_selected):
+    if plot_summary:
         print('computing rasters for example stimulus sequences...', end='', flush=True)
         r = {epoch: None for epoch in epochs}
         r_times = {epoch: None for epoch in epochs}
@@ -589,10 +593,10 @@ def plot_grating_figures(
     # -------------------------------------------------
     # compute psths and rasters for individual clusters
     # -------------------------------------------------
-    if not(only_summary):
+    if plot_selected:
         print('computing psths and rasters for clusters...', end='', flush=True)
         if len(cluster_ids_selected) == 0:
-            if (n_rand_clusters < len(cluster_ids)):
+            if n_rand_clusters < len(cluster_ids):
                 cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
             else:
                 cluster_idxs = cluster_ids
@@ -620,7 +624,7 @@ def plot_grating_figures(
     # output figures
     # --------------
     print('producing figures...', end='')
-    if not(only_selected):
+    if plot_summary:
         if save_dir is None:
             save_file = None
         else:
@@ -631,7 +635,7 @@ def plot_grating_figures(
             ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
             ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
 
-    if not(only_summary):
+    if plot_selected:
         if save_dir is None:
             save_file = None
         else:
@@ -646,7 +650,7 @@ def plot_grating_figures(
     # -----------------------------
     metrics = {
         'cluster_ids': cluster_ids,
-        'selected_cluster_ids': [] if only_summary else cluster_idxs,
+        'selected_cluster_ids': cluster_idxs if plot_selected else [],
         'osi': osi,
         'orientation_pref': ori_pref,
         'frac_resp_by_depth': responsive,

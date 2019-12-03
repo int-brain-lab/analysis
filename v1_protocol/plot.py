@@ -299,36 +299,16 @@ def gen_figures(
     if grating_response_summary or grating_response_selected:
         cluster_ids_summary_vr, cluster_ids_selected_vr = \
             orientation.get_vr_clusters(alf_probe_path, n_selected_cl)
-    # Generate both summary & selected grating figures
-        if grating_response_summary and grating_response_selected:
-            orientation.plot_grating_figures(
-                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-                post_time=grating_response_params['post_t'],
-                bin_size=grating_response_params['bin_t'],
-                smoothing=grating_response_params['sigma'],
-                cluster_ids_summary=cluster_ids_summary_vr,
-                cluster_ids_selected=cluster_ids_selected_vr,
-                n_rand_clusters=5)
-        # Generate just summary grating figure
-        elif grating_response_summary:
-            orientation.plot_grating_figures(
-                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-                post_time=grating_response_params['post_t'],
-                bin_size=grating_response_params['bin_t'],
-                smoothing=grating_response_params['sigma'],
-                cluster_ids_summary=cluster_ids_summary_vr,
-                cluster_ids_selected=cluster_ids_selected_vr,
-                n_rand_clusters=5, only_summary=True)
-        # Generate just selected grating figure
-        elif grating_response_selected:
-            orientation.plot_grating_figures(
-                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-                post_time=grating_response_params['post_t'],
-                bin_size=grating_response_params['bin_t'],
-                smoothing=grating_response_params['sigma'],
-                cluster_ids_summary=cluster_ids_summary_vr,
-                cluster_ids_selected=cluster_ids_selected_vr,
-                n_rand_clusters=5, only_selected=True)
+        orientation.plot_grating_figures(
+            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+            plot_summary=grating_response_summary,
+            plot_selected=grating_response_selected,
+            post_time=grating_response_params['post_t'],
+            bin_size=grating_response_params['bin_t'],
+            smoothing=grating_response_params['sigma'],
+            cluster_ids_summary=cluster_ids_summary_vr,
+            cluster_ids_selected=cluster_ids_selected_vr,
+            n_rand_clusters=5)
 
     # Generate summary unit metrics figure
     if unit_metrics_summary:
