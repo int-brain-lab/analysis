@@ -69,12 +69,12 @@ def gen_figures(
     eid, probe='probe00', cluster_ids_summary=[], cluster_ids_selected=[], n_selected_cl=5,
     extract_stim_info=True, grating_response_summary=True, grating_response_selected=False,
     unit_metrics_summary=True, unit_metrics_selected=False,
-    summary_metrics = ['s', 'feat_vars', 'cv_fr', 'spks_missed', 'isi_viol', 'max_drift',
-                       'cum_drift'],
+    summary_metrics = ['feat_vars', 'cv_fr', 'spks_missed', 'isi_viol', 'max_drift', 'cum_drift'],
     selected_metrics = ['cv_fr', 'spks_missed', 'isi_viol', 'amp_heatmap'],
     auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     summary_metrics_params={'bins': 'auto', 'rp': 0.002, 'spks_per_bin': 20, 'sigma': 5},
+    selected_metrics_params={'spks_per_bin': 20, 'sigma': 5},
     rf_params={'bin_sz': .05, 'lags': 4, 'method': 'corr'},
     save_dir=None):
     '''
@@ -139,11 +139,17 @@ def gen_figures(
                     Hill et al. (2011) J Neurosci 31: 8699-8705)
         'rp' : the refractory period (in s) of the unit. Used to calculate `max_fp`
     summary_metrics_params : dict
-        Parameters used for the summary metrics figures:
+        Parameters used for the summary metrics figure:
         'bins' : the number of bins used in computing the histograms. Can be a string, which
                    specifies the method to use to compute the optimal number of bins (see 
                    `numpy.histogram_bin_edges`).
         'rp' : the refractory period (in s) of the unit
+        'spks_per_bin' : The number of spikes per bin from which to compute the spike feature
+                         histogram for `spks_missed`.
+        'sigma' : The standard deviation for the gaussian kernel used to compute the pdf from the
+                  spike feature histogram for `spks_missed`.
+    selected_metrics_params : dict
+        Parameters used for the selected metrics figure:
         'spks_per_bin' : The number of spikes per bin from which to compute the spike feature
                          histogram for `spks_missed`.
         'sigma' : The standard deviation for the gaussian kernel used to compute the pdf from the
@@ -441,10 +447,11 @@ def um_summary_plots(clusters, metrics, alf_probe_path, ephys_file_path, m, metr
     rp = metrics_params['rp']
     spks_per_bin = metrics_params['spks_per_bin']
     sigma = metrics_params['sigma']
+    n_ch = metrics_params['n_ch']
     
     # 4 axes per row of figure
     ncols = 4
-    nrows = np.int(np.ceil(len(summary_metrics) / ncols)) + 1
+    nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
     fig = plt.figure()
     n_cur_ax = 5
 
@@ -467,7 +474,8 @@ def um_summary_plots(clusters, metrics, alf_probe_path, ephys_file_path, m, metr
     if 's' in metrics:  # waveform spatiotemporal correlation values hist
         s_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
         n_cur_ax += 1
-        s = s_hist(ephys_file, spks_b, clstrs_b, units=clusters, bins=bins, ax=s_ax)
+        s = s_hist(ephys_file_path, spks_b, clstrs_b, units=clusters, bins=bins, n_ch=n_ch,
+                   ax=s_ax)
         m['s'] = s
     if 'cv_fr' in metrics:  # coefficient of variation of firing rates hist
         cv_fr_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
@@ -477,7 +485,9 @@ def um_summary_plots(clusters, metrics, alf_probe_path, ephys_file_path, m, metr
     if 'spks_missed' in metrics:  # fraction missing spikes hist
         spks_missed_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
         n_cur_ax += 1
-        fraction_missing = spks_missed_hist(spks_b, units=clusters, bins=bins, ax=spks_missed_ax)
+        fraction_missing = spks_missed_hist(
+            spks_b, units=clusters, bins=bins, spks_per_bin=spks_per_bin, sigma=sigma,
+            ax=spks_missed_ax)
         m['fraction_missing'] = fraction_missing
     if 'isi_viol' in metrics:  # fraction isi violations hist
         isi_viol_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
@@ -496,7 +506,8 @@ def um_summary_plots(clusters, metrics, alf_probe_path, ephys_file_path, m, metr
         m['cum_drift'] = cum_drift
 
 
-def um_selected_plots(clusters, metrics, alf_probe_path, ephys_file_path, m, save_dir=None):
+def um_selected_plots(clusters, metrics, alf_probe_path, ephys_file_path, m, metrics_params,
+                      save_dir=None):
     '''
     Computes/creates metrics and plots in a figure for specified units in a recording session.
 
@@ -539,28 +550,54 @@ def um_selected_plots(clusters, metrics, alf_probe_path, ephys_file_path, m, sav
     --------
     '''
 
+    # Extract parameter values.
+    spks_per_bin = metrics_params['spks_per_bin']
+    sigma = metrics_params['sigma']
+    rp = metrics_params['rp']
+    bins = metrics_params['bins']
+    n_ch = metrics_params['n_ch']
 
-    # rows are units, columns are features
-    nrows = len(clusters)
-    ncols = len(metrics)
+    # different units will be in columns, and different features in rows
+    nrows = len(metrics)
+    ncols = len(clusters)
     fig = plt.figure()
     n_cur_ax = 1
+    
+    # get alf objects for this session (needed for some metrics calculations below)
+    spks_b = aio.load_object(alf_probe_path, 'spikes')
+    clstrs_b = aio.load_object(alf_probe_path, 'clusters')    
 
-    # TODO figure out best way to do this. complicated b/c `bb.plot.single_unit_wf_comp` creates
+    # TODO think of best way to do this. complicated b/c `bb.plot.single_unit_wf_comp` creates
     # 2 * n_ch axes
     if 's' in metrics:  # waveforms plot
         pass  
     if 'cv_fr' in metrics:  # coefficient of variation of firing rates plot
-        
+        for unit in clusters:
+            cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+            bb.plot.firing_rate(spks_b, unit, ax=cur_ax)
+            n_cur_ax += 1
     if 'spks_missed' in metrics:  # pdf of missing spikes plot
-        
+        for unit in clusters:
+            cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+            bb.plot.feat_cutoff(spks_b, unit, spks_per_bin=spks_per_bin, sigma=sigma, ax=[cur_ax])
+            n_cur_ax += 1
     if 'isi_viol' in metrics:  # isi histogram
-        
+        for unit in clusters:
+            cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+            _, isis = bb.metrics.isi_viol(spks_b, unit, rp=rp)
+            cur_ax.hist(isis, bins=bins)
+            cur_ax.set_xlabel('ISI Time (s)')
+            cur_ax.set_ylabel('Count')
+            cur_ax.set_title('ISI Histogram for Unit {}'.format(unit))
+            n_cur_ax += 1
     if 'amp_heatmap' in metrics:  # amplitude heatmap
-        
+        for unit in clusters:
+            cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+            bb.plot.amp_heatmap(ephys_file_path, spks_b, clstrs_b, unit, n_ch=n_ch, ax=cur_ax)
+            n_cur_ax += 1
     # TODO add this
     if 'peth' in metrics:  # peth
-        pass  
+        pass
 
 
 def s_hist(ephys_file, spks_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30000,
@@ -711,8 +748,7 @@ def cv_fr_hist(spks_b, units=None, bins='auto', ax=None):
     return cv_fr
 
 
-def spks_missed_hist(spks_b, units=None, spks_per_bin=spks_per_bin, sigma=sigma, bins='auto',
-                     ax=None):
+def spks_missed_hist(spks_b, units=None, spks_per_bin=20, sigma=5, bins='auto', ax=None):
     '''
     Plots a histogram of the approximate fraction of spikes missing from a spike feature
     distribution (assuming the distribution is symmetric) for all `units`.
