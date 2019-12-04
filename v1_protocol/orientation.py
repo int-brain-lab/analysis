@@ -422,9 +422,10 @@ def plot_grating_figures(
         if `clusters` is [].
     :param only_summary: A flag for only plotting the plots in the summary figure
     :param only_selected: A flag for only plotting the plots in the selected units figure
-    :return: None
+    :return fig_list: A list containing the figures generated
     """
 
+    fig_list = []
     cluster_ids = cluster_ids_summary
     cluster_idxs = cluster_ids_selected
     epochs = ['beg', 'end']
@@ -604,20 +605,23 @@ def plot_grating_figures(
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
             save_file = os.path.join(save_dir, 'grating_summary_figure.' + format)
-        plot_summary_figure(
+        fig_rf_summary = plot_summary_figure(
             ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
             ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
+        fig_list.extend([fig_rf_summary])
 
     if not(only_summary):
         if save_dir is None:
             save_file = None
         else:
             save_file = os.path.join(save_dir, 'grating_random_responses.' + format)
-        plot_psths_and_rasters(
+        fig_rf_selected = plot_psths_and_rasters(
             mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
             off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
         print('done')
+        fig_list.extend([fig_rf_selected])
 
+    return fig_list
 
 def plot_summary_figure(
         depths, ratios, responsive, peths_avg, osi, ori_pref, responses_mean, rasters,
@@ -635,7 +639,7 @@ def plot_summary_figure(
     :param responses_mean:
     :param rasters:
     :param save_file:
-    :return:
+    :return fig:
     """
 
     import seaborn as sns
@@ -739,6 +743,8 @@ def plot_summary_figure(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
+    
+    return fig
 
 
 def plot_psths_and_rasters(
@@ -769,6 +775,7 @@ def plot_psths_and_rasters(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
+    return fig
 
 
 def get_vr_clusters(session_path, n_selected_cl):

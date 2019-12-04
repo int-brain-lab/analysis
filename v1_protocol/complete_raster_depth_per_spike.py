@@ -56,7 +56,7 @@ def scatter_raster(spikes, clusters=[], boundary_times=None, downsample_factor=2
     col_dict = dict(zip(uclusters, cols_cat))
     cols_int =[col_dict[x] for x in z]
 
-    plt.scatter(x, y, marker='o', s=0.01, c = cols_int)
+    ax.scatter(x, y, marker='o', s=0.01, c = cols_int)
 
     # add vertical lines indicating stimulus type changes
     if boundary_times != None:
@@ -66,10 +66,10 @@ def scatter_raster(spikes, clusters=[], boundary_times=None, downsample_factor=2
 #            plt.axvline(boundary_times[i][1], linestyle='--', c='r')
 #            plt.text(boundary_times[i][1]+0.1,0,i+', end',rotation=90) 
 
-    plt.ylabel('depth [um]')
-    plt.xlabel('time [sec]')
-    plt.title('downsample factor: %s' %downsample_factor)  
-    plt.show()
+    ax.set_ylabel('depth [um]')
+    ax.set_xlabel('time [sec]')
+    ax.set_title('downsample factor: %s' %downsample_factor)  
+    return fig
 
 
 def get_stimulus_type_boundary_times(alf_path):
@@ -103,8 +103,8 @@ def scatter_with_boundary_times(alf_probe_path, clusters=[]):
     #eid = one.search(subject='ZM_2407', date='2019-11-05', number=3) #depth per spike but no times
     T2 = get_stimulus_type_boundary_times(alf_probe_path)
     spikes = alf.io.load_object(alf_probe_path, 'spikes')
-    scatter_raster(spikes, clusters=clusters, boundary_times=T2)
-
+    fig = scatter_raster(spikes, clusters=clusters, boundary_times=T2)
+    return fig
 
 
 #one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
