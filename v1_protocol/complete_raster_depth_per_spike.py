@@ -6,7 +6,7 @@ import alf.io
 import scipy.stats
 plt.ion()
 
-def scatter_raster(spikes, clusters=[], boundary_times=None, downsample_factor=25):
+def scatter_raster(spikes, clusters=[], boundary_times=None, ax=None, downsample_factor=25):
  
     '''
     Create a scatter plot, time vs depth for each spike
@@ -48,8 +48,8 @@ def scatter_raster(spikes, clusters=[], boundary_times=None, downsample_factor=2
         x = Times[::downsample_factor]
         y = Depths[::downsample_factor]
    
-
-    fig, ax = plt.subplots() 
+    if ax is None:
+        ax = plt.gca()
     
     cols = ['c','b','g','y','k','r','m']
     cols_cat = (cols*int(len(uclusters)/len(cols)+10))[:len(uclusters)]
@@ -68,9 +68,7 @@ def scatter_raster(spikes, clusters=[], boundary_times=None, downsample_factor=2
 
     ax.set_ylabel('depth [um]')
     ax.set_xlabel('time [sec]')
-    ax.set_title('downsample factor: %s' %downsample_factor)  
-    return fig
-
+    ax.set_title('downsample factor: %s' %downsample_factor)
 
 def get_stimulus_type_boundary_times(alf_path):
 
@@ -97,14 +95,13 @@ def get_stimulus_type_boundary_times(alf_path):
     return T2
 
 
-def scatter_with_boundary_times(alf_probe_path, clusters=[]):
+def scatter_with_boundary_times(alf_probe_path, clusters=None, ax=None):
 
     #eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)
     #eid = one.search(subject='ZM_2407', date='2019-11-05', number=3) #depth per spike but no times
     T2 = get_stimulus_type_boundary_times(alf_probe_path)
     spikes = alf.io.load_object(alf_probe_path, 'spikes')
-    fig = scatter_raster(spikes, clusters=clusters, boundary_times=T2)
-    return fig
+    scatter_raster(spikes, clusters=clusters, boundary_times=T2, ax=ax)
 
 
 #one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)

@@ -778,7 +778,7 @@ def plot_psths_and_rasters(
     return fig
 
 
-def get_vr_clusters(session_path, n_selected_cl):
+def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
     '''
     Gets visually responsive clusters
     
@@ -786,6 +786,9 @@ def get_vr_clusters(session_path, n_selected_cl):
     ----------
     session_path : str
         The path to to the appropriate 'alf/probe' directory.
+    clusters : ndarray
+        The clusters to use to get a subset of visually responsive clusters. (if `None`, take
+        visually response subset from all clusters from recording session.)
     n_selected_cl : int
         The number of clusters to return in `vr_clusters_selected`
     
@@ -819,12 +822,13 @@ def get_vr_clusters(session_path, n_selected_cl):
     # find visually responsive clusters
     # ---------------------------------
     epochs = ['beg', 'end']
-    # speed up downstream computations by restricting data to relevant time periods
-    mask_times = np.full(spikes.times.shape, fill_value=False)
-    for epoch in epochs:
-        mask_times |= (spikes.times >= grating_times[epoch].min()) & \
-                      (spikes.times <= grating_times[epoch].max())
-    clusters = np.unique(spikes.clusters[mask_times])
+    if clusters is None:  # use all clusters
+        # speed up downstream computations by restricting data to relevant time periods
+        mask_times = np.full(spikes.times.shape, fill_value=False)
+        for epoch in epochs:
+            mask_times |= (spikes.times >= grating_times[epoch].min()) & \
+                          (spikes.times <= grating_times[epoch].max())
+        clusters = np.unique(spikes.clusters[mask_times])
 
     # only calculate responsiveness for clusters that were active during gratings
     mask_clust = np.isin(spikes.clusters, clusters)
