@@ -629,23 +629,23 @@ def plot_grating_figures(
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
             save_file = os.path.join(save_dir, 'grating_summary_figure.' + format)
-        fig_rf_summary = plot_summary_figure(
+        fig_gr_summary = plot_summary_figure(
             ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
             ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
-        fig_rf_summary.suptitle('Summary Grating Responses')
-        fig_dict['fig_rf_summary'] = fig_rf_summary
+        fig_gr_summary.suptitle('Summary Grating Responses')
+        fig_dict['fig_gr_summary'] = fig_gr_summary
 
     if plot_selected:
         if save_dir is None:
             save_file = None
         else:
             save_file = os.path.join(save_dir, 'grating_random_responses.' + format)
-        fig_rf_selected = plot_psths_and_rasters(
+        fig_gr_selected = plot_psths_and_rasters(
             mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
             off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
-        fig_rf_selected.suptitle('Selected Units Grating Responses')
+        fig_gr_selected.suptitle('Selected Units Grating Responses')
         print('done')
-        fig_dict['fig_rf_selected'] = fig_rf_selected
+        fig_dict['fig_gr_selected'] = fig_gr_selected
     
     # -----------------------------
     # package up and return metrics

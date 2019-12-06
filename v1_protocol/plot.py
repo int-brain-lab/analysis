@@ -47,10 +47,6 @@ from pathlib import Path
 import shutil
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import seaborn as sns
-import scipy.stats as stats
-import pandas as pd
 from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
@@ -74,7 +70,7 @@ def gen_figures(
     selected_metrics_params={'spks_per_bin': 20, 'sigma': 5, 'rp': 0.002, 'bins': 'auto',
                              'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
                              'n_ch_probe': 385, 'isi_win': 0.01},
-    rf_params={'method': 'corr', 'bin_sz': 0.025, 'lags': 8, 'n_depths': 30, 'use_svd': False},
+    rf_params={'method': 'corr', 'binsize': 0.025, 'lags': 8, 'n_depths': 30, 'use_svd': False},
     save_dir=None):
     '''
     Generates figures for the V1 certification protocol for a given eid, probe, and clusters from a
@@ -199,11 +195,51 @@ def gen_figures(
     Returns
     -------
     fig_h : dict
-        Contains the handles to the figures generated.
+        Contains the handles to the figures generated. Possible keys:
+            'fig_gr_summary' : the grating responses summary figure
+            'fig_gr_selected' : the grating responses selected units figure
+            'fig_um_summary' : the unit metrics summary figure
+            'fig_um_selected' : the unit metrics selected figure
     m : bunch
-        A bunch containing metrics as fields.
+        A bunch containing metrics as fields. Possible keys:
+            'osi' : dict
+                The orientation selectivity index of units in
+                `cluster_sets['cluster_ids_summary_vr]'` at the beginning and end of session.
+                Possible keys:
+                    'beg'
+                    'end'
+            'orientation_pref' : dict
+                The orientation preference of units in `cluster_sets['cluster_ids_summary_vr]'` at
+                the begininng and end of session. Possible keys:
+                    'beg'
+                    'end'
+            'frac_resp_by_depth' : dict
+                The fraction of units in `cluster_sets['cluster_ids_summary_vr]'` responsive by 
+                depth at beginning or end of session. Possible keys:
+                    'fraction' : dict
+                        The fraction of units responsive at the beginning and end of a session, at
+                        the given depths in `m['frac_resp_by_depth']['depth']`. Possible keys:
+                            'beg' : ndarray
+                                The fraction responsive at each depth at session beginning.
+                            'end' : ndarray
+                                The fraction responsive at each depth at session end.
+                    'depth' : ndarray
+                        The depths used to compute the fraction responsive by depth.
+            'var_amps' : ndarray
+                The variance of the amplitude distribution for each unit in
+                `cluster_sets['cluster_ids_summary']`.
+            'fraction_missing' : ndarray 
+                Estimated fraction missing spikes for each unit in
+                `cluster_sets['cluster_ids_summary']`.
+            'isi_viol' : ndarray 
+                Fraction of isi violations for each unit in `cluster_sets['cluster_ids_summary']`.
+            'max_drift' : ndarray
+                Max drift values for each unit in `cluster_sets['cluster_ids_summary']`.
+            'cum_drift' : ndarray
+                Cumulative drift values for each unit in `cluster_sets['cluster_ids_summary']`.
     cluster_sets : dict
         Contains the ids of different sets of clusters used to generate the different figures.
+        Possible keys 
 
     See Also
     --------
@@ -337,12 +373,14 @@ def gen_figures(
                 shutil.copy(os.path.join(alf_path, i), alf_probe_path)
     # Get units bunch.
     spks_b = aio.load_object(alf_probe_path, 'spikes')
+    print('Re-formatting alf data to save time during plotting. May take a few minutes...', 
+          flush=True, end='')
     units_b = bb.processing.get_units_bunch(spks_b)
-
+    print('done')
     # Set `cluster_ids_summary` and `cluster_ids_selected` #
     #------------------------------------------------------#
     if cluster_ids_summary is None:  # filter all clusters according to `auto_filt_cl_params`
-        print("'cluster_ids_summary' left empty, selecting filtered units.'", flush=True)
+        print("'cluster_ids_summary' left empty, selecting filtered units.")
         T = spks_b['times'][-1] - spks_b['times'][0]
         cluster_ids_summary = \
             np.where(bb.processing.filter_units(units_b, T, params=auto_filt_cl_params))[0]
@@ -351,7 +389,7 @@ def gen_figures(
                              'auto_filt_cl_params'.")
     if cluster_ids_selected is None:
         print("'cluster_ids_selected' left empty, selecting up to {} units from\
-              'cluster_ids_summary'.".format(n_selected_cl), flush=True)
+              'cluster_ids_summary'.".format(n_selected_cl))
         if len(cluster_ids_summary) <= (n_selected_cl):  # select all of `cluster_ids_summary`
             cluster_ids_selected = cluster_ids_summary
         else:  # select up to 5 units from `cluster_ids_summary`
@@ -364,6 +402,7 @@ def gen_figures(
     # Get visually responsive clusters and generate grating response figures #
     #------------------------------------------------------------------------#
     if grating_response_summary or grating_response_selected:
+        print('Generating grating response figure(s)...', flush=True, end='')
         # Get visually responsive clusters as subset of `cluster_ids_summary`
         cluster_ids_summary_vr, cluster_ids_selected_vr = \
             orientation.get_vr_clusters(alf_probe_path, clusters=cluster_ids_summary,
@@ -381,27 +420,32 @@ def gen_figures(
             n_rand_clusters=n_selected_cl,
             plot_summary=grating_response_summary,
             plot_selected=grating_response_selected)
-        fig_h.update(grating_figs) = grating_figs[0] 
+        fig_h.update(grating_figs) 
         m.update(grating_metrics)
         fig_list_name.extend(['grating_response_summary', 'grating_response_selected']) 
+        print('done')
 
     # Generate summary unit metrics figure #
     #--------------------------------------#
     if unit_metrics_summary:
+        print('Generating summary metrics figure...', flush=True, end='')
         fig_um_summary, m = um_summary_plots(
-            cluster_ids_summary, summary_metrics, alf_probe_path, ephys_file_path, m,
+            cluster_ids_summary, summary_metrics, units_b, alf_probe_path, ephys_file_path, m,
             summary_metrics_params, rf_params, save_dir=save_dir)
         fig_h['fig_um_summary'] = fig_um_summary
         fig_list_name.extend(['unit_metrics_summary'])
+        print('done')
     
     # Generate selected unit metrics figure #
     #---------------------------------------#
     if unit_metrics_selected:
+        print('Generating selected units metrics figure...', flush=True, end='')
         fig_um_selected, m = um_selected_plots(
-            cluster_ids_selected, selected_metrics, alf_probe_path, ephys_file_path, m,
+            cluster_ids_selected, selected_metrics, units_b, alf_probe_path, ephys_file_path, m,
             selected_metrics_params, save_dir=save_dir)
         fig_h['fig_um_selected'] = fig_um_selected
         fig_list_name.extend(['unit_metrics_selected'])
+        print('done')
     
     print('\n\nFinished generating figures {} for session {}'.format(fig_list_name, session_path))
     
@@ -511,7 +555,6 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
     fig = plt.figure(figsize=[16,8])
     fig.set_tight_layout(False)
-    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.7, hspace=0.4)
     fig.suptitle('Summary Metrics')
     n_cur_ax = ncols + 1
 
@@ -519,7 +562,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     raster_ax = fig.add_subplot(nrows, 2, 1)
     raster_depth.scatter_with_boundary_times(alf_probe_path, clusters, ax=raster_ax)  # raster
     # Always output rf maps as second half of first row
-    rf_map_ax = [fig.add_subplot(nrows, ncols, 3), fig.add_subplot(nrows, ncols, 4)]
+    rf_map_ax = [fig.add_subplot(nrows, 4, 3), fig.add_subplot(nrows, 4, 4)]
     rf_mapping.plot_rfs_by_depth_wrapper(  # rf maps
         alf_probe_path, axes=rf_map_ax, cluster_ids=clusters, method=rf_method, binsize=rf_binsize,
         lags=rf_lags, n_depths=rf_n_depths, use_svd=use_svd)  
@@ -566,7 +609,9 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         cum_drift = cum_drift_hist(units_b, units=clusters, bins=bins, ax=cum_drift_ax)
         m['cum_drift'] = cum_drift
         n_cur_ax += 1
-
+    
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.4, hspace=0.4)
+    return fig, m
 
 def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path, m,
                       metrics_params, save_dir=None):
@@ -660,7 +705,6 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     ncols = len(clusters)
     fig = plt.figure(figsize=[16,8])
     fig.set_tight_layout(False)
-    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.45, hspace=0.9)
     fig.suptitle('Selected Units Metrics')
     n_cur_ax = 1
     
@@ -717,6 +761,8 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     if 's' in metrics:  # waveforms plot
         pass
 
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.4, hspace=0.5)
+    return fig, m
 
 def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30000,
            n_ch_probe=385, dtype='int16', car=False, bins='auto', ax=None):
