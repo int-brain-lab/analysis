@@ -6,7 +6,6 @@ from oneibl.one import ONE
 from pathlib import Path
 import alf.io
 
-
 def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, binsize=0.025):
     """
     Compute receptive fields from locally sparse noise stimulus for all recorded neurons; uses a

@@ -9,7 +9,6 @@ try:
 except:
     from v1_protocol.responsive import are_neurons_responsive
 
-
 def bin_responses(spike_times, spike_clusters, stim_times, stim_values, output_fr=True):
     """
     Compute firing rates during grating presentation
@@ -478,13 +477,11 @@ def plot_grating_figures(
     # --------------------------
     print('calcuating mean responses to gratings...', end='', flush=True)
     # calculate mean responses to gratings
+    mask_clust = np.isin(spikes.clusters, cluster_ids)  # update mask for responsive clusters
     mask_times = np.full(spikes.times.shape, fill_value=False)
     for epoch in epochs:
         mask_times |= (spikes.times >= grating_times[epoch].min()) & \
                       (spikes.times <= grating_times[epoch].max())
-    if len(cluster_ids) == 0:
-        cluster_ids = np.unique(spikes.clusters[mask_times])
-    mask_clust = np.isin(spikes.clusters, cluster_ids)
     resp = {epoch: [] for epoch in epochs}
     for epoch in epochs:
         resp[epoch] = are_neurons_responsive(
@@ -597,7 +594,7 @@ def plot_grating_figures(
     if plot_selected:
         print('computing psths and rasters for clusters...', end='', flush=True)
         if len(cluster_ids_selected) == 0:
-            if n_rand_clusters < len(cluster_ids):
+            if (n_rand_clusters < len(cluster_ids)):
                 cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
             else:
                 cluster_idxs = cluster_ids
