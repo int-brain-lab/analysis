@@ -70,7 +70,7 @@ def gen_figures(
     extract_stim_info=True, grating_response_summary=True, grating_response_selected=False,
     unit_metrics_summary=True, unit_metrics_selected=False,
     summary_metrics = ['feat_vars', 'spks_missed', 'isi_viol', 'max_drift', 'cum_drift'],
-    selected_metrics = ['cv_fr', 'spks_missed', 'isi_viol', 'amp_heatmap'],
+    selected_metrics = ['isi_viol', 'spks_missed', 'cv_fr'],
     auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     summary_metrics_params={'bins': 'auto', 'rp': 0.002, 'spks_per_bin': 20, 'sigma': 5,
@@ -123,12 +123,12 @@ def gen_figures(
     selected_metrics : list (optional)
         The selected metrics plots to generate for the `unit_metrics_selected` figure for
         `cluster_ids_summary`. Possible values can include: 
-            's' : Plots of waveforms across `'n_ch'`.
-            'cv_fr' : Plot of the firing rate.
-            'spks_missed' : Plot of the pdf of the spike amplitude distribution.
             'isi_viol' : Plot of the histogram of isi violations.
+            'spks_missed' : Plot of the pdf of the spike amplitude distribution.
+            'cv_fr' : Plot of the firing rate.
             'amp_heatmap' : Plot of the amplitude heatmap.
             'peth' : Peri-event time histogram.
+            's' : Plots of waveforms across `'n_ch'`.
     grating_response_params : dict (optional)
         Parameters for generating rasters based on time of grating stimulus presentation:
             'pre_t' : float
@@ -528,11 +528,12 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
     fig = plt.figure(figsize=[16,8])
     fig.set_tight_layout(False)
-    fig.subplots_adjust(left=0.075, right=0.05, top=0.925, bottom=0.075, wspace=0.4, hspace=0.9)
-    n_cur_ax = 5
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.7, hspace=0.4)
+    fig.suptitle('Summary Metrics')
+    n_cur_ax = ncols + 1
 
     # Always output raster as half of first row 
-    raster_ax = fig.add_subplot(nrows, np.ceil(ncols/2), 1)
+    raster_ax = fig.add_subplot(nrows, 2, 1)
     raster_depth.scatter_with_boundary_times(alf_probe_path, clusters, ax=raster_ax)  # raster
     # Always output rf maps as second half of first row
     rf_map_ax = [fig.add_subplot(nrows, ncols, 3), fig.add_subplot(nrows, ncols, 4)]
@@ -655,7 +656,8 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     --------
     '''
 
-    # Extract parameter values.
+    # Extract parameter values #
+    #--------------------------#
     bins = metrics_params['bins']
     rp = metrics_params['rp']
     spks_per_bin = metrics_params['spks_per_bin']
@@ -667,12 +669,14 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     n_ch_probe = metrics_params['n_ch_probe']
     isi_win = metrics_params['isi_win']
 
-    # Different units will be in columns, and different features in rows
-    nrows = len(metrics)
+    # Set figure #
+    #------------#
+    nrows = len(metrics)  # units will be in columns, and different features in rows
     ncols = len(clusters)
     fig = plt.figure(figsize=[16,8])
     fig.set_tight_layout(False)
-    fig.subplots_adjust(left=0.075, right=0.05, top=0.925, bottom=0.075, wspace=0.4, hspace=0.9)
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.45, hspace=0.9)
+    fig.suptitle('Selected Units Metrics')
     n_cur_ax = 1
     
     # Get alf objects for this session (needed for some metrics calculations below)
