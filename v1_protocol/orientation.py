@@ -398,8 +398,8 @@ def plot_polar_psth_and_rasters(
 
 def plot_grating_figures(
     session_path, cluster_ids_summary, cluster_ids_selected, save_dir=None, format='png',
-    pre_time=0.5, post_time=2.5, bin_size=0.005, smoothing=0.025, n_rand_clusters=20,
-    only_summary=False, only_selected=False):
+        pre_time=0.5, post_time=2.5, bin_size=0.005, smoothing=0.025, n_rand_clusters=20,
+        plot_summary=True, plot_selected=True):
     """
     Produces two summary figures for the oriented grating protocol; the first summary figure
     contains plots that compare different measures during the first and second grating protocols,
@@ -407,25 +407,49 @@ def plot_grating_figures(
     clusters, PSTHs, firing rate histograms, etc. The second summary figure contains plots of polar
     PSTHs and corresponding rasters for a random subset of visually responsive clusters.
 
-    :param session_path: absolute path to 'alf/probe' directory
-    :param cluster_ids_summary: The clusters for which to plot summary psths/rasters.
-    :param cluster_ids_selected: The clusters for which to plot single unit psths/rasters.
-    :param save_dir: if NoneType, figures are displayed; else a string defining the absolute
-        filepath to the directory in which figures will be saved
-    :param format: file format, i.e. 'png' | 'pdf' | 'jpg'
-    :param pre_time: time (sec) to plot before grating presentation onset
-    :param post_time: time (sec) to plot after grating presentation onset (should include length of
-        stimulus)
-    :param bin_size: size of bins for raster plots/psths
-    :param smoothing: size of smoothing kernel (sec)
-    :param n_rand_clusters: The number of random clusters to choose for which to plot psths/rasters
-        if `clusters` is [].
-    :param only_summary: A flag for only plotting the plots in the summary figure
-    :param only_selected: A flag for only plotting the plots in the selected units figure
-    :return fig_list: A list containing the figures generated
+    Parameters
+    ----------
+    session_path : str
+        absolute path to experimental session directory
+    cluster_ids_summary : list
+        the clusters for which to plot summary psths/rasters; if empty, all clusters with responses
+        during the grating presentations are used
+    cluster_ids_selected : list
+        the clusters for which to plot individual psths/rasters; if empty, `n_rand_clusters` are
+        randomly chosen
+    save_dir : str or NoneType
+        if NoneType, figures are displayed; else a string defining the absolute filepath to the
+        directory in which figures will be saved
+    format : str
+        file format, i.e. 'png' | 'pdf' | 'jpg'
+    pre_time : float
+        time (sec) to plot before grating presentation onset
+    post_time : float
+        time (sec) to plot after grating presentation onset (should include length of stimulus)
+    bin_size : float
+        size of bins for raster plots/psths
+    smoothing : float
+        size of smoothing kernel (sec)
+    n_rand_clusters : int
+        the number of random clusters to choose for which to plot psths/rasters if
+        `cluster_ids_slected` is empty
+    plot_summary : bool
+        a flag for plotting the summary figure
+    plot_selected : bool
+        a flag for plotting the selected units figure
+        
+    Returns
+    -------
+    metrics : dict
+        - 'osi' (dict): keys 'beg', 'end' point to arrays of osis during these epochs
+        - 'orientation_pref' (dict): keys 'beg', 'end' point to arrays of orientation preference
+        - 'frac_resp_by_depth' (dict): fraction of responsive clusters by depth
+    
+    fig_dict : dict
+        A dict whose values are handles to one or both figures generated.
     """
 
-    fig_list = []
+    fig_dict = {}
     cluster_ids = cluster_ids_summary
     cluster_idxs = cluster_ids_selected
     epochs = ['beg', 'end']
@@ -542,7 +566,7 @@ def plot_grating_figures(
     print('done')
     
     # compute rasters for entire orientation sequence at beg/end epoch
-    if not(only_selected):
+    if plot_summary:
         print('computing rasters for example stimulus sequences...', end='', flush=True)
         r = {epoch: None for epoch in epochs}
         r_times = {epoch: None for epoch in epochs}
@@ -567,7 +591,7 @@ def plot_grating_figures(
     # -------------------------------------------------
     # compute psths and rasters for individual clusters
     # -------------------------------------------------
-    if not(only_summary):
+    if plot_selected:
         print('computing psths and rasters for clusters...', end='', flush=True)
         if len(cluster_ids_selected) == 0:
             if (n_rand_clusters < len(cluster_ids)):
@@ -598,7 +622,7 @@ def plot_grating_figures(
     # output figures
     # --------------
     print('producing figures...', end='')
-    if not(only_selected):
+    if plot_summary:
         if save_dir is None:
             save_file = None
         else:
@@ -608,9 +632,10 @@ def plot_grating_figures(
         fig_rf_summary = plot_summary_figure(
             ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
             ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
-        fig_list.extend([fig_rf_summary])
+        fig_rf_summary.suptitle('Summary Grating Responses')
+        fig_dict['fig_rf_summary'] = fig_rf_summary
 
-    if not(only_summary):
+    if plot_selected:
         if save_dir is None:
             save_file = None
         else:
@@ -618,10 +643,19 @@ def plot_grating_figures(
         fig_rf_selected = plot_psths_and_rasters(
             mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
             off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
+        fig_rf_selected.suptitle('Selected Units Grating Responses')
         print('done')
-        fig_list.extend([fig_rf_selected])
-
-    return fig_list
+        fig_dict['fig_rf_selected'] = fig_rf_selected
+    
+    # -----------------------------
+    # package up and return metrics
+    # -----------------------------
+    metrics = {
+        'osi': osi,
+        'orientation_pref': ori_pref,
+        'frac_resp_by_depth': responsive,
+    }
+    return fig_dict, metrics
 
 def plot_summary_figure(
         depths, ratios, responsive, peths_avg, osi, ori_pref, responses_mean, rasters,

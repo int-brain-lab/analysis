@@ -6,7 +6,7 @@ import alf.io
 import scipy.stats
 plt.ion()
 
-def scatter_raster(spikes, clusters=[], boundary_times=None, ax=None, downsample_factor=25):
+def scatter_raster(spikes, clusters=None, boundary_times=None, ax=None, downsample_factor=25):
  
     '''
     Create a scatter plot, time vs depth for each spike
@@ -27,7 +27,7 @@ def scatter_raster(spikes, clusters=[], boundary_times=None, ax=None, downsample
     :rtype: plot
     '''    
      
-    if len(clusters) == 0:
+    if clusters is None:  # show all clusters
         print('All clusters are shown')
         uclusters = np.unique(spikes['clusters'])
         # downsample 

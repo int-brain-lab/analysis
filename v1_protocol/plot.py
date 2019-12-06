@@ -37,12 +37,7 @@ Here is a list of required data (alf objects) depending on the figures to be gen
     c) if using waveform metrics in unit_metrics_ind:
         ephysData.raw
 
-When running this module as a script:
-Run this as a script from within python:
-`run path\to\plot`
-or in a terminal, outside of python:
-`python path\to\plot.py`
-
+TODO add script functionality
 TODO metrics to add: 1) chebyshev's inequality, 2) cluster residuals, 3) silhouette, 4) d_prime,
     5) nn_hit_rate, 6) nn_miss_rate, 7) iso distance, 8) l_ratio
 """
@@ -79,7 +74,7 @@ def gen_figures(
     selected_metrics_params={'spks_per_bin': 20, 'sigma': 5, 'rp': 0.002, 'bins': 'auto',
                              'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
                              'n_ch_probe': 385, 'isi_win': 0.01},
-    rf_params={'bin_sz': .05, 'lags': 4, 'method': 'corr'},
+    rf_params={'method': 'corr', 'bin_sz': 0.025, 'lags': 8, 'n_depths': 30, 'use_svd': False},
     save_dir=None):
     '''
     Generates figures for the V1 certification protocol for a given eid, probe, and clusters from a
@@ -186,12 +181,17 @@ def gen_figures(
                 The x-axis (i.e. time (in s)) used for plotting the individual unit isi histograms
     rf_params : dict (optional)
         Parameters used for the receptive field summary plot:
+            'method' : string
+                The method used to compute receptive fields ('corr' or 'sta').
             'bin_sz' : float 
                 The bin width (s) used
             'lags' : int 
                 The number of bins for calculating receptive field.
-            'method' : string
-                The method used to compute receptive fields ('corr' or 'sta').
+            'n_depths' : int 
+                The number of depths to aggregate clusters over.
+            'use_svd' : bool
+                `True` plots 1st spatial SVD component of rf; `False` plots time lag with
+                peak response.
     save_dir : string (optional)
         The path to which to save generated figures. (if `None`, figures will not be automatically
         saved)
@@ -362,50 +362,28 @@ def gen_figures(
     fig_list_name = []  # print this list at end of function to show which figures were generated
 
     # Get visually responsive clusters and generate grating response figures #
-    #----------------------------------------------------------------------#
+    #------------------------------------------------------------------------#
     if grating_response_summary or grating_response_selected:
+        # Get visually responsive clusters as subset of `cluster_ids_summary`
         cluster_ids_summary_vr, cluster_ids_selected_vr = \
             orientation.get_vr_clusters(alf_probe_path, clusters=cluster_ids_summary,
                                         n_selected_cl=n_selected_cl)
         cluster_sets['cluster_ids_summary_vr'] = cluster_ids_summary_vr
         cluster_sets['cluster_ids_selected_vr'] = cluster_ids_selected_vr
-        # Generate both summary & selected grating figures
-        if grating_response_summary and grating_response_selected:
-            fig_rf_summary, fig_rf_selected = orientation.plot_grating_figures(
-                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-                post_time=grating_response_params['post_t'],
-                bin_size=grating_response_params['bin_t'],
-                smoothing=grating_response_params['sigma'],
-                cluster_ids_summary=cluster_ids_summary_vr,
-                cluster_ids_selected=cluster_ids_selected_vr,
-                n_rand_clusters=5)
-            fig_h['fig_rf_summary'] = fig_rf_summary 
-            fig_h['fig_rf_selected'] = fig_rf_selected
-            fig_list_name.extend(['grating_response_summary', 'grating_response_selected'])
-        # Generate just summary grating figure
-        elif grating_response_summary:
-            fig_rf_summary = orientation.plot_grating_figures(
-                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-                post_time=grating_response_params['post_t'],
-                bin_size=grating_response_params['bin_t'],
-                smoothing=grating_response_params['sigma'],
-                cluster_ids_summary=cluster_ids_summary_vr,
-                cluster_ids_selected=cluster_ids_selected_vr,
-                n_rand_clusters=5, only_summary=True)
-            fig_h['fig_rf_summary'] = fig_rf_summary 
-            fig_list_name.extend(['grating_response_summary'])
-        # Generate just selected grating figure
-        elif grating_response_selected:
-            fig_rf_selected = orientation.plot_grating_figures(
-                alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
-                post_time=grating_response_params['post_t'],
-                bin_size=grating_response_params['bin_t'],
-                smoothing=grating_response_params['sigma'],
-                cluster_ids_summary=cluster_ids_summary_vr,
-                cluster_ids_selected=cluster_ids_selected_vr,
-                n_rand_clusters=5, only_selected=True)
-            fig_h['fig_rf_selected'] = fig_rf_selected
-            fig_list_name.extend(['grating_response_selected'])
+        # Generate grating figure(s)
+        grating_figs, grating_metrics = orientation.plot_grating_figures(
+            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+            post_time=grating_response_params['post_t'],
+            bin_size=grating_response_params['bin_t'],
+            smoothing=grating_response_params['sigma'],
+            cluster_ids_summary=cluster_ids_summary_vr,
+            cluster_ids_selected=cluster_ids_selected_vr,
+            n_rand_clusters=n_selected_cl,
+            plot_summary=grating_response_summary,
+            plot_selected=grating_response_selected)
+        fig_h.update(grating_figs) = grating_figs[0] 
+        m.update(grating_metrics)
+        fig_list_name.extend(['grating_response_summary', 'grating_response_selected']) 
 
     # Generate summary unit metrics figure #
     #--------------------------------------#
@@ -521,6 +499,11 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     fr_ma_win = metrics_params['fr_ma_win']
     n_cv_bins = metrics_params['n_cv_bins']
     n_ch_probe = metrics_params['n_ch_probe']
+    rf_method = rf_params['method']
+    rf_binsize = rf_params['binsize']
+    rf_lags = rf_params['lags']
+    rf_n_depths = rf_params['n_depths']
+    use_svd = rf_params['use_svd']
     
     # Set figure #
     #------------#
@@ -537,7 +520,9 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     raster_depth.scatter_with_boundary_times(alf_probe_path, clusters, ax=raster_ax)  # raster
     # Always output rf maps as second half of first row
     rf_map_ax = [fig.add_subplot(nrows, ncols, 3), fig.add_subplot(nrows, ncols, 4)]
-    rf_mapping.matt_function(alf_probe_path, clusters, ax=rf_map_ax)  # rf maps
+    rf_mapping.plot_rfs_by_depth_wrapper(  # rf maps
+        alf_probe_path, axes=rf_map_ax, cluster_ids=clusters, method=rf_method, binsize=rf_binsize,
+        lags=rf_lags, n_depths=rf_n_depths, use_svd=use_svd)  
     
     # Get alf objects for this session (needed for some metrics calculations below)
     clstrs_b = aio.load_object(alf_probe_path, 'clusters')

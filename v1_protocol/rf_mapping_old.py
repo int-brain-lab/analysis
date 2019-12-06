@@ -361,8 +361,8 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
     return splt
 
 
-def histograms_rf_areas(session_path, clusters=[], params={'bin_sz': .05, 'lags': 4,
-                                                           'method': 'corr'}):
+def histograms_rf_areas(session_path, clusters=None, 
+                        params={'bin_sz': .05, 'lags': 4, 'method': 'corr'}):
 
     # user options
     BINSIZE = params['bin_sz']  # sec
@@ -376,7 +376,7 @@ def histograms_rf_areas(session_path, clusters=[], params={'bin_sz': .05, 'lags'
     rf_stim = rfmap['rfmap.stims.00'].astype('float')
     
     # Get mask for spikes
-    if len(clusters) == 0:  # assume we are using all clusters
+    if clusters is None:  # assume we are using all clusters
         mask = np.ones_like(spikes['times'])
         print('All clusters are shown')
     else:  # use given subset of clusters
