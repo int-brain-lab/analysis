@@ -398,7 +398,7 @@ def plot_polar_psth_and_rasters(
 
 
 def plot_grating_figures(
-        session_path, cluster_ids_summary, cluster_ids_selected, save_dir=None, format='png',
+    session_path, cluster_ids_summary, cluster_ids_selected, save_dir=None, format='png',
         pre_time=0.5, post_time=2.5, bin_size=0.005, smoothing=0.025, n_rand_clusters=20,
         plot_summary=True, plot_selected=True):
     """
@@ -438,18 +438,19 @@ def plot_grating_figures(
         a flag for plotting the summary figure
     plot_selected : bool
         a flag for plotting the selected units figure
-
+        
     Returns
     -------
-    dict
-        - 'cluster_ids' (list): clusters used for summary plots
-        - 'selected_cluster_ids' (list): [] if only_summary else cluster_idxs,
+    metrics : dict
         - 'osi' (dict): keys 'beg', 'end' point to arrays of osis during these epochs
         - 'orientation_pref' (dict): keys 'beg', 'end' point to arrays of orientation preference
         - 'frac_resp_by_depth' (dict): fraction of responsive clusters by depth
-
+    
+    fig_dict : dict
+        A dict whose values are handles to one or both figures generated.
     """
 
+    fig_dict = {}
     cluster_ids = cluster_ids_summary
     cluster_idxs = cluster_ids_selected
     epochs = ['beg', 'end']
@@ -631,32 +632,33 @@ def plot_grating_figures(
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
             save_file = os.path.join(save_dir, 'grating_summary_figure.' + format)
-        plot_summary_figure(
+        fig_gr_summary = plot_summary_figure(
             ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
             ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
+        fig_gr_summary.suptitle('Summary Grating Responses')
+        fig_dict['fig_gr_summary'] = fig_gr_summary
 
     if plot_selected:
         if save_dir is None:
             save_file = None
         else:
             save_file = os.path.join(save_dir, 'grating_random_responses.' + format)
-        plot_psths_and_rasters(
+        fig_gr_selected = plot_psths_and_rasters(
             mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
             off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
+        fig_gr_selected.suptitle('Selected Units Grating Responses')
         print('done')
-
+        fig_dict['fig_gr_selected'] = fig_gr_selected
+    
     # -----------------------------
     # package up and return metrics
     # -----------------------------
     metrics = {
-        'cluster_ids': cluster_ids,
-        'selected_cluster_ids': cluster_idxs if plot_selected else [],
         'osi': osi,
         'orientation_pref': ori_pref,
         'frac_resp_by_depth': responsive,
     }
-    return metrics
-
+    return fig_dict, metrics
 
 def plot_summary_figure(
         depths, ratios, responsive, peths_avg, osi, ori_pref, responses_mean, rasters,
@@ -674,7 +676,7 @@ def plot_summary_figure(
     :param responses_mean:
     :param rasters:
     :param save_file:
-    :return:
+    :return fig:
     """
 
     import seaborn as sns
@@ -778,6 +780,8 @@ def plot_summary_figure(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
+    
+    return fig
 
 
 def plot_psths_and_rasters(
@@ -808,9 +812,10 @@ def plot_psths_and_rasters(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
+    return fig
 
 
-def get_vr_clusters(session_path, n_selected_cl):
+def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
     '''
     Gets visually responsive clusters
     
@@ -818,6 +823,9 @@ def get_vr_clusters(session_path, n_selected_cl):
     ----------
     session_path : str
         The path to to the appropriate 'alf/probe' directory.
+    clusters : ndarray
+        The clusters to use to get a subset of visually responsive clusters. (if `None`, take
+        visually response subset from all clusters from recording session.)
     n_selected_cl : int
         The number of clusters to return in `vr_clusters_selected`
     
@@ -851,12 +859,13 @@ def get_vr_clusters(session_path, n_selected_cl):
     # find visually responsive clusters
     # ---------------------------------
     epochs = ['beg', 'end']
-    # speed up downstream computations by restricting data to relevant time periods
-    mask_times = np.full(spikes.times.shape, fill_value=False)
-    for epoch in epochs:
-        mask_times |= (spikes.times >= grating_times[epoch].min()) & \
-                      (spikes.times <= grating_times[epoch].max())
-    clusters = np.unique(spikes.clusters[mask_times])
+    if clusters is None:  # use all clusters
+        # speed up downstream computations by restricting data to relevant time periods
+        mask_times = np.full(spikes.times.shape, fill_value=False)
+        for epoch in epochs:
+            mask_times |= (spikes.times >= grating_times[epoch].min()) & \
+                          (spikes.times <= grating_times[epoch].max())
+        clusters = np.unique(spikes.clusters[mask_times])
 
     # only calculate responsiveness for clusters that were active during gratings
     mask_clust = np.isin(spikes.clusters, clusters)
