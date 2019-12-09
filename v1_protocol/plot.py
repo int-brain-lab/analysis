@@ -50,7 +50,7 @@ import matplotlib.pyplot as plt
 from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
-from iblscripts.deploy.serverpc.certification import certification_pipeline
+from ibllib.io import certification_protocol
 # from v1_protocol import orientation
 # from v1_protocol import complete_raster_depth_per_spike as raster_depth
 # from v1_protocol import rf_mapping
@@ -243,7 +243,7 @@ def gen_figures(
 
     See Also
     --------
-    deploy.serverpc.certification.certification_pipeline
+    ibllib.io.certification_protocol
     orientation
     complete_raster_depth_per_spike
     rf_mapping_old
@@ -366,7 +366,7 @@ def gen_figures(
         if 'ap' in file and 'bin' in file:
             ephys_file_path = os.path.join(ephys_file_dir, file)
     if extract_stim_info:  # get stimulus info and save in `alf_path`
-        certification_pipeline.extract_stimulus_info_to_alf(session_path, save=True)
+        certification_protocol.extract_stimulus_info_to_alf(session_path, save=True)
         # Copy `'_iblcertif'` files over to `alf_probe_path`
         for i in os.listdir(alf_path):
             if i[:10] == '_iblcertif':
@@ -381,9 +381,9 @@ def gen_figures(
     #------------------------------------------------------#
     if cluster_ids_summary is None:  # filter all clusters according to `auto_filt_cl_params`
         print("'cluster_ids_summary' left empty, selecting filtered units.")
-        T = spks_b['times'][-1] - spks_b['times'][0]
+        # T = spks_b['times'][-1] - spks_b['times'][0]
         cluster_ids_summary = \
-            np.where(bb.processing.filter_units(units_b, T, params=auto_filt_cl_params))[0]
+            np.where(bb.processing.filter_units(units_b, params=auto_filt_cl_params))[0]
         if cluster_ids_summary.size == 0:
             raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
                              'auto_filt_cl_params'.")
