@@ -51,10 +51,10 @@ from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
 from iblscripts.deploy.serverpc.certification import certification_pipeline
-from v1_protocol import orientation
-from v1_protocol import complete_raster_depth_per_spike as raster_depth
-from v1_protocol import rf_mapping
-
+# from v1_protocol import orientation
+# from v1_protocol import complete_raster_depth_per_spike as raster_depth
+# from v1_protocol import rf_mapping
+#
 
 def gen_figures(
     eid, probe='probe00', cluster_ids_summary=None, cluster_ids_selected=None, n_selected_cl=4,
@@ -1167,7 +1167,7 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
 if __name__ == '__main__':
 
     # Prompt user for eid and probe.
-    
+
     # Generate grating response summary and unit metrics summary figures for "good units", and
     # grating response selected and unit metrics selected figures for the first 5 good units.
     print('end')

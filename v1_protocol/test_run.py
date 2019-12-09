@@ -11,4 +11,4 @@ sys.path.append('~/Documents/code/iblscripts')
 one = ONE()
 eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
 one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
-gen_figures(eid)
+gen_figures(eid, probe='probe_right', cluster_ids_summary=1)
