@@ -1,6 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os
+import alf.io as ioalf
+from brainbox.processing import bincount2D
+from brainbox.singlecell import calculate_peths
+try:
+    from responsive import are_neurons_responsive
+except:
+    from v1_protocol.responsive import are_neurons_responsive
 
 def bin_responses(spike_times, spike_clusters, stim_times, stim_values, output_fr=True):
     """
@@ -390,8 +397,9 @@ def plot_polar_psth_and_rasters(
 
 
 def plot_grating_figures(
-        session_path, save_dir=None, format='png', pre_time=0.5, post_time=2.5, bin_size=0.005,
-        smoothing=0.025, n_rand_clusters=20):
+    session_path, cluster_ids_summary, cluster_ids_selected, save_dir=None, format='png',
+        pre_time=0.5, post_time=2.5, bin_size=0.005, smoothing=0.025, n_rand_clusters=20,
+        plot_summary=True, plot_selected=True):
     """
     Produces two summary figures for the oriented grating protocol; the first summary figure
     contains plots that compare different measures during the first and second grating protocols,
@@ -399,81 +407,86 @@ def plot_grating_figures(
     clusters, PSTHs, firing rate histograms, etc. The second summary figure contains plots of polar
     PSTHs and corresponding rasters for a random subset of visually responsive clusters.
 
-    :param session_path: absolute path to experimental session directory
-    :param save_dir: if NoneType, figures are displayed; else a string defining the absolute
-        filepath to the directory in which figures will be saved
-    :param format: file format, i.e. 'png' | 'pdf' | 'jpg'
-    :param pre_time: time (sec) to plot before grating presentation onset
-    :param post_time: time (sec) to plot after grating presentation onset (should include length of
-        stimulus)
-    :param bin_size: size of bins for raster plots/psths
-    :param smoothing: size of smoothing kernel (sec)
-    :param n_rand_clusters: number of random clusters to plot psths/rasters for
-    :return: None
+    Parameters
+    ----------
+    session_path : str
+        absolute path to experimental session directory
+    cluster_ids_summary : list
+        the clusters for which to plot summary psths/rasters; if empty, all clusters with responses
+        during the grating presentations are used
+    cluster_ids_selected : list
+        the clusters for which to plot individual psths/rasters; if empty, `n_rand_clusters` are
+        randomly chosen
+    save_dir : str or NoneType
+        if NoneType, figures are displayed; else a string defining the absolute filepath to the
+        directory in which figures will be saved
+    format : str
+        file format, i.e. 'png' | 'pdf' | 'jpg'
+    pre_time : float
+        time (sec) to plot before grating presentation onset
+    post_time : float
+        time (sec) to plot after grating presentation onset (should include length of stimulus)
+    bin_size : float
+        size of bins for raster plots/psths
+    smoothing : float
+        size of smoothing kernel (sec)
+    n_rand_clusters : int
+        the number of random clusters to choose for which to plot psths/rasters if
+        `cluster_ids_slected` is empty
+    plot_summary : bool
+        a flag for plotting the summary figure
+    plot_selected : bool
+        a flag for plotting the selected units figure
+        
+    Returns
+    -------
+    metrics : dict
+        - 'osi' (dict): keys 'beg', 'end' point to arrays of osis during these epochs
+        - 'orientation_pref' (dict): keys 'beg', 'end' point to arrays of orientation preference
+        - 'frac_resp_by_depth' (dict): fraction of responsive clusters by depth
+    
+    fig_dict : dict
+        A dict whose values are handles to one or both figures generated.
     """
 
-    import os
-    import alf.io as ioalf
-    from brainbox.processing import bincount2D
-    from brainbox.singlecell import calculate_peths
-    try:
-        from responsive import are_neurons_responsive
-    except:
-        from v1_protocol.responsive import are_neurons_responsive
-
+    fig_dict = {}
+    cluster_ids = cluster_ids_summary
+    cluster_idxs = cluster_ids_selected
+    epochs = ['beg', 'end']
+    
     # -------------------------
     # load required alf objects
-    # -------------------------
+    # -------------------------  
     print('loading alf objects...', end='', flush=True)
     spikes = ioalf.load_object(session_path, 'spikes')
     clusters = ioalf.load_object(session_path, 'clusters')
-
     gratings = ioalf.load_object(session_path, '_iblcertif_.odsgratings')
+    spontaneous = ioalf.load_object(session_path, '_iblcertif_.spontaneous')
     grating_times = {
         'beg': gratings['odsgratings.times.00'],
         'end': gratings['odsgratings.times.01']}
     grating_vals = {
         'beg': gratings['odsgratings.stims.00'],
         'end': gratings['odsgratings.stims.01']}
-
-    spontaneous = ioalf.load_object(session_path, '_iblcertif_.spontaneous')
     spont_times = {
         'beg': spontaneous['spontaneous.times.00'],
         'end': spontaneous['spontaneous.times.01']}
-    print('done')
-
-    # ---------------------------------
-    # find visually responsive clusters
-    # ---------------------------------
-    print('finding visually responsive clusters...', end='', flush=True)
-    epochs = ['beg', 'end']
-    # speed up downstream computations by restricting data to relevant time periods
-    mask_times = np.full(spikes.times.shape, fill_value=False)
-    for epoch in epochs:
-        mask_times |= (spikes.times >= grating_times[epoch].min()) & \
-                      (spikes.times <= grating_times[epoch].max())
-    cluster_ids = np.unique(spikes.clusters[mask_times])
-
-    # only calculate responsiveness for clusters that were active during gratings
-    mask_clust = np.isin(spikes.clusters, cluster_ids)
-    resp = {epoch: [] for epoch in epochs}
-    for epoch in epochs:
-        resp[epoch] = are_neurons_responsive(
-            spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
-            grating_vals[epoch], spont_times[epoch])
-    resp_agg = resp['beg'] & resp['end']
-
-    # remove non-responsive clusters
-    cluster_ids = cluster_ids[resp_agg]
-    # update mask to select for responsive clusters
-    mask_clust = np.isin(spikes.clusters, cluster_ids)
-    print('done')
 
     # --------------------------
     # calculate relevant metrics
     # --------------------------
     print('calcuating mean responses to gratings...', end='', flush=True)
     # calculate mean responses to gratings
+    mask_clust = np.isin(spikes.clusters, cluster_ids)  # update mask for responsive clusters
+    mask_times = np.full(spikes.times.shape, fill_value=False)
+    for epoch in epochs:
+        mask_times |= (spikes.times >= grating_times[epoch].min()) & \
+                      (spikes.times <= grating_times[epoch].max())
+    resp = {epoch: [] for epoch in epochs}
+    for epoch in epochs:
+        resp[epoch] = are_neurons_responsive(
+            spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
+            grating_vals[epoch], spont_times[epoch])
     responses = {epoch: [] for epoch in epochs}
     for epoch in epochs:
         responses[epoch] = bin_responses(
@@ -509,7 +522,7 @@ def plot_grating_figures(
     # aggregate clusters
     clusters_binned = {epoch: [] for epoch in epochs}
     frac_responsive = {epoch: [] for epoch in epochs}
-    cids = np.unique(spikes.clusters[mask_times])
+    cids = cluster_ids
     for epoch in epochs:
         # just look at responsive clusters during this epoch
         cids_tmp = cids[resp[epoch]]
@@ -551,78 +564,98 @@ def plot_grating_figures(
     peths_avg['on_idx'] = int(pre_time / bin_size)
     peths_avg['off_idx'] = peths_avg['on_idx'] + int(2 / bin_size)
     print('done')
-
+    
     # compute rasters for entire orientation sequence at beg/end epoch
-    print('computing rasters for example stimulus sequences...', end='', flush=True)
-    r = {epoch: None for epoch in epochs}
-    r_times = {epoch: None for epoch in epochs}
-    r_clusters = {epoch: None for epoch in epochs}
-    for epoch in epochs:
-        # restrict activity to a single stim series; assumes each possible grating direction
-        # is displayed before repeating
-        n_stims = len(np.unique(grating_vals[epoch]))
-        mask_idxs_e = (spikes.times >= grating_times[epoch][:n_stims].min()) & \
-                      (spikes.times <= grating_times[epoch][:n_stims].max())
-        r_tmp, r_times[epoch], r_clusters[epoch] = bincount2D(
-            spikes.times[mask_idxs_e], spikes.clusters[mask_idxs_e], bin_size)
-        # order activity by anatomical depth of neurons
-        d = dict(zip(spikes.clusters[mask_idxs_e], spikes.depths[mask_idxs_e]))
-        y = sorted([[i, d[i]] for i in d])
-        isort = np.argsort([x[1] for x in y])
-        r[epoch] = r_tmp[isort, :]
-    # package for plotting
-    rasters = {'spikes': r, 'times': r_times, 'clusters': r_clusters, 'bin_size': bin_size}
-    print('done')
+    if plot_summary:
+        print('computing rasters for example stimulus sequences...', end='', flush=True)
+        r = {epoch: None for epoch in epochs}
+        r_times = {epoch: None for epoch in epochs}
+        r_clusters = {epoch: None for epoch in epochs}
+        for epoch in epochs:
+            # restrict activity to a single stim series; assumes each possible grating direction
+            # is displayed before repeating
+            n_stims = len(np.unique(grating_vals[epoch]))
+            mask_idxs_e = (spikes.times >= grating_times[epoch][:n_stims].min()) & \
+                          (spikes.times <= grating_times[epoch][:n_stims].max())
+            r_tmp, r_times[epoch], r_clusters[epoch] = bincount2D(
+                spikes.times[mask_idxs_e], spikes.clusters[mask_idxs_e], bin_size)
+            # order activity by anatomical depth of neurons
+            d = dict(zip(spikes.clusters[mask_idxs_e], spikes.depths[mask_idxs_e]))
+            y = sorted([[i, d[i]] for i in d])
+            isort = np.argsort([x[1] for x in y])
+            r[epoch] = r_tmp[isort, :]
+        # package for plotting
+        rasters = {'spikes': r, 'times': r_times, 'clusters': r_clusters, 'bin_size': bin_size}
+        print('done')
 
     # -------------------------------------------------
     # compute psths and rasters for individual clusters
     # -------------------------------------------------
-    print('computing psths and rasters for random clusters...', end='', flush=True)
-    if n_rand_clusters < len(cluster_ids):
-        cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
-    else:
-        cluster_idxs = cluster_ids
-    mean_responses = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
-    osis = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
-    binned = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
-    for cluster_idx in cluster_idxs:
-        cluster = np.where(cluster_ids == cluster_idx)[0]
-        for epoch in epochs:
-            mean_responses[cluster_idx][epoch] = responses_mean[epoch][cluster, :][0]
-            osis[cluster_idx][epoch] = osi[epoch][cluster]
-            stim_ids = np.unique(grating_vals[epoch])
-            binned[cluster_idx][epoch] = {j: None for j in range(len(stim_ids))}
-            for j, stim_id in enumerate(stim_ids):
-                curr_stim_idxs = np.where(grating_vals[epoch] == stim_id)
-                align_times = grating_times[epoch][curr_stim_idxs, 0][0]
-                _, binned[cluster_idx][epoch][j] = calculate_peths(
-                    spikes.times[mask_times], spikes.clusters[mask_times], [cluster_idx],
-                    align_times, pre_time=pre_time, post_time=post_time, bin_size=bin_size)
-    print('done')
+    if plot_selected:
+        print('computing psths and rasters for clusters...', end='', flush=True)
+        if len(cluster_ids_selected) == 0:
+            if (n_rand_clusters < len(cluster_ids)):
+                cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
+            else:
+                cluster_idxs = cluster_ids
+        else:
+            cluster_idxs = cluster_ids_selected
+        mean_responses = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
+        osis = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
+        binned = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
+        for cluster_idx in cluster_idxs:
+            cluster = np.where(cluster_ids == cluster_idx)[0]
+            for epoch in epochs:
+                mean_responses[cluster_idx][epoch] = responses_mean[epoch][cluster, :][0]
+                osis[cluster_idx][epoch] = osi[epoch][cluster]
+                stim_ids = np.unique(grating_vals[epoch])
+                binned[cluster_idx][epoch] = {j: None for j in range(len(stim_ids))}
+                for j, stim_id in enumerate(stim_ids):
+                    curr_stim_idxs = np.where(grating_vals[epoch] == stim_id)
+                    align_times = grating_times[epoch][curr_stim_idxs, 0][0]
+                    _, binned[cluster_idx][epoch][j] = calculate_peths(
+                        spikes.times[mask_times], spikes.clusters[mask_times], [cluster_idx],
+                        align_times, pre_time=pre_time, post_time=post_time, bin_size=bin_size)
+        print('done')
 
     # --------------
     # output figures
     # --------------
     print('producing figures...', end='')
-    if save_dir is None:
-        save_file = None
-    else:
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        save_file = os.path.join(save_dir, 'grating_summary_figure.' + format)
-    plot_summary_figure(
-        ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
-        ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
+    if plot_summary:
+        if save_dir is None:
+            save_file = None
+        else:
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            save_file = os.path.join(save_dir, 'grating_summary_figure.' + format)
+        fig_gr_summary = plot_summary_figure(
+            ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
+            ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
+        fig_gr_summary.suptitle('Summary Grating Responses')
+        fig_dict['fig_gr_summary'] = fig_gr_summary
 
-    if save_dir is None:
-        save_file = None
-    else:
-        save_file = os.path.join(save_dir, 'grating_random_responses.' + format)
-    plot_random_psths_and_rasters(
-        mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
-        off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
-    print('done')
-
+    if plot_selected:
+        if save_dir is None:
+            save_file = None
+        else:
+            save_file = os.path.join(save_dir, 'grating_random_responses.' + format)
+        fig_gr_selected = plot_psths_and_rasters(
+            mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
+            off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
+        fig_gr_selected.suptitle('Selected Units Grating Responses')
+        print('done')
+        fig_dict['fig_gr_selected'] = fig_gr_selected
+    
+    # -----------------------------
+    # package up and return metrics
+    # -----------------------------
+    metrics = {
+        'osi': osi,
+        'orientation_pref': ori_pref,
+        'frac_resp_by_depth': responsive,
+    }
+    return fig_dict, metrics
 
 def plot_summary_figure(
         depths, ratios, responsive, peths_avg, osi, ori_pref, responses_mean, rasters,
@@ -640,7 +673,7 @@ def plot_summary_figure(
     :param responses_mean:
     :param rasters:
     :param save_file:
-    :return:
+    :return fig:
     """
 
     import seaborn as sns
@@ -744,9 +777,11 @@ def plot_summary_figure(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
+    
+    return fig
 
 
-def plot_random_psths_and_rasters(
+def plot_psths_and_rasters(
         mean_responses, binned_spikes, osis, grating_vals, on_idx, off_idx, bin_size,
         save_file=None):
 
@@ -774,13 +809,83 @@ def plot_random_psths_and_rasters(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
+    return fig
+
+
+def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
+    '''
+    Gets visually responsive clusters
+    
+    Parameters
+    ----------
+    session_path : str
+        The path to to the appropriate 'alf/probe' directory.
+    clusters : ndarray
+        The clusters to use to get a subset of visually responsive clusters. (if `None`, take
+        visually response subset from all clusters from recording session.)
+    n_selected_cl : int
+        The number of clusters to return in `vr_clusters_selected`
+    
+    Returns
+    -------
+    clusters_vr : ndarray
+        The visually responsive clusters.
+    clusters_selected_vr : ndarray
+        A subset of `n_selected_cl` `vr_clusters`
+    '''
+    
+    print('finding visually responsive clusters...', end='', flush=True)
+
+    # -------------------------
+    # load required alf objects
+    # -------------------------
+    spikes = ioalf.load_object(session_path, 'spikes')
+    gratings = ioalf.load_object(session_path, '_iblcertif_.odsgratings')
+    spontaneous = ioalf.load_object(session_path, '_iblcertif_.spontaneous')
+    grating_times = {
+        'beg': gratings['odsgratings.times.00'],
+        'end': gratings['odsgratings.times.01']}
+    grating_vals = {
+        'beg': gratings['odsgratings.stims.00'],
+        'end': gratings['odsgratings.stims.01']}
+    spont_times = {
+        'beg': spontaneous['spontaneous.times.00'],
+        'end': spontaneous['spontaneous.times.01']}
+
+    # ---------------------------------
+    # find visually responsive clusters
+    # ---------------------------------
+    epochs = ['beg', 'end']
+    if clusters is None:  # use all clusters
+        # speed up downstream computations by restricting data to relevant time periods
+        mask_times = np.full(spikes.times.shape, fill_value=False)
+        for epoch in epochs:
+            mask_times |= (spikes.times >= grating_times[epoch].min()) & \
+                          (spikes.times <= grating_times[epoch].max())
+        clusters = np.unique(spikes.clusters[mask_times])
+
+    # only calculate responsiveness for clusters that were active during gratings
+    mask_clust = np.isin(spikes.clusters, clusters)
+    resp = {epoch: [] for epoch in epochs}
+    for epoch in epochs:
+        resp[epoch] = are_neurons_responsive(
+            spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
+            grating_vals[epoch], spont_times[epoch])
+    resp_agg = resp['beg'] & resp['end']
+    # remove non-responsive clusters
+    clusters_vr = clusters[resp_agg]
+    print('done')
+    if n_selected_cl < len(clusters_vr):
+        clusters_selected_vr = np.random.choice(clusters_vr, size=n_selected_cl, replace=False)
+    else:
+        clusters_selected_vr = clusters_vr
+    return clusters_vr, clusters_selected_vr
 
 
 if __name__ == '__main__':
 
     from pathlib import Path
     from oneibl.one import ONE
-    import alf.io as ioalf
 
     # user params for rasters
     PRE_TIME = 0.5     # time (sec) to use before grating onset

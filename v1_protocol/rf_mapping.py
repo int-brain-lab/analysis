@@ -9,14 +9,26 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
     Compute receptive fields from locally sparse noise stimulus for all recorded neurons; uses a
     PSTH-like approach that averages responses from each neuron for each pixel flip
 
-    :param spike_times: array of spike times
-    :param spike_clusters: array of cluster ids associated with each entry of `spike_times`
-    :param stimulus_times: (M,) array of stimulus presentation times
-    :param stimulus: (M, y_pix, x_pix) array of pixel values
-    :param lags: temporal dimension of receptive field
-    :param binsize: length of each lag (seconds)
-    :return: dictionary of "on" and "off" receptive fields (values are lists); each rf is
-        [n_bins, y_pix, x_pix]
+    Parameters
+    ----------
+    spike_times : array-like
+        array of spike times
+    spike_clusters : array-like
+        array of cluster ids associated with each entry of `spike_times`
+    stimulus_times : array-like
+        array of stimulus presentation times with shape (M,)
+    stimulus : np.ndarray
+        array of pixel values wtih shape (M, y_pix, x_pix)
+    lags : int, optional
+        temporal dimension of receptive field
+    binsize : float, optional
+        length of each lag (seconds)
+
+    Returns
+    -------
+    dict
+        "on" and "off" receptive fields (values are lists); each rf is shape (lags, y_pix, x_pix)
+
     """
 
     from brainbox.processing import bincount2D
@@ -72,17 +84,29 @@ def compute_rfs(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, b
 
 def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags=8, binsize=0.025):
     """
-    Compute receptive fields from locally sparse noise stimulus for all
-    recorded neurons; uses a reverse correlation approach
+    Compute receptive fields from locally sparse noise stimulus for all recorded neurons; uses a
+    reverse correlation approach.
 
-    :param spike_times: array of spike times
-    :param spike_clusters: array of cluster ids associated with each entry of `spikes`
-    :param stimulus_times: (M,) array of stimulus presentation times
-    :param stimulus: (M, y_pix, x_pix) array of pixel values
-    :param lags: temporal dimension of receptive field
-    :param binsize: length of each lag (seconds)
-    :return: dictionary of "on" and "off" receptive fields (values are lists); each
-        rf is [n_bins, y_pix, x_pix]
+    Parameters
+    ----------
+    spike_times : array-like
+        array of spike times
+    spike_clusters : array-like
+        array of cluster ids associated with each entry of `spike_times`
+    stimulus_times : array-like
+        array of stimulus presentation times with shape (M,)
+    stimulus : np.ndarray
+        array of pixel values wtih shape (M, y_pix, x_pix)
+    lags : int, optional
+        temporal dimension of receptive field
+    binsize : float, optional
+        length of each lag (seconds)
+
+    Returns
+    -------
+    dict
+        "on" and "off" receptive fields (values are lists); each rf is shape (lags, y_pix, x_pix)
+
     """
 
     from brainbox.processing import bincount2D
@@ -140,14 +164,65 @@ def compute_rfs_corr(spike_times, spike_clusters, stimulus_times, stimulus, lags
     return rfs_list
 
 
+def compute_rf_svds(rfs, scale='none'):
+    """
+    Perform SVD on the spatiotemporal rfs and return the first spatial and first temporal
+    components. Used for denoising purposes.
+
+    Parameters
+    ----------
+    rfs : dict
+        dictionary of "on" and "off" receptive fields (values are lists); each rf is of shape
+        (n_bins, y_pix, x_pix) - output of `compute_rfs` or `compute_rfs_corr`
+    scale : str, optional
+        scale either the spatial or temporal component (or neither) by the singular value
+        'spatial' | 'temporal' | 'none'
+
+    Returns
+    -------
+    dict
+        dict with 'spatial' and 'temporal' keys; the values are lists of the specified
+        components, on for each input rf
+
+    """
+
+    from scipy.linalg import svd
+    rfs_svd = {key1: {key2: [] for key2 in rfs.keys()} for key1 in ['spatial', 'temporal']}
+    n_bins, y_pix, x_pix = rfs['on'][0].shape
+    # loop over rf type
+    for sub_type, subs in rfs.items():
+        # loop over clusters
+        for sub in subs:
+            # reshape take PSTH and rearrange into n_pixels x n_bins
+            sub_reshaped = np.reshape(sub, (n_bins, y_pix * x_pix))
+            # svd
+            u, s, v = svd(sub_reshaped.T)
+            # keep first spatial dim and temporal trace
+            sign = -1 if np.median(v[0, :]) < 0 else 1
+            rfs_svd['spatial'][sub_type].append(sign * np.reshape(u[:, 0], (y_pix, x_pix)))
+            if scale == 'spatial':
+                rfs_svd['spatial'][sub_type][-1] *= s[0]
+            rfs_svd['temporal'][sub_type].append(sign * v[0, :])
+            if scale == 'temporal':
+                rfs_svd['temporal'][sub_type][-1] *= s[0]
+    return rfs_svd
+
+
 def find_peak_responses(rfs):
     """
     Find peak response across time, space, and receptive field type ("on" and "off")
 
-    :param rfs: dictionary of receptive fields (output of `compute_rfs`); each
-        rf is of size [n_bins, y_pix, y_pix]
-    :return: dictionary containing peak rf time slice for both "on" and "off"
-        rfs (values are lists)
+    Parameters
+    ----------
+    rfs : dict
+        dictionary of receptive fields (output of `compute_rfs`); each rf is of size
+        (lags, y_pix, y_pix)
+
+    Returns
+    -------
+    dict
+        dictionary containing peak rf time slice for both "on" and "off" rfs (values are lists)
+
     """
     rfs_peak = {key: [] for key in rfs.keys()}
     # loop over rf type
@@ -161,14 +236,23 @@ def find_peak_responses(rfs):
     return rfs_peak
 
 
-def interpolate_rfs(rfs, bin_scale):
+def interpolate_rfs(rfs, bin_scale=0.5):
     """
     Bilinear interpolation of receptive fields
 
-    :param rfs: dictionary of receptive fields (single time slice)
-    :param bin_scale: scaling factor to determine number of bins for interpolation;
-        e.g. bin_scale=0.5 doubles the number of bins in both directions
-    :return: dictionary of interpolated receptive fields (values are lists)
+    Parameters
+    ----------
+    rfs : dict
+        dictionary of receptive fields (single time slice)
+    bin_scale : float, optional
+        scaling factor to determine number of bins for interpolation; e.g. bin_scale=0.5 doubles the
+        number of bins in both directions
+
+    Returns
+    -------
+    dict
+        dictionary of interpolated receptive fields (values are lists)
+
     """
     from scipy.interpolate import interp2d
     rfs_interp = {'on': [], 'off': []}
@@ -188,13 +272,21 @@ def interpolate_rfs(rfs, bin_scale):
 
 def extract_blob(array, y, x):
     """
-    Extract contiguous blob of `True` values in a boolean array starting at the
-    point (y, x)
+    Extract contiguous blob of `True` values in a boolean array starting at the point (y, x)
 
-    :param array: 2D boolean array
-    :param y: initial y pixel
-    :param x: initial x pixel
-    :return: list of blob indices
+    Parameters
+    ----------
+    array : np.ndarray
+        2D boolean array
+    y : int
+        initial y pixel
+    x : int
+        initial x pixel
+
+    Return
+    list
+        list of blob indices
+
     """
     y_pix, x_pix = array.shape
     blob = []
@@ -221,8 +313,16 @@ def extract_blobs(array):
     """
     Extract contiguous blobs of `True` values in a boolean array
 
-    :param array: 2D boolean array
-    :return: list of lists of blob indices
+    Parameters
+    ----------
+    array : np.ndarray
+        2D boolean array
+
+    Returns
+    -------
+    list
+        list of lists of blob indices
+
     """
     y_pix, x_pix = array.shape
     processed_pix = []
@@ -243,13 +343,21 @@ def extract_blobs(array):
 
 def find_contiguous_pixels(rfs, threshold=0.35):
     """
-    Calculate number of contiguous pixels in a thresholded version of the
-    receptive field
+    Calculate number of contiguous pixels in a thresholded version of the receptive field
 
-    :param rfs: dictionary of receptive fields (single time slice)
-    :param threshold: pixels below this fraction of the maximum firing are set
-        to zero before contiguous pixels are calculated
-    :return: dictionary of contiguous pixels for each rf type ("on and "off")
+    Parameters
+    ----------
+    rfs : dict
+        dictionary of receptive fields (single time slice)
+    threshold : float, optional
+        pixels below this fraction of the maximum firing are set to zero before contiguous pixels
+        are calculated
+
+    Returns
+    -------
+    dict
+        dictionary of contiguous pixels for each rf type ("on and "off")
+
     """
 
     # store results
@@ -284,12 +392,21 @@ def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
     "A Comparison of Visual Response Properties in the Lateral Geniculate Nucleus
     and Primary Visual Cortex of Awake and Anesthetized Mice"
 
-    :param rfs: dictionary of receptive fields (dict keys are 'on' and 'off');
-        output of `compute_rfs`
-    :param bin_scale: scaling for interpolation (e.g. 0.5 doubles bins)
-    :param threshold: pixels below this fraction of the maximum firing are set
-        to zero before contiguous pixels are calculated
-    :return: dictionary of receptive field areas for each type ("on" and "off")
+    Parameters
+    ----------
+    rfs : dict
+        dictionary of receptive fields (dict keys are 'on' and 'off'); output of `compute_rfs`
+    bin_scale : float, optional
+        scaling for interpolation (e.g. 0.5 doubles bins)
+    threshold : float, optional
+        pixels below this fraction of the maximum firing are set to zero before contiguous pixels
+        are calculated
+
+    Returns
+    -------
+    dict
+        dictionary of receptive field areas for each type ("on" and "off")
+
     """
 
     # "the larger of the ON and OFF peak responses was taken to be the maximum
@@ -312,9 +429,17 @@ def compute_rf_areas(rfs, bin_scale=0.5, threshold=0.35):
 def plot_rf_distributions(rf_areas, plot_type='box'):
     """
 
-    :param rf_areas:
-    :param plot_type: 'box' | 'hist'
-    :return: figure handle
+    Parameters
+    ----------
+    rf_areas : dict
+    plot_type : str, optional
+        'box' | 'hist'
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        figure handle
+
     """
 
     # put results into dataframe for easier plotting
@@ -365,6 +490,132 @@ def plot_rf_distributions(rf_areas, plot_type='box'):
     plt.show()
 
     return splt
+
+
+def plot_rfs_by_depth_wrapper(
+        alf_path, axes=None, cluster_ids=[], method='corr', binsize=0.025, lags=8, n_depths=30,
+        use_svd=False):
+    """
+    Wrapper function to load spikes and rf stimulus info, aggregate clusters over depths, compute
+    rfs, and plot spatial components as a function of linear depth on probe. Must have ibllib
+    package in python path in order to use alf loaders.
+
+    Parameters
+    ----------
+    alf_path : str
+        absolute path to experimental session directory
+    axes : array-like object of matplotlib axes or `NoneType`, optional
+        axes in which to plot the rfs; if `NoneType`, a figure with appropriate axes is created
+    cluster_ids : array-like, optional
+        clusters to use in rf calculation; if empty, all clusters are used
+    method : str, optional
+        method for calculating receptive fields
+        'sta': method used in Durand et al 2016
+        'corr': reverse correlation method; uses convolution and is therefor faster than `'sta'`
+    binsize : float, optional
+        width of bins in seconds for rf computation
+    lags : int, optional
+        number of bins after pixel flip to use for rf computation
+    n_depths : int, optional
+        number of bins to divide probe depth into for aggregating clusters
+    use_svd : bool, optional
+        `True` plots 1st spatial SVD component of rf; `False` plots time lag with peak response
+
+    Returns
+    -------
+    dict
+        depths and associated receptive fields
+
+    """
+
+    import alf.io as ioalf
+
+    # load objects
+    spikes = ioalf.load_object(alf_path, 'spikes')
+    clusters = ioalf.load_object(alf_path, 'clusters')
+    rfmap = ioalf.load_object(alf_path, '_iblcertif_.rfmap')
+    rf_stim_times = rfmap['rfmap.times.00']
+    rf_stim = rfmap['rfmap.stims.00'].astype('float')
+
+    # combine clusters across similar depths
+    min_depth = np.min(clusters['depths'])
+    max_depth = np.max(clusters['depths'])
+    depth_limits = np.linspace(min_depth - 1, max_depth, n_depths + 1)
+    if len(cluster_ids) == 0:
+        times_agg = spikes.times
+        depths_agg = spikes.depths
+    else:
+        clust_mask = np.isin(spikes.clusters, np.array(cluster_ids))
+        times_agg = spikes.times[clust_mask]
+        depths_agg = spikes.depths[clust_mask]
+    clusters_agg = np.full(times_agg.shape, fill_value=np.nan)
+    for d in range(n_depths):
+        lo_limit = depth_limits[d]
+        up_limit = depth_limits[d + 1]
+        clusters_agg[(lo_limit < depths_agg) & (depths_agg <= up_limit)] = d
+
+    print('computing receptive fields...', end='')
+    if method == 'sta':
+        # method in Durand et al 2016
+        rfs = compute_rfs(
+            times_agg, clusters_agg, rf_stim_times, rf_stim, lags=lags, binsize=binsize)
+    elif method == 'corr':
+        # reverse correlation method
+        rfs = compute_rfs_corr(
+            times_agg, clusters_agg, rf_stim_times, rf_stim, lags=lags, binsize=binsize)
+    else:
+        raise NotImplementedError
+
+    # get single spatial footprint of rf
+    if use_svd:
+        rfs_spatial = compute_rf_svds(rfs, scale='spatial')['spatial']
+    else:
+        rfs_spatial = find_peak_responses(rfs)
+    rfs_interp = interpolate_rfs(rfs_spatial, bin_scale=0.5)
+    print('done')
+
+    plot_rfs_by_depth(rfs_interp, axes=axes)
+
+    return {'depths': depths_agg, 'rfs': rfs_interp}
+
+
+def plot_rfs_by_depth(rfs, axes=None):
+    """
+
+    Parameters
+    ----------
+    rfs : dict
+        dict of "on" and "off" rfs (values are lists); each rf is of shape `(ypix, xpix)`
+    axes : array of matplotlib axes or NoneType, optional
+        matplotlib axes to plot into; if `NoneType`, a figure will be created and returned
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        matplotlib figure handle if `axes=None`
+
+    """
+
+    if axes is None:
+        fig, axes = plt.subplots(1, len(rfs.keys()), figsize=(3, 12))
+
+    for i, sub_type in enumerate(rfs.keys()):
+        rf_array = np.vstack(rfs[sub_type])
+        n_rfs = len(rfs[sub_type])
+        ypix, xpix = rfs[sub_type][0].shape
+        vmin = np.min(rf_array)
+        vmax = np.max(rf_array)
+        imshow_kwargs = {'vmin': vmin, 'vmax': vmax, 'aspect': 'auto', 'cmap': 'Greys_r'}
+        axes[i].imshow(rf_array, **imshow_kwargs)
+        axes[i].set_xticks([])
+        axes[i].set_yticks([])
+        axes[i].set_title('%s subfield' % sub_type.upper())
+        for n in range(1, n_rfs):
+            axes[i].axhline(n * ypix - 1, 0, xpix, color=[0, 0, 0], linewidth=0.5)
+    plt.tight_layout()
+
+    if axes is None:
+        return fig
 
 
 if __name__ == '__main__':
