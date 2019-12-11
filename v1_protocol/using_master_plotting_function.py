@@ -54,7 +54,7 @@ Option B) pip install 'ibllib'.
     ```
 '''
 
-# %% Recreate figures for 'ZM_2104/19-09-19/001' session.
+# Recreate figures for 'ZM_2104/19-09-19/001' session.
 from oneibl.one import ONE
 from v1_protocol import plot as v1_plot
 one = ONE()
