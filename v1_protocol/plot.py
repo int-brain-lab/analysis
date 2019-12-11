@@ -1,29 +1,18 @@
 """
 Creates summary metrics and plots for units in a recording session.
 
-*** 3 Things to check before using this code ***
+*** Things to check before using this code ***
 
-1) This module assumes that you are on the 'cert_master_fn' branch of the 'analysis' repo and that
-the working directory can access the latest 'ibllib' - 'brainbox' branch, and the latest
-'iblscripts' - 'certification' branch. If in doubt, in your OS terminal run:
-    `pip install --upgrade git+https://github.com/int-brain-lab/ibllib.git@brainbox`
-    `pip install --upgrade git+https://github.com/int-brain-lab/iblscripts.git@certification`
-
-2) This module assumes that the required data for a particular eid is already saved in the
+1) This module assumes that the required data for a particular eid is already saved in the
 CACHE_DIR specified by `.one_params` (the default location to which ONE saves data when running the
-`load` method). It is recommended to download *all* data for a particular eid:
-    `from oneibl.one import ONE`
-    `one = ONE()`
+`load` method). Although the default call to the master plotting function (`gen_figures`) will not
+create figures from raw data, it is still recommended to download *all* data for a particular eid:
+    >>> from oneibl.one import ONE
+    >>> one = ONE()
     # get eid
-    `eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]`
+    >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
     # download data
-    one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
-
-3) Ensure that you have the required, up-to-date versions of the following 3rd party package
-dependencies in your environment: opencv-python, phylib. If in doubt, in your OS terminal run:
-    `pip install opencv-python`
-    `pip install --upgrade git+https://github.com/cortex-lab/phylib.git@master`
-
+    >>> one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
 Here is a list of required data (alf objects) depending on the figures to be generated:
     a) required for any figure:
         clusters
@@ -36,6 +25,9 @@ Here is a list of required data (alf objects) depending on the figures to be gen
         _iblrig_taskSettings
     c) if using waveform metrics in unit_metrics_ind:
         ephysData.raw
+
+For additional details on and examples of running `gen_figures`, see the 
+`using_master_plotting_function` script in this same directory.
 
 TODO add script functionality
 TODO metrics to add: 1) chebyshev's inequality, 2) cluster residuals, 3) silhouette, 4) d_prime,
@@ -51,10 +43,10 @@ from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
 from ibllib.io import certification_protocol
-# from v1_protocol import orientation
-# from v1_protocol import complete_raster_depth_per_spike as raster_depth
-# from v1_protocol import rf_mapping
-#
+from v1_protocol import orientation
+from v1_protocol import complete_raster_depth_per_spike as raster_depth
+from v1_protocol import rf_mapping
+
 
 def gen_figures(
     eid, probe='probe00', cluster_ids_summary=None, cluster_ids_selected=None, n_selected_cl=4,
@@ -194,12 +186,6 @@ def gen_figures(
 
     Returns
     -------
-    fig_h : dict
-        Contains the handles to the figures generated. Possible keys:
-            'fig_gr_summary' : the grating responses summary figure
-            'fig_gr_selected' : the grating responses selected units figure
-            'fig_um_summary' : the unit metrics summary figure
-            'fig_um_selected' : the unit metrics selected figure
     m : bunch
         A bunch containing metrics as fields. Possible keys:
             'osi' : dict
@@ -239,7 +225,18 @@ def gen_figures(
                 Cumulative drift values for each unit in `cluster_sets['cluster_ids_summary']`.
     cluster_sets : dict
         Contains the ids of different sets of clusters used to generate the different figures.
-        Possible keys 
+        Possible keys:
+            'cluster_ids_summary'
+            'cluster_ids_selected'
+            'cluster_ids_summary_vr' : a visually responsive subset of 'cluster_ids_summary'.
+            'cluster_ids_selected_vr' : a subset of `n_selected_cl` clusters from
+                'cluster_ids_summary_vr'. 
+    fig_h : dict
+        Contains the handles to the figures generated. Possible keys:
+            'fig_gr_summary' : the grating responses summary figure
+            'fig_gr_selected' : the grating responses selected units figure
+            'fig_um_summary' : the unit metrics summary figure
+            'fig_um_selected' : the unit metrics selected figure
 
     See Also
     --------
@@ -343,9 +340,9 @@ def gen_figures(
 
     # Initialize outputs #
     #--------------------#
-    fig_h = {}
     m = bb.core.Bunch()
     cluster_sets = {}
+    fig_h = {}
 
     # Get necessary data via ONE #
     #----------------------------#
@@ -377,13 +374,14 @@ def gen_figures(
           flush=True, end='')
     units_b = bb.processing.get_units_bunch(spks_b)
     print('done')
+    
     # Set `cluster_ids_summary` and `cluster_ids_selected` #
     #------------------------------------------------------#
     if cluster_ids_summary is None:  # filter all clusters according to `auto_filt_cl_params`
         print("'cluster_ids_summary' left empty, selecting filtered units.")
-        # T = spks_b['times'][-1] - spks_b['times'][0]
+        T = spks_b['times'][-1] - spks_b['times'][0]
         cluster_ids_summary = \
-            np.where(bb.processing.filter_units(units_b, params=auto_filt_cl_params))[0]
+            np.where(bb.processing.filter_units(units_b, T, params=auto_filt_cl_params))[0]
         if cluster_ids_summary.size == 0:
             raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
                              'auto_filt_cl_params'.")
@@ -449,8 +447,7 @@ def gen_figures(
     
     print('\n\nFinished generating figures {} for session {}'.format(fig_list_name, session_path))
     
-    return fig_h, m, cluster_sets
-
+    return m, cluster_sets, fig_h
 
 def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path, m,
                      metrics_params, rf_params, save_dir=None):
@@ -559,6 +556,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     n_cur_ax = ncols + 1
 
     # Always output raster as half of first row 
+    # TODO change this so that raster takes up ~60% of first row
     raster_ax = fig.add_subplot(nrows, 2, 1)
     raster_depth.scatter_with_boundary_times(alf_probe_path, clusters, ax=raster_ax)  # raster
     # Always output rf maps as second half of first row
@@ -610,7 +608,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         m['cum_drift'] = cum_drift
         n_cur_ax += 1
     
-    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.4, hspace=0.4)
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.45, hspace=0.4)
     return fig, m
 
 def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path, m,
@@ -896,7 +894,7 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
     --------
     '''
     
-    # Get units
+    # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
     
@@ -960,7 +958,7 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
     --------
     '''
     
-    # Get units
+    # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
     
@@ -1023,7 +1021,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     --------
     '''
     
-    # Get units
+    # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
     
@@ -1080,7 +1078,7 @@ def max_drift_hist(units_b, units=None, bins='auto', ax=None):
     --------
     '''
     
-    # Get units
+    # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
     
@@ -1138,7 +1136,7 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
     '''
 
 
-    # Get units
+    # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
     
