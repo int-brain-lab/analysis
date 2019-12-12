@@ -17,7 +17,7 @@ Option A) Manually add the directories to your Python path in Python.
     mkdir int-brain-lab  # make a new directory, 'int-brain-lab'
     cd int-brain-lab  # navigate inside 'int-brain-lab'
     git clone https://github.com/int-brain-lab/ibllib
-    git clone https://github.com/int-brain-lab/
+    git clone https://github.com/int-brain-lab/analysis
     cd ibllib
     git checkout --track origin/brainbox  # OR, if it already exists, run `git checkout brainbox`
     ```
