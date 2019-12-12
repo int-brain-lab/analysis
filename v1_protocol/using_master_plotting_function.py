@@ -25,7 +25,8 @@ Option A) Manually add the directories to your Python path in Python.
     2) Create a conda environment in which you'll run the code. In your conda/OS terminal, run:
 
     ```
-    cd ~/int-brain-lab/ibllib
+    conda install conda==4.7.12  # first update conda to 4.7.12
+    cd ~\int-brain-lab\ibllib
     conda env create --name v1_cert --file brainbox_env.yml
     conda activate v1_cert
     ```
@@ -33,7 +34,7 @@ Option A) Manually add the directories to your Python path in Python.
     3) In Python, add these folders to your path. In Python, run:
 
     ```
-    cd ~/int-brain-lab
+    cd ~\int-brain-lab
     import os
     import sys
     sys.path.extend([os.path.join(os.getcwd(), 'ibllib'), os.path.join(os.getcwd(), 'analysis')])
@@ -53,14 +54,20 @@ Option B) pip install 'ibllib'.
     pip install -U git+https://github.com/cortex-lab/phylib.git@master
     ```
 '''
-
-# Recreate figures for 'ZM_2104/19-09-19/001' session.
 from oneibl.one import ONE
 from v1_protocol import plot as v1_plot
+
+# Set the eid as `eid` and probe name as `probe` - these two input args are required for running
+# `gen_figures`
 one = ONE()
 eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
 probe = 'probe_right'
+
+# If not already downloaded, download all data for a particular recording session.
+one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
+
+# Recreate figures for 'ZM_2104/19-09-19/001' session.
 m, cluster_sets, _ = v1_plot.gen_figures(
-    eid, 'probe_right', n_selected_cl=4,
+    eid, probe, n_selected_cl=4,
     grating_response_selected=True, unit_metrics_selected=True, 
     auto_filt_cl_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
