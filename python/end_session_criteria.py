@@ -113,3 +113,44 @@ class SessionEndCriteria(dj.Computed):
             key['end_status'] = criterion
             key['end_status_index'] = status_idx[criterion]
             self.insert1(key)
+
+
+@schema
+class SessionEndCriteriaImplemented(dj.Computed):
+    definition = """
+    -> acquisition.Session
+    ---
+    end_status:         varchar(32) # First end status to be triggered
+    end_status_index:   int # trial_id index when status first triggered 
+    """
+    # This is the same as SessionEndCriteria but only includes indices of the criteria that have
+    # been implemented 
+    key_source = behavior.CompleteTrialSession
+
+    def make(self, key):
+
+        query = behavior.TrialSet.Trial & key
+        query = query.proj(
+            'trial_response_choice',
+            'trial_response_choice',
+            'trial_response_time',
+            'trial_stim_on_time',
+            'trial_start_time',
+            signed_contrast='trial_stim_contrast_right \
+                - trial_stim_contrast_left',
+            rt='trial_response_time - trial_stim_on_time',
+            correct='trial_feedback_type = 1')
+        trials = pd.DataFrame(query.fetch(order_by='trial_id'))
+
+        if trials.empty:
+            return
+
+        status_idx = session_end_indices(trials)
+        exclude = ['>45_min_&_stopped', 'perf<40', 'perf_ez<40'] # List of unimplemented criteria
+        status_idx = {k: v for (k, v) in status_idx.items() if k not in exclude} # Remove from dict
+
+        if status_idx:
+            criterion = min(status_idx, key=status_idx.get)
+            key['end_status'] = criterion
+            key['end_status_index'] = status_idx[criterion]
+            self.insert1(key)
