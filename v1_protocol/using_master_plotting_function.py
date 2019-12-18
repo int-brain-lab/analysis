@@ -1,5 +1,4 @@
 '''
-
 Complete instructions for using the master plotting function, `plot.gen_figures`.
 
 Below are instructions for ensuring Python has access to the appropriate code for running:
@@ -54,6 +53,56 @@ function to ensure you are using the correct code:
     import sys
     sys.path.extend([os.path.join(os.getcwd(), 'ibllib'), os.path.join(os.getcwd(), 'analysis')])
     ```
+
+Below are the dataset_types required depending on the plots/metrics to be generated.
+
+    *Note, although the default call to the master plotting function will not require access to the
+    raw data, it is still recommended to download *all* data for a particular eid when possible:
+        ```
+        from oneibl.one import ONE
+        one = ONE()
+        # get eid
+        eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
+        # download ALL data
+        one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
+        ```
+    
+    Default (required for the default function call and all other function calls):
+        'clusters.amps',
+        'clusters.channels',
+        'clusters.depths',
+        'clusters.metrics',
+        'clusters.peakToTrough',
+        'clusters.probes',
+        'clusters.uuids',
+        'clusters.waveforms',
+        'clusters.waveformsChannels',
+        'spikes.amps',
+        'spikes.clusters',
+        'spikes.depths',
+        'spikes.samples',
+        'spikes.templates',
+        'spikes.times'
+    
+    Required for stimulus info extraction and to generate grating response figures:
+        'ephysData.raw.meta',
+        '_spikeglx_sync.channels',
+        '_spikeglx_sync.polarities',
+        '_spikeglx_sync.times',
+        '_iblrig_RFMapStim.raw',
+        '_iblrig_taskData.raw',
+        '_iblrig_taskSettings.raw',
+        '_iblrig_codeFiles.raw'
+        
+    Required for metrics/plots that need access to the raw data:
+        'ephysData.raw.ap',
+        'ephysData.raw.ch',
+        'ephysData.raw.lf',
+        'ephysData.raw.meta',
+        'ephysData.raw.nidq',
+        'ephysData.raw.sync',
+        'ephysData.raw.timestamps',
+        'ephysData.raw.wiring'
 '''
 
 # Ensure the python path is set correctly
