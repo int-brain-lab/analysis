@@ -2,10 +2,7 @@
 
 Complete instructions for using the master plotting function, `plot.gen_figures`.
 
-Below are 2 options for ensuring Python has access to the appropriate code for running
-`plot.gen_figures`.
-
-Option A) Manually add the directories to your Python path in Python.
+Below are instructions for ensuring Python has access to the appropriate code for running:
 
     1) Clone the directories and checkout the 'brainbox' branch of the 'ibllib' repository.
     *Note, if you have already cloned the 'analysis' and 'ibllib' repositories, then create a new 
@@ -29,9 +26,27 @@ Option A) Manually add the directories to your Python path in Python.
     cd ~\int-brain-lab\ibllib
     conda env create --name v1_cert --file brainbox_env.yml
     conda activate v1_cert
+    pip install -r requirements.txt
     ```
 
-    3) In Python, add these folders to your path. In Python, run:
+Below are the git and conda commands you should run before each time you run the master plotting
+function to ensure you are using the correct code:
+
+    ```
+    # activate the correct env
+    conda activate v1_cert
+    # checkout and pull ibllib@brainbox and analysis@master
+    cd ~\int-brain-lab\ibllib
+    git checkout brainbox
+    git fetch
+    git pull
+    cd cd ~\int-brain-lab\analysis
+    git checkout master
+    git fetch
+    git pull
+    ```
+
+    In python (ensure your python path can access the code):
 
     ```
     cd ~\int-brain-lab
@@ -39,21 +54,14 @@ Option A) Manually add the directories to your Python path in Python.
     import sys
     sys.path.extend([os.path.join(os.getcwd(), 'ibllib'), os.path.join(os.getcwd(), 'analysis')])
     ```
-    
-Option B) pip install 'ibllib'.
-
-    1) - 2) Follow instructions 1-2 above.
-
-    3) Install 'ibllib' as an editable package. In your conda/OS terminal, run:
-
-    ```
-    cd ~/int-brain-lab/ibllib
-    conda activate v1_cert  # ensure you are in the 'v1_cert' environment
-    pip install -r requirements.txt
-    pip install -e . git+https://github.com/int-brain-lab/ibllib.git@brainbox
-    pip install -U git+https://github.com/cortex-lab/phylib.git@master
-    ```
 '''
+
+# Ensure the python path is set correctly
+from pathlib import Path
+import os
+import sys
+sys.path.extend([os.path.join(Path.home(), 'int-brain-lab', 'ibllib'),
+                 os.path.join(Path.home(), 'int-brain-lab', 'analysis')])
 from oneibl.one import ONE
 from v1_protocol import plot as v1_plot
 
