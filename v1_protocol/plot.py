@@ -29,7 +29,6 @@ Here is a list of required data (alf objects) depending on the figures to be gen
 For additional details on and examples of running `gen_figures`, see the 
 `using_master_plotting_function` script in this same directory.
 
-TODO add script functionality
 TODO metrics to add: 1) chebyshev's inequality, 2) cluster residuals, 3) silhouette, 4) d_prime,
     5) nn_hit_rate, 6) nn_miss_rate, 7) iso distance, 8) l_ratio
 """
@@ -54,7 +53,7 @@ def gen_figures(
     unit_metrics_summary=True, unit_metrics_selected=False,
     summary_metrics = ['feat_vars', 'spks_missed', 'isi_viol', 'max_drift', 'cum_drift'],
     selected_metrics = ['isi_viol', 'spks_missed', 'cv_fr'],
-    auto_filt_cl_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
+    filt_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     summary_metrics_params={'bins': 'auto', 'rp': 0.002, 'spks_per_bin': 20, 'sigma': 5,
                             'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
@@ -76,7 +75,7 @@ def gen_figures(
         The probe whose data will be used to generate the figures.
     cluster_ids_summary : array-like (optional)
         The clusters for which to generate `grating_response_summary` and/or `unit_metrics_summary`
-        (if `[]`, clusters will be chosen via the filter parameters in `auto_filt_cl_params`,
+        (if `[]`, clusters will be chosen via the filter parameters in `filt_params`,
         which is used in a call to `brainbox.processing.filter_units`)
     cluster_ids_selected : array-like (optional)
         The clusters for which to generate `grating_response_ind` and/or `unit_metrics_ind`.
@@ -122,7 +121,7 @@ def gen_figures(
                 The bin width (s) used to determine the number of spikes/bin.
             'sigma' : float
                 The width (s) of the smoothing kernel used to determine the number of spikes/bin.
-    auto_filt_cl_params : dict (optional)
+    filt_params : dict (optional)
         Parameters used in the call to `brainbox.processing.filter_units` for filtering clusters:
             'min_amp' : float
                 The minimum mean amplitude (in uV) of the spikes in the unit.
@@ -266,11 +265,11 @@ def gen_figures(
         # Generate all V1 certification figures for the `eid` and `probe`
         >>> from v1_protocol import plot as v1_plot
         # *Note: 'probe_right' for this eid, new naming convention is 'probe00', 'probe01', etc.
-        # `auto_filt_cl_params` here is relaxed so that all units are included.
+        # `filt_params` here is relaxed so that all units are included.
         >>> m = v1_plot.gen_figures(
                     eid, 'probe_right', n_selected_cl=4, grating_response_selected=True,
                     unit_metrics_selected=True, 
-                    auto_filt_cl_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
+                    filt_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
     
     2) For a given eid's 'probe_01' in a particular recording session, generate grating response
     summary and unit metrics summary figures (where the time shown before a grating is 1s, the time
@@ -297,7 +296,7 @@ def gen_figures(
                     grating_response_summary=True, grating_response_selected=False,
                     unit_metrics_summary=True, unit_metrics_selected=False,
                     grating_response_params={'pre_t': 1, 'post_t': 4, 'bin_t': .01, 'sigma': .05},
-                    auto_filt_cl_params={'min_amp': 50, 'min_fr': 2, 'max_fpr': 0, 'rp': .002})
+                    filt_params={'min_amp': 50, 'min_fr': 2, 'max_fpr': 0, 'rp': .002})
     
     3) For a given eid's 'probe_01' in a particular recording session, generate only grating
     response selected and unit metrics selected figures based on the grating response parameters
@@ -323,9 +322,8 @@ def gen_figures(
         >>> probe_dir_part = np.where([part == 'probe_01' for part in Path(spks_path).parts])[0][0]
         >>> alf_probe_path = os.path.join(*Path(spks_path).parts[:probe_dir_part+1])
         >>> spks = aio.load_object(alf_probe_path, 'spikes')
-        >>> filtered_units = \
-                np.where(bb.processing.filter_units(spks, params={'min_amp': 50, 'min_fr': 2,
-                                                                  'max_fpr': 0, 'rp': 0.002}))[0]
+        >>> filtered_units = bb.processing.filter_units(
+                spks, min_amp=50, min_fr=2, max_fpr=0, rp=0.002})[0]
         # Generate selected V1 certification figures for the `eid` and `probe` for filtered units:
         >>> from v1_protocol import plot as v1_plot
         >>> save_dir = pwd
@@ -377,14 +375,15 @@ def gen_figures(
     
     # Set `cluster_ids_summary` and `cluster_ids_selected` #
     #------------------------------------------------------#
-    if cluster_ids_summary is None:  # filter all clusters according to `auto_filt_cl_params`
+    if cluster_ids_summary is None:  # filter all clusters according to `filt_params`
         print("'cluster_ids_summary' left empty, selecting filtered units.")
         T = spks_b['times'][-1] - spks_b['times'][0]
-        cluster_ids_summary = \
-            np.where(bb.processing.filter_units(units_b, T, params=auto_filt_cl_params))[0]
+        cluster_ids_summary = bb.processing.filter_units(
+            units_b, T, min_amp=filt_params['min_amp'], min_fr=filt_params['min_fr'],
+            max_fpr=filt_params['max_fpr'], rp=filt_params['rp'])
         if cluster_ids_summary.size == 0:
             raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
-                             'auto_filt_cl_params'.")
+                             'filt_params'.")
     if cluster_ids_selected is None:
         print("'cluster_ids_selected' left empty, selecting up to {} units from\
               'cluster_ids_summary'.".format(n_selected_cl))
@@ -1160,12 +1159,3 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
     ax.set_ylabel('Count')
     
     return cd
-
-
-if __name__ == '__main__':
-
-    # Prompt user for eid and probe.
-
-    # Generate grating response summary and unit metrics summary figures for "good units", and
-    # grating response selected and unit metrics selected figures for the first 5 good units.
-    print('end')
