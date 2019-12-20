@@ -174,7 +174,7 @@ m, cluster_sets, _ = v1_plot.gen_figures(
 
 # Example 2: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
 # selected figures. Generate the summary figure for all units, and generate the selected figures
-# (in batches of 4) for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 
+# (in batches of 5) for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 
 # Hz. Save all figures in the home 'v1cert_figs' directory.
 # -------------------------------------------------------------------------------------------------
 
@@ -225,9 +225,9 @@ m, cluster_sets, fig_list = v1_plot.gen_figures(
     save_dir=save_dir, fig_names=fig_names)
 
 # Call master plotting function in a loop on filtered units to generated selected figures for units
-# in batches of 4.
+# in batches of 5.
 
-batch_sz = 4  # number of units per figure
+batch_sz = 5  # number of units per figure
 n_i = np.int(np.ceil(len(filt_units) / batch_sz))  # number of iterations in for loop
 cur_unit = 0
 for i in range(n_i):
@@ -243,7 +243,7 @@ for i in range(n_i):
 # Example 3: For 'KS003/2019-11-19/001' generate all 4 figures (grating response summary,
 # grating response selected, unit metrics summary, and unit metrics selected). Generate the
 # summary figures for all units with a minimum amplitude > 60 (`filt_units`). Generate the 
-# selected figures for all `filt_units` in batches of 4. Save all figures.
+# selected figures for all `filt_units` in batches of 5. Save all figures.
 # -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
@@ -290,5 +290,5 @@ filt_units = bb.processing.filter_units(
 # Run master plotting function on filtered units to get summary figures
 
 # Run master plotting function in a loop on filtered units to generated selected figures for units
-# in batches of 4.
+# in batches of 5.
 
