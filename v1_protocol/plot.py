@@ -587,7 +587,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         m['cum_drift'] = cum_drift
         n_cur_ax += 1
     
-    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.45, hspace=0.4)
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.5, hspace=0.4)
     return fig, m
 
 def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path, m,
@@ -800,7 +800,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
     for i, unit in enumerate(units):
         # Get the channel of max amplitude and `n_ch` around it.
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if len(units_b['times'][str(unit)] == 0):
+        if len(units_b['times'][str(unit)]) == 0:
             s[i] = np.nan
             continue
         ts1 = units_b['times'][str(unit)][:n_spks]
@@ -825,7 +825,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
         ax = plt.gca()
 
     ax.hist(s, bins)
-    ax.set_title("'S' Values Histogram")
+    ax.set_title("'S' Values Hist")
     ax.set_xlabel("'S'")
     ax.set_ylabel('Count')
     
@@ -881,22 +881,22 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
     cv_fr = np.ones(len(units),)
     for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if len(units_b['times'][str(unit)] == 0):
+        if len(units_b['times'][str(unit)]) == 0:
             cv_fr[i] = np.nan
             continue
         ts = units_b['times'][str(unit)]
         cv_fr[i], _, _ = bb.metrics.firing_rate_coeff_var(ts, hist_win=hist_win, fr_win=fr_win,
                                                           n_bins=n_cv_bins)
-    
+
     # Plot histogram.
     if ax is None:
         ax = plt.gca()
 
     ax.hist(cv_fr, bins)
-    ax.set_title("Coefficient of Variation of Firing Rate Histogram")
+    ax.set_title("Coefficient of Variation of Firing Rate Hist")
     ax.set_xlabel("Coefficient of Variation of Firing Rate")
     ax.set_ylabel('Count')
-    
+
     return cv_fr
 
 
@@ -945,7 +945,7 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
     frac_missing = np.ones(len(units),)
     for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if len(units_b['times'][str(unit)] == 0):
+        if len(units_b['times'][str(unit)]) == 0:
             frac_missing[i] = np.nan
             continue
         try:  # need a minimum number of spikes for `feat_cutoff`
@@ -960,7 +960,7 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
         ax = plt.gca()
 
     ax.hist(frac_missing, bins)
-    ax.set_title("Fraction of Missing Spikes Histogram")
+    ax.set_title("Fraction of Missing Spikes Hist")
     ax.set_xlabel("Fraction of Missing Spikes")
     ax.set_ylabel('Count')
     
@@ -1008,7 +1008,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     frac_isi_viol = np.ones(len(units),)
     for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if len(units_b['times'][str(unit)] == 0):
+        if len(units_b['times'][str(unit)]) == 0:
             frac_isi_viol[i] = np.nan
             continue
         ts = units_b['times'][str(unit)]
@@ -1019,7 +1019,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
         ax = plt.gca()
 
     ax.hist(frac_isi_viol, bins)
-    ax.set_title("Fraction of ISI Violations Histogram")
+    ax.set_title("Fraction of ISI Violations Hist")
     ax.set_xlabel("Fraction of ISI Violations")
     ax.set_ylabel('Count')
     
@@ -1065,7 +1065,7 @@ def max_drift_hist(units_b, units=None, bins='auto', ax=None):
     md = np.ones(len(units),)
     for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if len(units_b['times'][str(unit)] == 0):
+        if len(units_b['times'][str(unit)]) == 0:
             md[i] = np.nan
             continue
         depths = units_b['depths'][str(unit)]
@@ -1076,7 +1076,7 @@ def max_drift_hist(units_b, units=None, bins='auto', ax=None):
         ax = plt.gca()
 
     ax.hist(md, bins)
-    ax.set_title("Max Drift Values Histogram")
+    ax.set_title("Max Drift Values Hist")
     ax.set_xlabel("Max Drift (mm)")
     ax.set_ylabel('Count')
     
@@ -1123,7 +1123,7 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
     cd = np.ones(len(units),)
     for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if len(units_b['times'][str(unit)] == 0):
+        if len(units_b['times'][str(unit)]) == 0:
             cd[i] = np.nan
             continue
         depths = units_b['depths'][str(unit)]
@@ -1134,7 +1134,7 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
         ax = plt.gca()
 
     ax.hist(cd, bins)
-    ax.set_title("Cumulative Drift Values Histogram")
+    ax.set_title("Cumulative Drift Values Hist")
     ax.set_xlabel("Cumulative Drift (mm)")
     ax.set_ylabel('Count')
     
