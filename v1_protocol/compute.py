@@ -16,10 +16,6 @@ import brainbox as bb
 from brainbox.processing import bincount2D
 
 
-def get_good_units():
-    pass
-
-
 def _get_spike_counts_in_bins(spike_times, spike_clusters, intervals=None):
     """
     Return the number of spikes in a sequence of time intervals, for each neuron.

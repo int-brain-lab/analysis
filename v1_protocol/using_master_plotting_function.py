@@ -108,7 +108,7 @@ documentation on parametrizing all the possible metrics/plots.
 Current sessions in examples: 'ZM_2104/2019-09-1/1', 'KS003/2019-11-1/1',
 'CSK-scan-008/2019-12-0/8'
 
-TODO: add examples using different metrics and metrics params.
+TODO: add examples using different metrics and metrics params and saving.
 '''
 
 # Ensure the python path is set correctly

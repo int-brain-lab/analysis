@@ -633,7 +633,7 @@ def plot_grating_figures(
             ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
             ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
         fig_gr_summary.suptitle('Summary Grating Responses')
-        fig_dict['fig_gr_summary'] = fig_gr_summary
+        fig_dict['gr_summary'] = fig_gr_summary
 
     if plot_selected:
         if save_dir is None:
@@ -645,7 +645,7 @@ def plot_grating_figures(
             off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
         fig_gr_selected.suptitle('Selected Units Grating Responses')
         print('done')
-        fig_dict['fig_gr_selected'] = fig_gr_selected
+        fig_dict['gr_selected'] = fig_gr_selected
     
     # -----------------------------
     # package up and return metrics

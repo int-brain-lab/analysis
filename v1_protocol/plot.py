@@ -87,7 +87,8 @@ def gen_figures(
                              'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
                              'n_ch_probe': 385, 'isi_win': 0.01},
     rf_params={'method': 'corr', 'binsize': 0.025, 'lags': 8, 'n_depths': 30, 'use_svd': False},
-    save_dir=None):
+    save_dir=None, fig_names={'um_summary': None, 'um_selected': None, 'gr_summary': None,
+                              'gr_selected': None}):
     '''
     Generates figures for the V1 certification protocol for a given eid, probe, and clusters from a
     recording session.
@@ -121,7 +122,7 @@ def gen_figures(
         The summary metrics plots to generate for the `unit_metrics_summary` figures for
         `cluster_ids_summary`. Possible values can include:
             'feat_vars' : Bar plot of variances of empirical amplitude distribution.
-            's' : Hist of spatiotemporal waveform correlation metric.
+            's' : Hist of spatiotemporal waveform correlation metric. (requires raw ephys data)
             'cv_fr' : Hist of coefficient of variation of firing rate.
             'spks_missed' : Hist of fraction of spikes missed.
             'isi_viol' : Hist of isi violations.
@@ -133,9 +134,9 @@ def gen_figures(
             'isi_viol' : Plot of the histogram of isi violations.
             'spks_missed' : Plot of the pdf of the spike amplitude distribution.
             'cv_fr' : Plot of the firing rate.
-            'amp_heatmap' : Plot of the amplitude heatmap.
+            'amp_heatmap' : Plot of the amplitude heatmap. (requires raw ephys data)
             'peth' : Peri-event time histogram.
-            's' : Plots of waveforms across `'n_ch'`.
+            's' : Plots of waveforms across `'n_ch'`. (requires raw ephys data)
     grating_response_params : dict (optional)
         Parameters for generating rasters based on time of grating stimulus presentation:
             'pre_t' : float
@@ -205,8 +206,13 @@ def gen_figures(
                 `True` plots 1st spatial SVD component of rf; `False` plots time lag with
                 peak response.
     save_dir : string (optional)
-        The path to which to save generated figures. (if `None`, figures will not be automatically
-        saved)
+        The directory in which to save generated figures. (if `None`, figures will not be saved).
+    fig_names : dict (optional)
+        The filenames of the figures to be saved:
+            'um_summary' : The name for the summary metrics figure.
+            'um_selected' : The name for the selected units' metrics figure.
+            'gr_summary' : The name for the summary grating response summary figure.
+            'gr_selected' : The name for the selected units' grating response figure.
 
     Returns
     -------
@@ -383,7 +389,7 @@ def gen_figures(
         cluster_sets['cluster_ids_selected_vr'] = cluster_ids_selected_vr
         # Generate grating figure(s)
         grating_figs, grating_metrics = orientation.plot_grating_figures(
-            alf_probe_path, save_dir=save_dir, pre_time=grating_response_params['pre_t'],
+            alf_probe_path, save_dir=None, pre_time=grating_response_params['pre_t'],
             post_time=grating_response_params['post_t'],
             bin_size=grating_response_params['bin_t'],
             smoothing=grating_response_params['sigma'],
@@ -404,7 +410,7 @@ def gen_figures(
         fig_um_summary, m = um_summary_plots(
             cluster_ids_summary, summary_metrics, units_b, alf_probe_path, ephys_file_path, m,
             summary_metrics_params, rf_params, certif_exists, save_dir=save_dir)
-        fig_h['fig_um_summary'] = fig_um_summary
+        fig_h['um_summary'] = fig_um_summary
         fig_list_name.extend(['unit_metrics_summary'])
         print('done')
     
@@ -415,11 +421,18 @@ def gen_figures(
         fig_um_selected, m = um_selected_plots(
             cluster_ids_selected, selected_metrics, units_b, alf_probe_path, ephys_file_path, m,
             selected_metrics_params, save_dir=save_dir)
-        fig_h['fig_um_selected'] = fig_um_selected
+        fig_h['um_selected'] = fig_um_selected
         fig_list_name.extend(['unit_metrics_selected'])
         print('done')
     
     print('\n\nFinished generating figures {} for session {}'.format(fig_list_name, session_path))
+    
+    # Save figures #
+    # ------------ #
+    if not(save_dir is None):
+        for name in fig_names:
+            try:
+                fig_h[name]
     
     return m, cluster_sets, fig_h
 
@@ -434,14 +447,14 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         The clusters for which to generate the metrics summary plots.
     metrics : list
         The summary metrics plots to generate for the `unit_metrics_summary` figure. Possible
-        values can include:
-        'feat_vars' :
-        's' : 
-        'cv_fr' :
-        'spks_missed' : 
-        'isi_viol' :
-        'max_drift' :
-        'cum_drift' :
+        values can include: (see `brainbox.metrics` for additional details)
+        'feat_vars' : Bar plot of variances of empirical amplitude distribution.
+        's' : Hist of spatiotemporal waveform correlation metric. (requires raw ephys data)
+        'cv_fr' : Hist of coefficient of variation of firing rate.
+        'spks_missed' : Hist of fraction of spikes missed.
+        'isi_viol' : Hist of isi violations.
+        'max_drift' : Hist of max drift metric.
+        'cum_drift' : Hist of cumulative drift metric.
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
@@ -601,12 +614,13 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
         The clusters for which to generate the metrics summary plots.
     metrics : list
         The selected metrics plots to generate for the `unit_metrics_selected` figure. Possible
-        values can include: 
-        's' : 
-        'cv_fr' :
-        'spks_missed' : 
-        'isi_viol' :
-        'amp_heatmap' :
+        values can include: (see `gen_figures` docstring for details)
+        'isi_viol' : Plot of the histogram of isi violations.
+        'spks_missed' : Plot of the pdf of the spike amplitude distribution.
+        'cv_fr' : Plot of the firing rate.
+        'amp_heatmap' : Plot of the amplitude heatmap. (requires raw ephys data)
+        'peth' : Peri-event time histogram.
+        's' : Plots of waveforms across `'n_ch'`. (requires raw ephys data)
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
