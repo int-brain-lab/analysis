@@ -1,5 +1,5 @@
 '''
-Complete instructions for using the master plotting function, `plot.gen_figures`.
+Complete instructions and examples for using the master plotting function, `plot.gen_figures`.
 
 Below are instructions for ensuring Python has access to the appropriate code for running:
 
@@ -103,7 +103,12 @@ Below are the dataset_types required depending on the plots/metrics to be genera
         'ephysData.raw.wiring'
 
 *Note: see the master plotting function (`analysis\v1_protocol\plot.gen_figures`) for detailed
-documentation on parametrizing all the possible metrics/plots. 
+documentation on parametrizing all the possible metrics/plots.
+
+Current sessions in examples: 'ZM_2104/2019-09-1/1', 'KS003/2019-11-1/1',
+'CSK-scan-008/2019-12-0/8'
+
+TODO: add examples using different metrics and metrics params.
 '''
 
 # Ensure the python path is set correctly
@@ -117,11 +122,13 @@ from v1_protocol import plot as v1_plot
 import alf.io as aio
 import brainbox as bb
 
+# The examples below can be run independently.
+
 # Example 1: For 'ZM_2104/2019-09-19/001' generate all 4 figures (grating response summary,
 # grating response selected, unit metrics summary, and unit metrics selected). Generate the
 # summary figures for all units, and the selected figures for 4 randomly chosen units from the
 # entire set of units.
-#--------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
 # `gen_figures`
@@ -161,14 +168,61 @@ d_paths = one.load(eid, dataset_types=dtypes, clobber=False, download_only=True)
 m, cluster_sets, _ = v1_plot.gen_figures(
     eid, probe, n_selected_cl=4,
     grating_response_selected=True, unit_metrics_selected=True, 
-    auto_filt_cl_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
+    filt_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
 
 
-# Example 2: For 'KS003/2019-11-19/001' generate all 4 figures (grating response summary,
-# grating response selected, unit metrics summary, and unit metrics selected). Generate the
-# summary figures for all units with a minimum amplitude > 75 (`filt_units`). Generate the 
+# Example 2: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
+# selected figures. Generate the summary figure for all units, and generate the selected figures
+# for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 Hz. Generate the 
 # selected figures for all `filt_units` in batches of 4.
-#--------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
+
+# Set the eid as `eid` and probe name as `probe` - these two input args are required for running
+# `gen_figures`
+one = ONE()
+eid = one.search(subject='KS003', date='2019-11-19', number=1)[0]
+probe = 'probe00'
+
+# Get paths to the required dataset_types. If required dataset_types are not already downloaded,
+# download them.
+dtypes = [
+        'clusters.amps',
+        'clusters.channels',
+        'clusters.depths',
+        'clusters.metrics',
+        'clusters.peakToTrough',
+        'clusters.uuids',
+        'clusters.waveforms',
+        'clusters.waveformsChannels',
+        'spikes.amps',
+        'spikes.clusters',
+        'spikes.depths',
+        'spikes.samples',
+        'spikes.templates',
+        'spikes.times',
+        ]
+
+# Filter units
+alf_probe_path = os.path.split(d_paths[0])[0]
+spks_b = aio.load_object(alf_probe_path, 'spikes')
+units_b = bb.processing.get_units_bunch(spks_b)
+T = spks_b.times[-1] - spks_b.times[0]  # length of recording session
+filt_units = bb.processing.filter_units(units_b, T, min_amp=50e-6, min_fr=3)
+
+# Call master plotting function for metrics summary figure.
+m, cluster_sets, _ = v1_plot.gen_figures(
+    eid, probe, cluster_ids_summary=filt_units, extract_stim_info=False, unit_metrics_summary=True,
+    unit_metrics_selected=False, grating_response_summary=False, grating_response_selected=False)
+
+# Call master plotting function in a loop on filtered units to generated selected figures for units
+# in batches of 4.
+
+
+# Example 3: For 'KS003/2019-11-19/001' generate all 4 figures (grating response summary,
+# grating response selected, unit metrics summary, and unit metrics selected). Generate the
+# summary figures for all units with a minimum amplitude > 60 (`filt_units`). Generate the 
+# selected figures for all `filt_units` in batches of 4.
+# -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
 # `gen_figures`
@@ -216,17 +270,3 @@ filt_units = bb.processing.filter_units(
 # Run master plotting function in a loop on filtered units to generated selected figures for units
 # in batches of 4.
 
-
-# Example 3: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
-# selected figures. Generate the summary figure for all units, and generate the selected figures
-# for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 Hz. Generate the 
-# selected figures for all `filt_units` in batches of 4.
-#--------------------------------------------------------------------------------------------------
-
-
-
-# Example 3: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
-# selected figures. Generate the summary figure for all units, and generate the selected figures
-# for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 Hz. Generate the 
-# selected figures for all `filt_units` in batches of 4.
-#--------------------------------------------------------------------------------------------------

@@ -305,14 +305,26 @@ def gen_figures(
             ephys_file_path = os.path.join(ephys_file_dir, file)
     # Throw error if `ephys_file_path` is None and we have metrics that require it.
     require_ephys = ['s', 'amp_heatmap']
-    if ephys_file_path is None & any(map(lambda x: x in require_ephys,
-                                         (summary_metrics + selected_metrics))):
+    if (ephys_file_path is None) & \
+        any(map(lambda x: x in (summary_metrics + selected_metrics), require_ephys)):
         raise FileNotFoundError(
             "Some of the specified metrics require the binary ephys file, and the binary ephys"
             " file was not found. Either download the binary ephys file, or change the specified"
             " metrics. The metrics which require the binary ephys file are {}."
             .format(require_ephys))
     if extract_stim_info:  # get stimulus info and save in `alf_path`
+        # Ensure all files necessary for stim info extraction exist.
+        required_dtypes = [
+            'ephysData.raw.meta', '_spikeglx_sync.channels', '_spikeglx_sync.polarities',
+            '_spikeglx_sync.times', '_iblrig_RFMapStim.raw', '_iblrig_codeFiles.raw',
+            '_iblrig_taskSettings.raw']
+        required_paths = one.load(
+            eid, dataset_types=required_dtypes, clobber=False, download_only=True)
+        if None in required_paths:  # this means we are missing a required dtype
+            raise FileNotFoundError(
+                "At least one of the required dataset_types for extracting stimulus info is" 
+                "missing. The required dataset_types are {}".format(required_dtypes))
+        # Proceed with extraction.
         certification_protocol.extract_stimulus_info_to_alf(session_path, save=True)
         # Copy `'_iblcertif'` files over to `alf_probe_path`
         for i in os.listdir(alf_path):
@@ -327,7 +339,7 @@ def gen_figures(
     if not(certif_exists) and (grating_response_summary | grating_response_selected):
         raise FileNotFoundError(
             "'_iblcertif_' extraction files not found. Either set 'grating_response_selected' and"
-            " 'grating_response_summary' to False to not try and generate these figures, or set"
+            " 'grating_response_summary' to False as as to not generate these figures, or set"
             " 'extract_stim_info' to True to extract the '_iblcertif_' files.")
     # Get units bunch.
     spks_b = aio.load_object(alf_probe_path, 'spikes')
@@ -785,11 +797,11 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
 
     # Calculate 's'.
     s = np.ones(len(units),)
-    for unit in range(len(units)):
+    for i, unit in enumerate(units):
         # Get the channel of max amplitude and `n_ch` around it.
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if not(str(type(units_b['times'][str(unit)])) == "<class 'numpy.ndarray'>"):
-            s[unit] = np.nan
+        if len(units_b['times'][str(unit)] == 0):
+            s[i] = np.nan
             continue
         ts1 = units_b['times'][str(unit)][:n_spks]
         ts2 = units_b['times'][str(unit)][-n_spks:]
@@ -806,7 +818,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
                                       dtype=dtype, car=car)
         wf2 = bb.io.extract_waveforms(ephys_file, ts2, ch, sr=sr, n_ch_probe=n_ch_probe,
                                       dtype=dtype, car=car)
-        s[unit] = bb.metrics.wf_similarity(wf1, wf2)
+        s[i] = bb.metrics.wf_similarity(wf1, wf2)
 
     # Plot histogram.
     if ax is None:
@@ -867,14 +879,14 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
     
     # Calculate coefficient of variation of firing rate.
     cv_fr = np.ones(len(units),)
-    for unit in range(len(units)):
+    for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if not(str(type(units_b['times'][str(unit)])) == "<class 'numpy.ndarray'>"):
-            cv_fr[unit] = np.nan
+        if len(units_b['times'][str(unit)] == 0):
+            cv_fr[i] = np.nan
             continue
         ts = units_b['times'][str(unit)]
-        cv_fr[unit], _, _ = bb.metrics.firing_rate_coeff_var(ts, hist_win=hist_win, fr_win=fr_win,
-                                                             n_bins=n_cv_bins)
+        cv_fr[i], _, _ = bb.metrics.firing_rate_coeff_var(ts, hist_win=hist_win, fr_win=fr_win,
+                                                          n_bins=n_cv_bins)
     
     # Plot histogram.
     if ax is None:
@@ -931,17 +943,17 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
     
     # Calculate fraction of missing spikes for each unit.
     frac_missing = np.ones(len(units),)
-    for unit in range(len(units)):
+    for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if not(str(type(units_b['times'][str(unit)])) == "<class 'numpy.ndarray'>"):
-            frac_missing[unit] = np.nan
+        if len(units_b['times'][str(unit)] == 0):
+            frac_missing[i] = np.nan
             continue
         try:  # need a minimum number of spikes for `feat_cutoff`
             amps = units_b['amps'][str(unit)]
             frac_missing[unit], _, _ = bb.metrics.feat_cutoff(
                 amps, spks_per_bin=spks_per_bin, sigma=sigma)
         except:  # if didn't meet min num spikes requirement, set as nan
-            frac_missing[unit] = np.nan    
+            frac_missing[i] = np.nan    
     
     # Plot histogram.
     if ax is None:
@@ -994,13 +1006,13 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     
     # Calculate fraction of isi violations for each unit.
     frac_isi_viol = np.ones(len(units),)
-    for unit in range(len(units)):
+    for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if not(str(type(units_b['times'][str(unit)])) == "<class 'numpy.ndarray'>"):
-            frac_isi_viol[unit] = np.nan
+        if len(units_b['times'][str(unit)] == 0):
+            frac_isi_viol[i] = np.nan
             continue
         ts = units_b['times'][str(unit)]
-        frac_isi_viol[unit], _, _ = bb.metrics.isi_viol(ts, rp=rp)
+        frac_isi_viol[i], _, _ = bb.metrics.isi_viol(ts, rp=rp)
     
     # Plot histogram.
     if ax is None:
@@ -1051,13 +1063,13 @@ def max_drift_hist(units_b, units=None, bins='auto', ax=None):
     
     # Calculate fraction of isi violations for each unit.
     md = np.ones(len(units),)
-    for unit in range(len(units)):
+    for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if not(str(type(units_b['times'][str(unit)])) == "<class 'numpy.ndarray'>"):
-            md[unit] = np.nan
+        if len(units_b['times'][str(unit)] == 0):
+            md[i] = np.nan
             continue
         depths = units_b['depths'][str(unit)]
-        md[unit] = bb.metrics.max_drift(depths)
+        md[i] = bb.metrics.max_drift(depths)
     
     # Plot histogram.
     if ax is None:
@@ -1109,13 +1121,13 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
     
     # Calculate fraction of isi violations for each unit.
     cd = np.ones(len(units),)
-    for unit in range(len(units)):
+    for i, unit in enumerate(units):
         # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
-        if not(str(type(units_b['times'][str(unit)])) == "<class 'numpy.ndarray'>"):
-            cd[unit] = np.nan
+        if len(units_b['times'][str(unit)] == 0):
+            cd[i] = np.nan
             continue
         depths = units_b['depths'][str(unit)]
-        cd[unit] = bb.metrics.cum_drift(depths)
+        cd[i] = bb.metrics.cum_drift(depths)
     
     # Plot histogram.
     if ax is None:
