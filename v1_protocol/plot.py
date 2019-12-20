@@ -78,7 +78,7 @@ def gen_figures(
     unit_metrics_summary=True, unit_metrics_selected=False,
     summary_metrics = ['feat_vars', 'spks_missed', 'isi_viol', 'max_drift', 'cum_drift'],
     selected_metrics = ['isi_viol', 'spks_missed', 'cv_fr'],
-    filt_params={'min_amp': 100, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
+    filt_params={'min_amp': 50e-6, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
     summary_metrics_params={'bins': 'auto', 'rp': 0.002, 'spks_per_bin': 20, 'sigma': 5,
                             'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
@@ -87,8 +87,7 @@ def gen_figures(
                              'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
                              'n_ch_probe': 385, 'isi_win': 0.01},
     rf_params={'method': 'corr', 'binsize': 0.025, 'lags': 8, 'n_depths': 30, 'use_svd': False},
-    save_dir=None, fig_names={'um_summary': None, 'um_selected': None, 'gr_summary': None,
-                              'gr_selected': None}):
+    save_dir=None, fig_names={}):
     '''
     Generates figures for the V1 certification protocol for a given eid, probe, and clusters from a
     recording session.
@@ -208,7 +207,7 @@ def gen_figures(
     save_dir : string (optional)
         The directory in which to save generated figures. (if `None`, figures will not be saved).
     fig_names : dict (optional)
-        The filenames of the figures to be saved:
+        The filenames of the figures to be saved. Keys must be amongst the following:
             'um_summary' : The name for the summary metrics figure.
             'um_selected' : The name for the selected units' metrics figure.
             'gr_summary' : The name for the summary grating response summary figure.
@@ -356,7 +355,9 @@ def gen_figures(
 
     # Set `cluster_ids_summary` and `cluster_ids_selected` #
     # ---------------------------------------------------- #
-    if cluster_ids_summary is None:  # filter all clusters according to `filt_params`
+    
+    # Filter all clusters according to `filt_params`
+    if (cluster_ids_summary is None) and unit_metrics_summary:  
         print("'cluster_ids_summary' left empty, selecting filtered units.")
         T = spks_b['times'][-1] - spks_b['times'][0]
         cluster_ids_summary = bb.processing.filter_units(
@@ -365,7 +366,8 @@ def gen_figures(
         if cluster_ids_summary.size == 0:
             raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
                              'filt_params'.")
-    if cluster_ids_selected is None:
+    # Get `cluster_ids_selected` from `cluster_ids_summary`
+    if (cluster_ids_selected is None) and unit_metrics_selected:
         print("'cluster_ids_selected' left empty, selecting up to {} units from\
               'cluster_ids_summary'.".format(n_selected_cl))
         if len(cluster_ids_summary) <= (n_selected_cl):  # select all of `cluster_ids_summary`
@@ -413,7 +415,7 @@ def gen_figures(
         fig_h['um_summary'] = fig_um_summary
         fig_list_name.extend(['unit_metrics_summary'])
         print('done')
-    
+
     # Generate selected unit metrics figure #
     # ------------------------------------- #
     if unit_metrics_selected:
@@ -426,15 +428,22 @@ def gen_figures(
         print('done')
     
     print('\n\nFinished generating figures {} for session {}'.format(fig_list_name, session_path))
-    
+
     # Save figures #
     # ------------ #
-    if not(save_dir is None):
-        for name in fig_names:
+    if not(save_dir is None):  # if there is specified a directory to save to
+        for name in fig_names:  # for each figure
             try:
-                fig_h[name]
-    
+                # Create directory if doesn't already exist.
+                os.mkdir(save_dir) if not(os.path.exists(save_dir)) else []
+                # Save figure.
+                fig_h[name].savefig(os.path.join(save_dir, fig_names[name] + '.png'))
+            except Exception as err:
+                print("Failed to save the '{}' figure. Details: \n".format(name))
+                print(err)
+
     return m, cluster_sets, fig_h
+
 
 def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path, m,
                      metrics_params, rf_params, certif_exists, save_dir=None):

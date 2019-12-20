@@ -117,6 +117,7 @@ import os
 import sys
 sys.path.extend([os.path.join(Path.home(), 'int-brain-lab', 'ibllib'),
                  os.path.join(Path.home(), 'int-brain-lab', 'analysis')])
+import numpy as np
 from oneibl.one import ONE
 from v1_protocol import plot as v1_plot
 import alf.io as aio
@@ -173,8 +174,8 @@ m, cluster_sets, _ = v1_plot.gen_figures(
 
 # Example 2: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
 # selected figures. Generate the summary figure for all units, and generate the selected figures
-# for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 Hz. Generate the 
-# selected figures for all `filt_units` in batches of 4.
+# (in batches of 4) for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 
+# Hz. Save all figures in the home 'v1cert_figs' directory.
 # -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
@@ -209,19 +210,40 @@ units_b = bb.processing.get_units_bunch(spks_b)
 T = spks_b.times[-1] - spks_b.times[0]  # length of recording session
 filt_units = bb.processing.filter_units(units_b, T, min_amp=50e-6, min_fr=3)
 
+# Specify parameters for saving figures. *Note*: you must make sure the directory exists. i.e.,
+# create this directory if it doesn't already exist before running `gen_figures`.
+save_dir = Path.joinpath(Path.home(), 'v1cert_figs')
+# make `save_dir` if this directory doesn't already exist:
+os.mkdir(save_dir) if not(os.path.exists(save_dir)) \
+                   else print("'{}' already exists".format(save_dir))
+fig_names = {'um_summary': 'KS003_2019-11-19_1_summary'}
+
 # Call master plotting function for metrics summary figure.
-m, cluster_sets, _ = v1_plot.gen_figures(
+m, cluster_sets, fig_list = v1_plot.gen_figures(
     eid, probe, cluster_ids_summary=filt_units, extract_stim_info=False, unit_metrics_summary=True,
-    unit_metrics_selected=False, grating_response_summary=False, grating_response_selected=False)
+    unit_metrics_selected=False, grating_response_summary=False, grating_response_selected=False,
+    save_dir=save_dir, fig_names=fig_names)
 
 # Call master plotting function in a loop on filtered units to generated selected figures for units
 # in batches of 4.
+
+batch_sz = 4  # number of units per figure
+n_i = np.int(np.ceil(len(filt_units) / batch_sz))  # number of iterations in for loop
+cur_unit = 0
+for i in range(n_i):
+    fig_names = {'um_selected': 'KS003_2019-11-19_1_selected_' + str(i)}
+    m, cluster_sets, fig_list = v1_plot.gen_figures(
+        eid, probe, cluster_ids_selected=filt_units[cur_unit:(cur_unit + batch_sz)],
+        extract_stim_info=False, unit_metrics_summary=False, unit_metrics_selected=True,
+        grating_response_summary=False, grating_response_selected=False,
+        save_dir=save_dir, fig_names=fig_names)
+    cur_unit += batch_sz
 
 
 # Example 3: For 'KS003/2019-11-19/001' generate all 4 figures (grating response summary,
 # grating response selected, unit metrics summary, and unit metrics selected). Generate the
 # summary figures for all units with a minimum amplitude > 60 (`filt_units`). Generate the 
-# selected figures for all `filt_units` in batches of 4.
+# selected figures for all `filt_units` in batches of 4. Save all figures.
 # -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
