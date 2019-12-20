@@ -13,18 +13,42 @@ create figures from raw data, it is still recommended to download *all* data for
     >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
     # download data
     >>> one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
+    
 Here is a list of required data (alf objects) depending on the figures to be generated:
-    a) required for any figure:
-        clusters
-        spikes
-    b) if grating_response_summary or grating_response_ind:
-        ephysData.raw
-        _spikeglx_sync
-        _iblrig_RFMapStim
-        _iblrig_codeFiles
-        _iblrig_taskSettings
-    c) if using waveform metrics in unit_metrics_ind:
-        ephysData.raw
+    Default (required for the default function call and all other function calls):
+        'clusters.amps',
+        'clusters.channels',
+        'clusters.depths',
+        'clusters.metrics',
+        'clusters.peakToTrough',
+        'clusters.uuids',
+        'clusters.waveforms',
+        'clusters.waveformsChannels',
+        'spikes.amps',
+        'spikes.clusters',
+        'spikes.depths',
+        'spikes.samples',
+        'spikes.templates',
+        'spikes.times'
+    
+    Required for stimulus info extraction and to generate grating response figures:
+        'ephysData.raw.meta',
+        '_spikeglx_sync.channels',
+        '_spikeglx_sync.polarities',
+        '_spikeglx_sync.times',
+        '_iblrig_RFMapStim.raw',
+        '_iblrig_taskSettings.raw',
+        '_iblrig_codeFiles.raw'
+        
+    Required for metrics/plots that need access to the raw data:
+        'ephysData.raw.ap',
+        'ephysData.raw.ch',
+        'ephysData.raw.lf',
+        'ephysData.raw.meta',
+        'ephysData.raw.nidq',
+        'ephysData.raw.sync',
+        'ephysData.raw.timestamps',
+        'ephysData.raw.wiring'
 
 For additional details on and examples of running `gen_figures`, see the 
 `using_master_plotting_function` script in this same directory.
@@ -35,6 +59,7 @@ TODO metrics to add: 1) chebyshev's inequality, 2) cluster residuals, 3) silhoue
 
 import os
 from pathlib import Path
+from warnings import warn
 import shutil
 import numpy as np
 import matplotlib.pyplot as plt
@@ -245,105 +270,21 @@ def gen_figures(
     rf_mapping_old
     brainbox.metrics.metrics
     brainbox.plot.plot
+    using_master_plotting_function
 
     Examples
     --------
-    1) For a given eid and probe in a particular recording session, generate grating response
-    summary and unit metrics summary figures for *all* units, and grating response selected and
-    unit metrics selected figures for 4 randomly chosen units.
-        # Add `ibllib`, `iblscripts`, and `analysis` repos to path *if necessary*:
-        >>> import sys
-        >>> import os
-        >>> sys.path.extend(
-                [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
-                 os.path.abspath('.\\analysis')])
-        # Get eid from ONE and load necessary dataset_types (this data should already be
-        # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
-        >>> from oneibl.one import ONE
-        >>> one = ONE()
-        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
-        # Generate all V1 certification figures for the `eid` and `probe`
-        >>> from v1_protocol import plot as v1_plot
-        # *Note: 'probe_right' for this eid, new naming convention is 'probe00', 'probe01', etc.
-        # `filt_params` here is relaxed so that all units are included.
-        >>> m = v1_plot.gen_figures(
-                    eid, 'probe_right', n_selected_cl=4, grating_response_selected=True,
-                    unit_metrics_selected=True, 
-                    filt_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
-    
-    2) For a given eid's 'probe_01' in a particular recording session, generate grating response
-    summary and unit metrics summary figures (where the time shown before a grating is 1s, the time
-    shown after a grating is 4s, the bin size used to compute the grating responses is 10 ms, and 
-    the smoothing kernel used is 50 ms) for a filtered subset of units (where the minimum mean
-    amplitude must be > 50 uV, the minimum firing rate must be > 2 Hz, and there is no upper limit
-    to the estimated false positive ratio).
-        # Add `ibllib`, `iblscripts`, and `analysis` repos to path *if necessary*:
-        >>> import sys
-        >>> import os
-        >>> sys.path.extend(
-                [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
-                 os.path.abspath('.\\analysis')])
-        # Get eid from ONE and load necessary dataset_types (this data should already be
-        # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
-        >>> from oneibl.one import ONE
-        >>> one = ONE()
-        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
-        # Generate summary V1 certification figures for the `eid` and `probe` for filtered units:
-        >>> from v1_protocol import plot as v1_plot
-        # *Note: 'probe_right' for this eid, new naming convention is 'probe00', 'probe01', etc.
-        >>> m = v1_plot.gen_figures(
-                    eid, 'probe_right',
-                    grating_response_summary=True, grating_response_selected=False,
-                    unit_metrics_summary=True, unit_metrics_selected=False,
-                    grating_response_params={'pre_t': 1, 'post_t': 4, 'bin_t': .01, 'sigma': .05},
-                    filt_params={'min_amp': 50, 'min_fr': 2, 'max_fpr': 0, 'rp': .002})
-    
-    3) For a given eid's 'probe_01' in a particular recording session, generate only grating
-    response selected and unit metrics selected figures based on the grating response parameters
-    and unit filtering parameters in example 2), and save these figures to the working directory.
-        # Add `ibllib`, `iblscripts`, and `analysis` repos to path *if necessary*:
-        >>> import sys
-        >>> import os
-        >>> sys.path.extend(
-                [os.path.abspath('.\\ibllib'), os.path.abspath('.\\iblscripts'),
-                 os.path.abspath('.\\analysis')])
-        # Get eid from ONE and load necessary dataset_types (this data should already be
-        # downloaded to the local `CACHE_DIR` specified by ONE in `.one_params`):
-        >>> from oneibl.one import ONE
-        >>> one = ONE()
-        >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
-        # Get filtered subset of units:
-        >>> from pathlib import Path
-        >>> import numpy as np
-        >>> import alf.io as aio
-        >>> import brainbox as bb
-        >>> spks_path = one.load(eid, dataset_types='spikes.amps', clobber=False,
-                                 download_only=True)[0]
-        >>> probe_dir_part = np.where([part == 'probe_01' for part in Path(spks_path).parts])[0][0]
-        >>> alf_probe_path = os.path.join(*Path(spks_path).parts[:probe_dir_part+1])
-        >>> spks = aio.load_object(alf_probe_path, 'spikes')
-        >>> filtered_units = bb.processing.filter_units(
-                spks, min_amp=50, min_fr=2, max_fpr=0, rp=0.002})[0]
-        # Generate selected V1 certification figures for the `eid` and `probe` for filtered units:
-        >>> from v1_protocol import plot as v1_plot
-        >>> save_dir = pwd
-        # *Note: 'probe_right' for this eid, new naming convention is 'probe00', 'probe01', etc.
-        >>> m = v1_plot.gen_figures(
-                    eid, 'probe_right', cluster_ids_selected=filtered_units, auto_filt_cl=False,
-                    grating_response_summary=False, grating_response_selected=True,
-                    unit_metrics_summary=False, unit_metrics_selected=True,
-                    grating_response_params={'pre_t': 1, 'post_t': 4, 'bin_t': 0.01, 'sigma': .05},
-                    save_dir=save_dir)
+    See `using_master_plotting_function`
     '''
 
     # Initialize outputs #
-    #--------------------#
+    # ------------------ #
     m = bb.core.Bunch()
     cluster_sets = {}
     fig_h = {}
 
     # Get necessary data via ONE #
-    #----------------------------#
+    # -------------------------- #
     one = ONE()
     # Get important local paths from `eid`.
     spikes_path = one.load(eid, dataset_types='spikes.amps', clobber=False, download_only=True)[0]
@@ -351,30 +292,52 @@ def gen_figures(
     session_path = os.path.join(*Path(spikes_path).parts[:alf_dir_part])
     alf_path = os.path.join(session_path, 'alf')
     alf_probe_path = os.path.join(alf_path, probe)
-    # Ensure `alf_probe_path` exists and `ephys_file_path` exists:
+    # Ensure `alf_probe_path` exists.
     if not(os.path.isdir(alf_probe_path)):
-        raise FileNotFoundError("The path to 'probe' ({}) does not exist! Check the 'probe' name."
-                                .format(alf_probe_path))
+        raise FileNotFoundError(
+            "The path to 'probe' ({}) does not exist! Check the 'probe' name."
+            .format(alf_probe_path))
     ephys_file_dir = os.path.join(session_path, 'raw_ephys_data', probe)
-    # Get `ap` ephys file.
+    # Get `ap` ephys file if it exists.
+    ephys_file_path = None
     for file in os.listdir(ephys_file_dir):
         if 'ap' in file and 'bin' in file:
             ephys_file_path = os.path.join(ephys_file_dir, file)
+    # Throw error if `ephys_file_path` is None and we have metrics that require it.
+    require_ephys = ['s', 'amp_heatmap']
+    if ephys_file_path is None & any(map(lambda x: x in require_ephys,
+                                         (summary_metrics + selected_metrics))):
+        raise FileNotFoundError(
+            "Some of the specified metrics require the binary ephys file, and the binary ephys"
+            " file was not found. Either download the binary ephys file, or change the specified"
+            " metrics. The metrics which require the binary ephys file are {}."
+            .format(require_ephys))
     if extract_stim_info:  # get stimulus info and save in `alf_path`
         certification_protocol.extract_stimulus_info_to_alf(session_path, save=True)
         # Copy `'_iblcertif'` files over to `alf_probe_path`
         for i in os.listdir(alf_path):
             if i[:10] == '_iblcertif':
                 shutil.copy(os.path.join(alf_path, i), alf_probe_path)
+    # Check to see if stim info extraction files exist.
+    certif_exists = False
+    for i in os.listdir(alf_probe_path):
+        if i[:10] == '_iblcertif':
+            certif_exists = True
+            break
+    if not(certif_exists) and (grating_response_summary | grating_response_selected):
+        raise FileNotFoundError(
+            "'_iblcertif_' extraction files not found. Either set 'grating_response_selected' and"
+            " 'grating_response_summary' to False to not try and generate these figures, or set"
+            " 'extract_stim_info' to True to extract the '_iblcertif_' files.")
     # Get units bunch.
     spks_b = aio.load_object(alf_probe_path, 'spikes')
     print('Re-formatting alf data to save time during plotting. May take a few minutes...', 
           flush=True, end='')
     units_b = bb.processing.get_units_bunch(spks_b)
     print('done')
-    
+
     # Set `cluster_ids_summary` and `cluster_ids_selected` #
-    #------------------------------------------------------#
+    # ---------------------------------------------------- #
     if cluster_ids_summary is None:  # filter all clusters according to `filt_params`
         print("'cluster_ids_summary' left empty, selecting filtered units.")
         T = spks_b['times'][-1] - spks_b['times'][0]
@@ -397,10 +360,10 @@ def gen_figures(
     fig_list_name = []  # print this list at end of function to show which figures were generated
 
     # Get visually responsive clusters and generate grating response figures #
-    #------------------------------------------------------------------------#
+    # ---------------------------------------------------------------------- #
     if grating_response_summary or grating_response_selected:
         print('Generating grating response figure(s)...', flush=True, end='')
-        # Get visually responsive clusters as subset of `cluster_ids_summary`
+        # Get visually responsive clusters as subset of `cluster_ids_summary`.
         cluster_ids_summary_vr, cluster_ids_selected_vr = \
             orientation.get_vr_clusters(alf_probe_path, clusters=cluster_ids_summary,
                                         n_selected_cl=n_selected_cl)
@@ -423,18 +386,18 @@ def gen_figures(
         print('done')
 
     # Generate summary unit metrics figure #
-    #--------------------------------------#
+    # ------------------------------------ #
     if unit_metrics_summary:
         print('Generating summary metrics figure...', flush=True, end='')
         fig_um_summary, m = um_summary_plots(
             cluster_ids_summary, summary_metrics, units_b, alf_probe_path, ephys_file_path, m,
-            summary_metrics_params, rf_params, save_dir=save_dir)
+            summary_metrics_params, rf_params, certif_exists, save_dir=save_dir)
         fig_h['fig_um_summary'] = fig_um_summary
         fig_list_name.extend(['unit_metrics_summary'])
         print('done')
     
     # Generate selected unit metrics figure #
-    #---------------------------------------#
+    # ------------------------------------- #
     if unit_metrics_selected:
         print('Generating selected units metrics figure...', flush=True, end='')
         fig_um_selected, m = um_selected_plots(
@@ -449,7 +412,7 @@ def gen_figures(
     return m, cluster_sets, fig_h
 
 def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path, m,
-                     metrics_params, rf_params, save_dir=None):
+                     metrics_params, rf_params, certif_exists, save_dir=None):
     '''
     Computes/creates summary metrics and plots in a figure for all units in a recording session.
 
@@ -474,6 +437,8 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         The absolute path to an 'alf/probe' directory.
     ephys_file_path : string
         The path to the binary ephys file.
+    m : bunch
+        A bunch containing metrics as fields.
     metrics_params : dict
         Parameters used for the summary metrics figure:
             'bins' : int OR sequence OR string. 
@@ -506,8 +471,8 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         'bin_sz' : the bin width (s) used
         'lags' : number of bins for calculating receptive field
         'method' : 'corr' or 'sta'
-    m : bunch
-        A bunch containing metrics as fields.
+    certif_exists : bool
+        A flag indicating whether the '_iblcertif_' files were found in `alf_probe_path`
     save_dir : string
         The path to which to save generated figures. (if `None`, figures will not be automatically
         saved)
@@ -529,7 +494,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     '''
 
     # Extract parameter values #
-    #--------------------------#
+    # ------------------------ #
     bins = metrics_params['bins']
     rp = metrics_params['rp']
     spks_per_bin = metrics_params['spks_per_bin']
@@ -546,7 +511,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     use_svd = rf_params['use_svd']
     
     # Set figure #
-    #------------#
+    # ---------- #
     ncols = 5  # axes per row of figure
     nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
     fig = plt.figure(figsize=[16,8])
@@ -559,10 +524,13 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     raster_ax = fig.add_subplot(nrows, 2, 1)
     raster_depth.scatter_with_boundary_times(alf_probe_path, clusters, ax=raster_ax)  # raster
     # Always output rf maps as second half of first row
-    rf_map_ax = [fig.add_subplot(nrows, 4, 3), fig.add_subplot(nrows, 4, 4)]
-    rf_mapping.plot_rfs_by_depth_wrapper(  # rf maps
-        alf_probe_path, axes=rf_map_ax, cluster_ids=clusters, method=rf_method, binsize=rf_binsize,
-        lags=rf_lags, n_depths=rf_n_depths, use_svd=use_svd)  
+    if not(certif_exists):
+        warn("'_iblcertif_' extraction files not found. RF Map plots will not be generated.")
+    else:
+        rf_map_ax = [fig.add_subplot(nrows, 4, 3), fig.add_subplot(nrows, 4, 4)]
+        rf_mapping.plot_rfs_by_depth_wrapper(  # rf maps
+            alf_probe_path, axes=rf_map_ax, cluster_ids=clusters, method=rf_method,
+            binsize=rf_binsize, lags=rf_lags, n_depths=rf_n_depths, use_svd=use_svd)
     
     # Get alf objects for this session (needed for some metrics calculations below)
     clstrs_b = aio.load_object(alf_probe_path, 'clusters')
@@ -684,7 +652,7 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     '''
 
     # Extract parameter values #
-    #--------------------------#
+    # ------------------------ #
     bins = metrics_params['bins']
     rp = metrics_params['rp']
     spks_per_bin = metrics_params['spks_per_bin']
@@ -697,7 +665,7 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     isi_win = metrics_params['isi_win']
 
     # Set figure #
-    #------------#
+    # ---------- #
     nrows = len(metrics)  # units will be in columns, and different features in rows
     ncols = len(clusters)
     fig = plt.figure(figsize=[16,8])

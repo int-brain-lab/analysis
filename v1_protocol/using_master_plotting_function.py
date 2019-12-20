@@ -73,7 +73,6 @@ Below are the dataset_types required depending on the plots/metrics to be genera
         'clusters.depths',
         'clusters.metrics',
         'clusters.peakToTrough',
-        'clusters.probes',
         'clusters.uuids',
         'clusters.waveforms',
         'clusters.waveformsChannels',
@@ -90,7 +89,6 @@ Below are the dataset_types required depending on the plots/metrics to be genera
         '_spikeglx_sync.polarities',
         '_spikeglx_sync.times',
         '_iblrig_RFMapStim.raw',
-        '_iblrig_taskData.raw',
         '_iblrig_taskSettings.raw',
         '_iblrig_codeFiles.raw'
         
@@ -123,7 +121,7 @@ import brainbox as bb
 # grating response selected, unit metrics summary, and unit metrics selected). Generate the
 # summary figures for all units, and the selected figures for 4 randomly chosen units from the
 # entire set of units.
-#---------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
 # `gen_figures`
@@ -139,7 +137,6 @@ dtypes = [
         'clusters.depths',
         'clusters.metrics',
         'clusters.peakToTrough',
-        'clusters.probes',
         'clusters.uuids',
         'clusters.waveforms',
         'clusters.waveformsChannels',
@@ -154,7 +151,6 @@ dtypes = [
         '_spikeglx_sync.polarities',
         '_spikeglx_sync.times',
         '_iblrig_RFMapStim.raw',
-        '_iblrig_taskData.raw',
         '_iblrig_taskSettings.raw',
         '_iblrig_codeFiles.raw'
         ]
@@ -168,11 +164,11 @@ m, cluster_sets, _ = v1_plot.gen_figures(
     auto_filt_cl_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
 
 
-# Example 2: For 'ZM_2104/2019-09-19/001' generate all 4 figures (grating response summary,
+# Example 2: For 'KS003/2019-11-19/001' generate all 4 figures (grating response summary,
 # grating response selected, unit metrics summary, and unit metrics selected). Generate the
 # summary figures for all units with a minimum amplitude > 75 (`filt_units`). Generate the 
 # selected figures for all `filt_units` in batches of 4.
-#---------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
 # `gen_figures`
@@ -188,7 +184,6 @@ dtypes = [
         'clusters.depths',
         'clusters.metrics',
         'clusters.peakToTrough',
-        'clusters.probes',
         'clusters.uuids',
         'clusters.waveforms',
         'clusters.waveformsChannels',
@@ -203,7 +198,6 @@ dtypes = [
         '_spikeglx_sync.polarities',
         '_spikeglx_sync.times',
         '_iblrig_RFMapStim.raw',
-        '_iblrig_taskData.raw',
         '_iblrig_taskSettings.raw',
         '_iblrig_codeFiles.raw'
         ]
@@ -222,5 +216,17 @@ filt_units = bb.processing.filter_units(
 # Run master plotting function in a loop on filtered units to generated selected figures for units
 # in batches of 4.
 
-# Example 3:
-#-------------------------------------------------------------------------------------------
+
+# Example 3: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
+# selected figures. Generate the summary figure for all units, and generate the selected figures
+# for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 Hz. Generate the 
+# selected figures for all `filt_units` in batches of 4.
+#--------------------------------------------------------------------------------------------------
+
+
+
+# Example 3: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
+# selected figures. Generate the summary figure for all units, and generate the selected figures
+# for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 Hz. Generate the 
+# selected figures for all `filt_units` in batches of 4.
+#--------------------------------------------------------------------------------------------------
