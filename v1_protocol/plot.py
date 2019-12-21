@@ -73,19 +73,21 @@ from v1_protocol import rf_mapping
 
 
 def gen_figures(
-    eid, probe='probe00', cluster_ids_summary=None, cluster_ids_selected=None, n_selected_cl=4,
+    eid, probe, cluster_ids_summary=None, cluster_ids_selected=None, n_selected_cl=4,
     extract_stim_info=True, grating_response_summary=True, grating_response_selected=False,
     unit_metrics_summary=True, unit_metrics_selected=False,
-    summary_metrics = ['feat_vars', 'spks_missed', 'isi_viol', 'max_drift', 'cum_drift'],
-    selected_metrics = ['isi_viol', 'spks_missed', 'cv_fr'],
+    summary_metrics = ['feat_vars', 'spks_missed', 'isi_viol', 'max_drift_depth',
+                       'cum_drift_depth', 'max_drift_amp', 'cum_drift_amp', 'pres_ratio'],
+    selected_metrics = ['isi_viol', 'spks_missed', 'cv_fr', 'drift_depth', 'drift_amp',
+                        'pres_ratio'],
     filt_params={'min_amp': 50e-6, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002},
     grating_response_params={'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025},
-    summary_metrics_params={'bins': 'auto', 'rp': 0.002, 'spks_per_bin': 20, 'sigma': 5,
+    summary_metrics_params={'bins': 'auto', 'rp': 0.002, 'spks_per_bin': 20, 'sigma': 4,
                             'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
-                            'n_ch_probe': 385},
-    selected_metrics_params={'spks_per_bin': 20, 'sigma': 5, 'rp': 0.002, 'bins': 'auto',
+                            'n_ch_probe': 385, 'pr_hist_win': 10},
+    selected_metrics_params={'spks_per_bin': 20, 'sigma': 4, 'rp': 0.002, 'bins': 'auto',
                              'n_ch': 10, 'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10,
-                             'n_ch_probe': 385, 'isi_win': 0.01},
+                             'n_ch_probe': 385, 'isi_win': 0.01, 'pr_hist_win': 10},
     rf_params={'method': 'corr', 'binsize': 0.025, 'lags': 8, 'n_depths': 30, 'use_svd': False},
     save_dir=None, fig_names={}):
     '''
@@ -96,7 +98,7 @@ def gen_figures(
     ----------
     eid : string
         The experiment ID for a recording session: the UUID of the session as per Alyx.
-    probe : string (optional)
+    probe : string
         The probe whose data will be used to generate the figures.
     cluster_ids_summary : array-like (optional)
         The clusters for which to generate `grating_response_summary` and/or `unit_metrics_summary`
@@ -120,19 +122,27 @@ def gen_figures(
     summary_metrics : list (optional)
         The summary metrics plots to generate for the `unit_metrics_summary` figures for
         `cluster_ids_summary`. Possible values can include:
-            'feat_vars' : Bar plot of variances of empirical amplitude distribution.
-            's' : Hist of spatiotemporal waveform correlation metric. (requires raw ephys data)
-            'cv_fr' : Hist of coefficient of variation of firing rate.
+            'feat_vars' : Bar plot of coefficients of variation of empirical amp distribution.
             'spks_missed' : Hist of fraction of spikes missed.
             'isi_viol' : Hist of isi violations.
-            'max_drift' : Hist of max drift metric.
-            'cum_drift' : Hist of cumulative drift metric.
+            'max_drift_depth' : Hist of max drift metric for spike depths.
+            'cum_drift_depth' : Hist of cumulative drift metric for spike depths.
+            'max_drift_amp' : Hist of max drift metric for spike amps.
+            'cum_drift_amp' : Hist of cumulative drift metrics for spike amps.
+            'pres_ratio' : Hist of spike presence ratio.
+            's' : Hist of spatiotemporal waveform correlation metric. (requires raw ephys data)
+            'cv_fr' : Hist of coefficient of variation of firing rate.
+            'ptp_over_noise' : Hist of mean peak-to-peak amp over background noise on channel
+                               of max amp. (requires raw ephys data)
     selected_metrics : list (optional)
         The selected metrics plots to generate for the `unit_metrics_selected` figure for
         `cluster_ids_summary`. Possible values can include: 
             'isi_viol' : Plot of the histogram of isi violations.
             'spks_missed' : Plot of the pdf of the spike amplitude distribution.
             'cv_fr' : Plot of the firing rate.
+            'drift_depth' : Driftmap of spike depths.
+            'drift_amp' : Driftmap of spike amps.
+            'pres_ratio' : Plot of spike presence ratio over time.
             'amp_heatmap' : Plot of the amplitude heatmap. (requires raw ephys data)
             'peth' : Peri-event time histogram.
             's' : Plots of waveforms across `'n_ch'`. (requires raw ephys data)
@@ -149,7 +159,7 @@ def gen_figures(
     filt_params : dict (optional)
         Parameters used in the call to `brainbox.processing.filter_units` for filtering clusters:
             'min_amp' : float
-                The minimum mean amplitude (in uV) of the spikes in the unit.
+                The minimum mean amplitude (in V) of the spikes in the unit.
             'min_fr' : float
                 The minimum firing rate (in Hz) of the unit.
             'max_fpr' : float
@@ -163,7 +173,7 @@ def gen_figures(
                 The number of bins (or the bins, or the method used to compute the bins) used for
                 computing the histograms. (see `numpy.histogram_bin_edges`).
             'rp' : float 
-                The refractory period (in s) of the unit
+                The refractory period (in s) of the unit.
             'spks_per_bin' : int 
                 The number of spikes per bin from which to compute the spike feature histogram for
                 `spks_missed`.
@@ -184,13 +194,13 @@ def gen_figures(
             'n_ch_probe' : int
                 The total number of channels from the recording (The number of rows in the binary
                 ephys file).
-            'isi_win' : float
-                The x-axis (i.e. time (in s)) used for plotting the individual unit isi histograms
+            'pr_hist_win' : float
+                The time window (in s) to use for computing spike counts for the presence ratio.
     selected_metrics_params : dict
         Parameters used for the selected metrics figure. Includes all values in
         `summary_metrics_params`, plus:
             'isi_win' : float
-                The x-axis (i.e. time (in s)) used for plotting the individual unit isi histograms
+                The x-axis (i.e. time (in s)) used for plotting the individual unit isi histograms.
     rf_params : dict (optional)
         Parameters used for the receptive field summary plot:
             'method' : string
@@ -241,17 +251,23 @@ def gen_figures(
                     'depth' : ndarray
                         The depths used to compute the fraction responsive by depth.
             'var_amps' : ndarray
-                The variance of the amplitude distribution for each unit in
+                The coefficient of variation of the amplitude distribution for each unit in
                 `cluster_sets['cluster_ids_summary']`.
             'fraction_missing' : ndarray 
-                Estimated fraction missing spikes for each unit in
+                Estimated fraction of missing spikes for each unit in
                 `cluster_sets['cluster_ids_summary']`.
             'isi_viol' : ndarray 
                 Fraction of isi violations for each unit in `cluster_sets['cluster_ids_summary']`.
-            'max_drift' : ndarray
-                Max drift values for each unit in `cluster_sets['cluster_ids_summary']`.
-            'cum_drift' : ndarray
-                Cumulative drift values for each unit in `cluster_sets['cluster_ids_summary']`.
+            'max_drift_depth' : ndarray
+                Max drift depth value for each unit in `cluster_sets['cluster_ids_summary']`.
+            'cum_drift_depth' : ndarray
+                Cumulative drift dep value for each unit in `cluster_sets['cluster_ids_summary']`.
+            'max_drift_amp' : ndarray
+                Max drift amp value for each unit in `cluster_sets['cluster_ids_summary']`.
+            'cum_drift_amp' : ndarray
+                Cumulative drift amp value for each unit in `cluster_sets['cluster_ids_summary']`.
+            'pres_ratio' : ndarray
+                The presence ratio for each unit in `cluster_sets['cluster_ids_summary']`. 
     cluster_sets : dict
         Contains the ids of different sets of clusters used to generate the different figures.
         Possible keys:
@@ -457,13 +473,14 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     metrics : list
         The summary metrics plots to generate for the `unit_metrics_summary` figure. Possible
         values can include: (see `brainbox.metrics` for additional details)
-        'feat_vars' : Bar plot of variances of empirical amplitude distribution.
+        'feat_vars' : Bar plot of coefficients of variation of empirical amplitude distribution.
         's' : Hist of spatiotemporal waveform correlation metric. (requires raw ephys data)
         'cv_fr' : Hist of coefficient of variation of firing rate.
         'spks_missed' : Hist of fraction of spikes missed.
         'isi_viol' : Hist of isi violations.
         'max_drift' : Hist of max drift metric.
         'cum_drift' : Hist of cumulative drift metric.
+        'pres_ratio' : Plot of spike presence ratio over time.
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
@@ -538,6 +555,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     fr_ma_win = metrics_params['fr_ma_win']
     n_cv_bins = metrics_params['n_cv_bins']
     n_ch_probe = metrics_params['n_ch_probe']
+    pr_hist_win = metrics_params['pr_hist_win']
     rf_method = rf_params['method']
     rf_binsize = rf_params['binsize']
     rf_lags = rf_params['lags']
@@ -546,7 +564,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     
     # Set figure #
     # ---------- #
-    ncols = 5  # axes per row of figure
+    ncols = 4  # axes per row of figure
     nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
     fig = plt.figure(figsize=[16,8])
     fig.set_tight_layout(False)
@@ -565,13 +583,14 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         rf_mapping.plot_rfs_by_depth_wrapper(  # rf maps
             alf_probe_path, axes=rf_map_ax, cluster_ids=clusters, method=rf_method,
             binsize=rf_binsize, lags=rf_lags, n_depths=rf_n_depths, use_svd=use_svd)
-    
+
     # Get alf objects for this session (needed for some metrics calculations below)
     clstrs_b = aio.load_object(alf_probe_path, 'clusters')
-    
-    if 'feat_vars' in metrics:  # variances of amplitudes barplot
+
+    if 'feat_vars' in metrics:  # coefficients of variation of amplitudes barplot
         feat_vars_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
         var_amps, _ = bb.plot.feat_vars(units_b, units=clusters, feat_name='amps', ax=feat_vars_ax)
+        feat_vars_ax.set_xlabel('CV (uV)')
         m['var_amps'] = var_amps
         n_cur_ax += 1
     if 's' in metrics:  # waveform spatiotemporal correlation values hist
@@ -598,19 +617,39 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         isi_viol = isi_viol_hist(units_b, units=clusters, rp=rp, bins=bins, ax=isi_viol_ax)
         m['isi_viol'] = isi_viol
         n_cur_ax += 1
-    if 'max_drift' in metrics:  # max_drift hist
+    if 'max_drift_depth' in metrics:  # max_drift depth hist
         max_drift_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
-        max_drift = max_drift_hist(units_b, units=clusters, bins=bins, ax=max_drift_ax)
-        m['max_drift'] = max_drift
+        max_drift_depth = max_drift_hist(units_b, feat_name='depth', units=clusters, bins=bins,
+                                         ax=max_drift_ax)
+        m['max_drift_depth'] = max_drift_depth
         n_cur_ax += 1
-    if 'cum_drift' in metrics:  # cum_drift hist
+    if 'cum_drift_depth' in metrics:  # cum_drift depth hist
         cum_drift_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
-        cum_drift = cum_drift_hist(units_b, units=clusters, bins=bins, ax=cum_drift_ax)
-        m['cum_drift'] = cum_drift
+        cum_drift_depth = cum_drift_hist(units_b, feat_name='depth', units=clusters, bins=bins,
+                                         ax=cum_drift_ax)
+        m['cum_drift_depth'] = cum_drift_depth
         n_cur_ax += 1
-    
+    if 'max_drift_amp' in metrics:  # max_drift amp hist
+        max_drift_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+        max_drift_amp = max_drift_hist(units_b, feat_name='amp', units=clusters, bins=bins,
+                                       ax=max_drift_ax)
+        m['max_drift_amp'] = max_drift_amp
+        n_cur_ax += 1
+    if 'cum_drift_amp' in metrics:  # cum_drift amp hist
+        cum_drift_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+        cum_drift_amp = cum_drift_hist(units_b, feat_name='amp', units=clusters, bins=bins,
+                                       ax=cum_drift_ax)
+        m['cum_drift_amp'] = cum_drift_amp
+        n_cur_ax += 1
+    if 'pres_ratio' in metrics:  # presence ratio hist
+        pr_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+        pr = pr_hist(units_b, units=clusters, hist_win=pr_hist_win, bins=bins, ax=pr_ax)
+        m['pres_ratio'] = pr
+        n_cur_ax += 1
+
     fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.5, hspace=0.4)
     return fig, m
+
 
 def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path, m,
                       metrics_params, save_dir=None):
@@ -627,6 +666,8 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
         'isi_viol' : Plot of the histogram of isi violations.
         'spks_missed' : Plot of the pdf of the spike amplitude distribution.
         'cv_fr' : Plot of the firing rate.
+        'drift_depth' : Driftmap of spike depths.
+        'drift_amp' : Driftmap of spike amps.
         'amp_heatmap' : Plot of the amplitude heatmap. (requires raw ephys data)
         'peth' : Peri-event time histogram.
         's' : Plots of waveforms across `'n_ch'`. (requires raw ephys data)
@@ -698,6 +739,7 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     n_cv_bins = metrics_params['n_cv_bins']
     n_ch_probe = metrics_params['n_ch_probe']
     isi_win = metrics_params['isi_win']
+    pr_hist_win = metrics_params['pr_hist_win']
 
     # Set figure #
     # ---------- #
@@ -739,7 +781,31 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
             cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
             ts = units_b['times'][str(unit)]
             bb.plot.firing_rate(ts, hist_win=fr_hist_win, fr_win=fr_ma_win, n_bins=n_cv_bins,
-                                ax=cur_ax)
+                                show_fr_cv=False, ax=cur_ax)
+            n_cur_ax += 1
+    if 'drift_depth' in metrics:  # driftmap of depths
+        for unit in clusters:
+            cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+            ts = units_b['times'][str(unit)]
+            depths = units_b['depths'][str(unit)]
+            bb.plot.driftmap(depths, ts, ax=cur_ax)
+            cur_ax.set_title('Depth Driftmap')
+            cur_ax.set_xlabel('Time (s)')
+            cur_ax.set_ylabel('Depth (mm)')
+    if 'drift_amp' in metrics:  # driftmap of spike amps.
+        for unit in clusters:
+            cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+            ts = units_b['times'][str(unit)]
+            amps = units_b['amps'][str(unit)] * 1e6  # convert to uV
+            bb.plot.driftmap(amps, ts, ax=cur_ax)
+            cur_ax.set_title('Amp Driftmap')
+            cur_ax.set_xlabel('Time (s)')
+            cur_ax.set_ylabel('Amp (uV)')
+    if 'pres_ratio' in metrics:  # presence ratio
+        for unit in clusters:
+            cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
+            ts = units_b['times'][str(unit)]
+            bb.plot.pres_ratio(ts, hist_win=pr_hist_win, ax=cur_ax)
             n_cur_ax += 1
     if 'amp_heatmap' in metrics:  # amplitude heatmap
         for unit in clusters:
@@ -780,7 +846,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
     clstrs_b : bunch
         A clusters bunch containing fields with cluster information (e.g. amp, ch of max amp, depth
         of ch of max amp, etc.) for all clusters.
-    units : ndarray
+    units : ndarray (optional)
         The units for which to calculate 's' and plot in the historgram. (if `None`, histogram
         is created for all clusters)
     n_ch : int (optional)
@@ -804,7 +870,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
     Returns
     -------
     s : ndarray
-        The s values for each unit.
+        The s values for all units.
 
     See Also
     --------
@@ -813,7 +879,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
     Examples
     --------
     '''
-    
+
     # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
@@ -845,7 +911,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
 
     # Plot histogram.
     if ax is None:
-        ax = plt.gca()
+        fig, ax = plt.subplots()
 
     ax.hist(s, bins)
     ax.set_title("'S' Values Hist")
@@ -865,19 +931,19 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
-    units : ndarray
+    units : ndarray (optional)
         The units for which to calculate 's' and plot in the historgram. (if `None`, histogram
         is created for all clusters)
-    hist_win : float
+    hist_win : float (optional)
         The time window (in s) to use for computing spike counts for the instantaneous
         firing rate.
-    fr_win : float
+    fr_win : float (optional)
         The time window (in s) to use as a moving slider to compute the instantaneous
         firing rate.
-    n_cv_bins : int
+    n_cv_bins : int (optional)
         The number of equally spaced bins in time in which to compute the coefficient of
         variation of the firing rate.
-    bins : int OR sequence OR string
+    bins : int OR sequence OR string (optional)
         The number of bins used in computing the histograms. Can be a string, which specifies
         the method to use to compute the optimal number of bins (see `numpy.histogram_bin_edges`).
     ax : axessubplot (optional)
@@ -886,7 +952,7 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
     Returns
     -------
     cv_fr : ndarray
-        The coefficient of variation of firing rate values for each unit.
+        The coefficient of variation of firing rate values for all units.
 
     See Also
     --------
@@ -913,11 +979,11 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
 
     # Plot histogram.
     if ax is None:
-        ax = plt.gca()
+        fig, ax = plt.subplots()
 
     ax.hist(cv_fr, bins)
-    ax.set_title("Coefficient of Variation of Firing Rate Hist")
-    ax.set_xlabel("Coefficient of Variation of Firing Rate")
+    ax.set_title("CV of Firing Rate Hist")
+    ax.set_xlabel("CV of Firing Rate")
     ax.set_ylabel('Count')
 
     return cv_fr
@@ -933,7 +999,7 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
-    units : ndarray
+    units : ndarray (optional)
         The units for which to calculate 's' and plot in the historgram. (if `None`, histogram
         is created for all clusters)
     spks_per_bin : int (optional)
@@ -941,7 +1007,7 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
     sigma : int (optional)
         The standard deviation for the gaussian kernel used to compute the pdf from the spike
         feature histogram.
-    bins : int OR sequence OR string
+    bins : int OR sequence OR string (optional)
         The number of bins used in computing the histograms. Can be a string, which specifies
         the method to use to compute the optimal number of bins (see `numpy.histogram_bin_edges`).
     ax : axessubplot (optional)
@@ -973,14 +1039,14 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
             continue
         try:  # need a minimum number of spikes for `feat_cutoff`
             amps = units_b['amps'][str(unit)]
-            frac_missing[unit], _, _ = bb.metrics.feat_cutoff(
+            frac_missing[i], _, _ = bb.metrics.feat_cutoff(
                 amps, spks_per_bin=spks_per_bin, sigma=sigma)
         except:  # if didn't meet min num spikes requirement, set as nan
             frac_missing[i] = np.nan    
     
     # Plot histogram.
     if ax is None:
-        ax = plt.gca()
+        fig, ax = plt.subplots()
 
     ax.hist(frac_missing, bins)
     ax.set_title("Fraction of Missing Spikes Hist")
@@ -999,12 +1065,12 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
-    units : ndarray
+    units : ndarray (optional)
         The units for which to calculate 's' and plot in the historgram. (if `None`, histogram
         is created for all clusters)
-    rp : float
+    rp : float (optional)
         The refractory period (in s).
-    bins : int OR sequence OR string
+    bins : int OR sequence OR string (optional)
         The number of bins used in computing the histograms. Can be a string, which specifies
         the method to use to compute the optimal number of bins (see `numpy.histogram_bin_edges`).
     ax : axessubplot (optional)
@@ -1013,7 +1079,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     Returns
     -------
     frac_isi_viol : ndarray
-        The fraction of isi violations for each unit.
+        The fraction of isi violations for all units.
 
     See Also
     --------
@@ -1039,7 +1105,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     
     # Plot histogram.
     if ax is None:
-        ax = plt.gca()
+        fig, ax = plt.subplots()
 
     ax.hist(frac_isi_viol, bins)
     ax.set_title("Fraction of ISI Violations Hist")
@@ -1049,7 +1115,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     return frac_isi_viol
 
 
-def max_drift_hist(units_b, units=None, bins='auto', ax=None):
+def max_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
     '''
     Plots a histogram of the maximum drift values for all `units`.
 
@@ -1058,10 +1124,12 @@ def max_drift_hist(units_b, units=None, bins='auto', ax=None):
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
-    units : ndarray
+    feat_name : str
+        The name of the feature for which to calculate drift. (e.g. 'depths', 'amps')
+    units : ndarray (optional)
         The units for which to calculate 's' and plot in the historgram. (if `None`, histogram
         is created for all clusters)
-    bins : int OR sequence OR string
+    bins : int OR sequence OR string (optional)
         The number of bins used in computing the histograms. Can be a string, which specifies
         the method to use to compute the optimal number of bins (see `numpy.histogram_bin_edges`).
     ax : axessubplot (optional)
@@ -1070,7 +1138,7 @@ def max_drift_hist(units_b, units=None, bins='auto', ax=None):
     Returns
     -------
     md : ndarray
-        The max drift values for each unit.
+        The max drift values for all units.
 
     See Also
     --------
@@ -1091,22 +1159,29 @@ def max_drift_hist(units_b, units=None, bins='auto', ax=None):
         if len(units_b['times'][str(unit)]) == 0:
             md[i] = np.nan
             continue
-        depths = units_b['depths'][str(unit)]
-        md[i] = bb.metrics.max_drift(depths)
-    
+        if feat_name == 'depth':
+            feat = units_b['depths'][str(unit)]
+            tit =  "Depth Max Drift Values Hist"
+            xlab = "Max Drift (mm)"
+        elif feat_name == 'amp':
+            feat = units_b['amps'][str(unit)] * 1e6  # convert to uV
+            tit =  "Amp Max Drift Values Hist"
+            xlab = "Max Drift (uV)"
+        md[i] = bb.metrics.max_drift(feat)
+
     # Plot histogram.
     if ax is None:
-        ax = plt.gca()
+        fig, ax = plt.subplots()
 
     ax.hist(md, bins)
-    ax.set_title("Max Drift Values Hist")
-    ax.set_xlabel("Max Drift (mm)")
+    ax.set_title(tit)
+    ax.set_xlabel(xlab)
     ax.set_ylabel('Count')
     
     return md
 
 
-def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
+def cum_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
     '''
     Plots a histogram of the cumulative drift values for all `units`.
 
@@ -1115,10 +1190,12 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
     units_b : bunch
         A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
         etc.) for all units.
-    units : ndarray
+    feat_name : str
+        The name of the feature for which to calculate drift. (e.g. 'depth', 'amp')
+    units : ndarray (optional)
         The units for which to calculate 's' and plot in the historgram. (if `None`, histogram
         is created for all clusters)
-    bins : int OR sequence OR string
+    bins : int OR sequence OR string (optional)
         The number of bins used in computing the histograms. Can be a string, which specifies
         the method to use to compute the optimal number of bins (see `numpy.histogram_bin_edges`).
     ax : axessubplot (optional)
@@ -1127,7 +1204,7 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
     Returns
     -------
     cd : ndarray
-        The cumulative drift values for each unit.
+        The cumulative drift values for all units.
 
     See Also
     --------
@@ -1141,7 +1218,7 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
     # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
-    
+
     # Calculate fraction of isi violations for each unit.
     cd = np.ones(len(units),)
     for i, unit in enumerate(units):
@@ -1149,16 +1226,81 @@ def cum_drift_hist(units_b, units=None, bins='auto', ax=None):
         if len(units_b['times'][str(unit)]) == 0:
             cd[i] = np.nan
             continue
-        depths = units_b['depths'][str(unit)]
-        cd[i] = bb.metrics.cum_drift(depths)
-    
+        if feat_name == 'depth':
+            feat = units_b['depths'][str(unit)]
+            tit =  "Depth Cumulative Drift Values Hist"
+            xlab = "Cumulative Drift (mm)"
+        elif feat_name == 'amp':
+            feat = units_b['amps'][str(unit)] * 1e6  # convert to uV
+            tit =  "Amp Cumulative Drift Values Hist"
+            xlab = "Cumulative Drift (uV)"
+        cd[i] = bb.metrics.cum_drift(feat)
+
     # Plot histogram.
     if ax is None:
-        ax = plt.gca()
+        fig, ax = plt.subplots()
 
     ax.hist(cd, bins)
-    ax.set_title("Cumulative Drift Values Hist")
-    ax.set_xlabel("Cumulative Drift (mm)")
+    ax.set_title(tit)
+    ax.set_xlabel(xlab)
     ax.set_ylabel('Count')
-    
+
     return cd
+
+def pr_hist(units_b, units=None, hist_win=10, bins='auto', ax=None):
+    '''
+    Plots a histogram of the presence ratio for all `units`.
+
+    Parameters
+    ----------
+    units_b : bunch
+        A units bunch containing fields with spike information (e.g. cluster IDs, times, features,
+        etc.) for all units.
+    units : ndarray (optional)
+        The units for which to calculate 's' and plot in the historgram. (if `None`, histogram
+        is created for all clusters)
+    hist_win : float (optional)
+        The time window (in s) to use for computing spike counts for the presence ratio.
+    bins : int OR sequence OR string (optional)
+        The number of bins used in computing the histograms. Can be a string, which specifies
+        the method to use to compute the optimal number of bins (see `numpy.histogram_bin_edges`).
+    ax : axessubplot (optional)
+        The axis handle to plot the histogram on. (if `None`, a new figure and axis is created)
+
+    Returns
+    -------
+    pr : ndarray
+        The presence ratio for all units.
+
+    See Also
+    --------
+    metrics.pres_ratio
+
+    Examples
+    --------
+    '''
+    
+    # Get units.
+    if units is None:  # we're using all units
+        units = list(units_b['times'].keys())
+    
+    # Calculate presence ratios.
+    pr = np.ones(len(units),)
+    for i, unit in enumerate(units):
+        # If empty unit returned by spike sorter, create a NaN placeholder and skip it:
+        if len(units_b['times'][str(unit)]) == 0:
+            pr[i] = np.nan
+            continue
+        ts = units_b['times'][str(unit)]
+        pr[i], _ = bb.metrics.pres_ratio(ts, hist_win=hist_win)
+
+    # Plot histogram.
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.hist(pr, bins)
+    ax.set_title("Presence Ratio Hist")
+    ax.set_xlabel("Presence Ratio")
+    ax.set_ylabel('Count')
+
+    return pr

@@ -45,15 +45,6 @@ function to ensure you are using the correct code:
     git pull
     ```
 
-    In python (ensure your python path can access the code):
-
-    ```
-    cd ~\int-brain-lab
-    import os
-    import sys
-    sys.path.extend([os.path.join(os.getcwd(), 'ibllib'), os.path.join(os.getcwd(), 'analysis')])
-    ```
-
 Below are the dataset_types required depending on the plots/metrics to be generated.
 
     *Note, although the default call to the master plotting function will not require access to the
@@ -210,12 +201,9 @@ units_b = bb.processing.get_units_bunch(spks_b)
 T = spks_b.times[-1] - spks_b.times[0]  # length of recording session
 filt_units = bb.processing.filter_units(units_b, T, min_amp=50e-6, min_fr=3)
 
-# Specify parameters for saving figures. *Note*: you must make sure the directory exists. i.e.,
-# create this directory if it doesn't already exist before running `gen_figures`.
+# Specify parameters for saving figures.
 save_dir = Path.joinpath(Path.home(), 'v1cert_figs')
-# make `save_dir` if this directory doesn't already exist:
-os.mkdir(save_dir) if not(os.path.exists(save_dir)) \
-                   else print("'{}' already exists".format(save_dir))
+# Set filename of figures to save
 fig_names = {'um_summary': 'KS003_2019-11-19_1_summary'}
 
 # Call master plotting function for metrics summary figure.
