@@ -193,6 +193,7 @@ dtypes = [
         'spikes.templates',
         'spikes.times',
         ]
+d_paths = one.load(eid, dataset_types=dtypes, clobber=False, download_only=True)
 
 # Filter units
 alf_probe_path = os.path.split(d_paths[0])[0]

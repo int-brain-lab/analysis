@@ -647,7 +647,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         m['pres_ratio'] = pr
         n_cur_ax += 1
 
-    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.5, hspace=0.4)
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.5, hspace=0.5)
     return fig, m
 
 
@@ -749,6 +749,17 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     fig.set_tight_layout(False)
     fig.suptitle('Selected Units Metrics')
     n_cur_ax = 1
+    small_font = 6
+    med_font = 8
+    big_font = 10
+    
+    plt.rc('font', size=small_font)          # default text sizes
+    plt.rc('axes', titlesize=med_font)       # fontsize of the axes title
+    plt.rc('axes', labelsize=small_font)     # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=small_font)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=small_font)    # fontsize of the tick labels
+    plt.rc('legend', fontsize=small_font)    # legend fontsize
+    plt.rc('figure', titlesize=big_font)     # fontsize of the figure title
     
     # Get alf objects for this session (needed for some metrics calculations below)
     clstrs_b = aio.load_object(alf_probe_path, 'clusters')    
@@ -757,14 +768,14 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
         for unit in clusters:
             cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
             ts = units_b['times'][str(unit)]
-            _, _, isis = bb.metrics.isi_viol(ts, rp=rp)
+            frac_viol, _, isis = bb.metrics.isi_viol(ts, rp=rp)
             isis = isis[np.where(isis < 0.1)[0]]
             cur_ax.set_xlim([0, isi_win])
             cur_ax.hist(isis, bins=bins)
             cur_ax.set_xlabel('ISI Time (s)')
             cur_ax.set_ylabel('Count')
-            cur_ax.set_title('ISI Histogram for Unit {}'.format(unit))
-            n_cur_ax += 1 
+            cur_ax.set_title('Unit {} ISI Histogram. ({:.2f} viol)'.format(unit, frac_viol))
+            n_cur_ax += 1
     if 'spks_missed' in metrics:  # pdf of missing spikes plot
         for unit in clusters:
             cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
@@ -780,32 +791,39 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
         for unit in clusters:
             cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
             ts = units_b['times'][str(unit)]
-            bb.plot.firing_rate(ts, hist_win=fr_hist_win, fr_win=fr_ma_win, n_bins=n_cv_bins,
-                                show_fr_cv=False, ax=cur_ax)
+            fr = bb.plot.firing_rate(ts, hist_win=fr_hist_win, fr_win=fr_ma_win,
+                                     n_bins=n_cv_bins, show_fr_cv=False, ax=cur_ax)
+            cv_fr = np.std(fr) / np.mean(fr)
+            cur_ax.set_title('Firing Rate (cv={:.2f})'.format(cv_fr))
             n_cur_ax += 1
     if 'drift_depth' in metrics:  # driftmap of depths
         for unit in clusters:
             cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
             ts = units_b['times'][str(unit)]
             depths = units_b['depths'][str(unit)]
-            bb.plot.driftmap(depths, ts, ax=cur_ax)
-            cur_ax.set_title('Depth Driftmap')
+            cd, _ = bb.plot.driftmap(depths, ts, ax=cur_ax)
+            cur_ax.get_children()[0].set_markersize(3)  # set markersize for driftmap
+            cur_ax.set_title('Depth Driftmap (cd={:.2f})'.format(cd))
             cur_ax.set_xlabel('Time (s)')
             cur_ax.set_ylabel('Depth (mm)')
+            n_cur_ax += 1
     if 'drift_amp' in metrics:  # driftmap of spike amps.
         for unit in clusters:
             cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
             ts = units_b['times'][str(unit)]
             amps = units_b['amps'][str(unit)] * 1e6  # convert to uV
-            bb.plot.driftmap(amps, ts, ax=cur_ax)
-            cur_ax.set_title('Amp Driftmap')
+            cd, _ = bb.plot.driftmap(amps, ts, ax=cur_ax)
+            cur_ax.get_children()[0].set_markersize(3)  # set markersize for driftmap
+            cur_ax.set_title('Amp Driftmap (cd={:.2f})'.format(cd))
             cur_ax.set_xlabel('Time (s)')
             cur_ax.set_ylabel('Amp (uV)')
+            n_cur_ax += 1
     if 'pres_ratio' in metrics:  # presence ratio
         for unit in clusters:
             cur_ax = fig.add_subplot(nrows, ncols, n_cur_ax)
             ts = units_b['times'][str(unit)]
-            bb.plot.pres_ratio(ts, hist_win=pr_hist_win, ax=cur_ax)
+            pr, _ = bb.plot.pres_ratio(ts, hist_win=pr_hist_win, ax=cur_ax)
+            cur_ax.set_title('Presence Ratio (pr={:.2f})'.format(pr))
             n_cur_ax += 1
     if 'amp_heatmap' in metrics:  # amplitude heatmap
         for unit in clusters:
@@ -827,14 +845,15 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     if 's' in metrics:  # waveforms plot
         pass
 
-    fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.4, hspace=0.5)
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.96, bottom=0.05, wspace=0.4, hspace=0.9)
+    plt.rcdefaults()  # restore matplotlib rc defaults
     return fig, m
 
 def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30000,
            n_ch_probe=385, dtype='int16', car=False, bins='auto', ax=None):
     '''
     Plots a histogram of 's' (the spatiotemporal similarity of two sets of waveforms, for the first
-    and last `n_spks` waveforms of a unit) for all `units`. 
+    and last `n_spks` waveforms of a unit) for all `units`.
 
     Parameters
     ----------
@@ -1049,8 +1068,8 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
         fig, ax = plt.subplots()
 
     ax.hist(frac_missing, bins)
-    ax.set_title("Fraction of Missing Spikes Hist")
-    ax.set_xlabel("Fraction of Missing Spikes")
+    ax.set_title("Fraction of Missing Spikes")
+    ax.set_xlabel("Fraction")
     ax.set_ylabel('Count')
     
     return frac_missing
@@ -1108,8 +1127,8 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
         fig, ax = plt.subplots()
 
     ax.hist(frac_isi_viol, bins)
-    ax.set_title("Fraction of ISI Violations Hist")
-    ax.set_xlabel("Fraction of ISI Violations")
+    ax.set_title("Fraction of ISI Violations")
+    ax.set_xlabel("Fraction")
     ax.set_ylabel('Count')
     
     return frac_isi_viol
@@ -1161,11 +1180,11 @@ def max_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
             continue
         if feat_name == 'depth':
             feat = units_b['depths'][str(unit)]
-            tit =  "Depth Max Drift Values Hist"
+            tit =  "Depth Max Drift"
             xlab = "Max Drift (mm)"
         elif feat_name == 'amp':
             feat = units_b['amps'][str(unit)] * 1e6  # convert to uV
-            tit =  "Amp Max Drift Values Hist"
+            tit =  "Amp Max Drift"
             xlab = "Max Drift (uV)"
         md[i] = bb.metrics.max_drift(feat)
 
@@ -1228,12 +1247,12 @@ def cum_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
             continue
         if feat_name == 'depth':
             feat = units_b['depths'][str(unit)]
-            tit =  "Depth Cumulative Drift Values Hist"
-            xlab = "Cumulative Drift (mm)"
+            tit =  "Depth Cumulative Drift"
+            xlab = "Mean Cumulative Drift (mm)"
         elif feat_name == 'amp':
             feat = units_b['amps'][str(unit)] * 1e6  # convert to uV
-            tit =  "Amp Cumulative Drift Values Hist"
-            xlab = "Cumulative Drift (uV)"
+            tit =  "Amp Cumulative Drift"
+            xlab = "Mean Cumulative Drift (uV)"
         cd[i] = bb.metrics.cum_drift(feat)
 
     # Plot histogram.
