@@ -102,13 +102,13 @@ def gen_figures(
         The probe whose data will be used to generate the figures.
     cluster_ids_summary : array-like (optional)
         The clusters for which to generate `grating_response_summary` and/or `unit_metrics_summary`
-        (if `[]`, clusters will be chosen via the filter parameters in `filt_params`,
+        (if `None`, clusters will be chosen via the filter parameters in `filt_params`,
         which is used in a call to `brainbox.processing.filter_units`)
     cluster_ids_selected : array-like (optional)
         The clusters for which to generate `grating_response_ind` and/or `unit_metrics_ind`.
-        (if `[]`, up to `n_selected_cl` cluster ids will be selected from `cluster_ids_summary`)
+        (if `None`, up to `n_selected_cl` cluster ids will be selected from `cluster_ids_summary`)
     n_selected_cl : int
-        The max number of `cluster_ids_selected` to choose if `cluster_ids_selected == []`.
+        The max number of `cluster_ids_selected` to choose if `cluster_ids_selected == None`.
     extract_stim_info : bool (optional)
         A flag for extracting stimulus info from the recording session into an alf directory.
     grating_response_summary : bool (optional)
@@ -149,13 +149,13 @@ def gen_figures(
     grating_response_params : dict (optional)
         Parameters for generating rasters based on time of grating stimulus presentation:
             'pre_t' : float
-                The time (s) shown before grating onset.
+                The time (in s) shown before grating onset.
             'post_t' : float
-                The time (s) shown after grating onset.
+                The time (in s) shown after grating onset.
             'bin_t' : float
-                The bin width (s) used to determine the number of spikes/bin.
+                The bin width (in s) used to determine the number of spikes/bin.
             'sigma' : float
-                The width (s) of the smoothing kernel used to determine the number of spikes/bin.
+                The width (in s) of the smoothing kernel used to determine the number of spikes/bin.
     filt_params : dict (optional)
         Parameters used in the call to `brainbox.processing.filter_units` for filtering clusters:
             'min_amp' : float
@@ -205,8 +205,8 @@ def gen_figures(
         Parameters used for the receptive field summary plot:
             'method' : string
                 The method used to compute receptive fields ('corr' or 'sta').
-            'bin_sz' : float 
-                The bin width (s) used
+            'binsize' : float 
+                The bin width (s) used.
             'lags' : int 
                 The number of bins for calculating receptive field.
             'n_depths' : int 
@@ -298,6 +298,28 @@ def gen_figures(
     See `using_master_plotting_function`
     '''
 
+    # Set params #
+    # ---------- #
+    params = {'min_amp': 50e-6, 'min_fr': 0.5, 'max_fpr': 0.1, 'rp': 0.002}
+    params.update(filt_params)
+    filt_params = params
+    params = {'pre_t': 0.5, 'post_t': 2.5, 'bin_t': 0.005, 'sigma': 0.025}
+    params.update(grating_response_params)
+    grating_response_params = params
+    params = {'bins': 'auto', 'rp': 0.002, 'spks_per_bin': 20, 'sigma': 4, 'n_ch': 10,
+              'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10, 'n_ch_probe': 385,
+              'pr_hist_win': 10}
+    params.update(summary_metrics_params)
+    summary_metrics_params = params
+    params = {'spks_per_bin': 20, 'sigma': 4, 'rp': 0.002, 'bins': 'auto', 'n_ch': 10,
+              'fr_hist_win': 0.01, 'fr_ma_win': 0.5, 'n_cv_bins': 10, 'n_ch_probe': 385,
+              'isi_win': 0.01, 'pr_hist_win': 10}
+    params.update(selected_metrics_params)
+    selected_metrics_params = params
+    params = {'method': 'corr', 'binsize': 0.025, 'lags': 8, 'n_depths': 30, 'use_svd': False}
+    params.update(rf_params)
+    rf_params = params
+
     # Initialize outputs #
     # ------------------ #
     m = bb.core.Bunch()
@@ -321,9 +343,10 @@ def gen_figures(
     ephys_file_dir = os.path.join(session_path, 'raw_ephys_data', probe)
     # Get `ap` ephys file if it exists.
     ephys_file_path = None
-    for file in os.listdir(ephys_file_dir):
-        if 'ap' in file and 'bin' in file:
-            ephys_file_path = os.path.join(ephys_file_dir, file)
+    for f in os.listdir(ephys_file_dir):
+            if f.endswith('ap.bin') or f.endswith('ap.cbin'):
+                ephys_file_path = os.path.join(ephys_file_dir, f)
+                break
     # Throw error if `ephys_file_path` is None and we have metrics that require it.
     require_ephys = ['s', 'amp_heatmap']
     if (ephys_file_path is None) & \
@@ -382,6 +405,8 @@ def gen_figures(
         if cluster_ids_summary.size == 0:
             raise ValueError("'cluster_ids_summary' is empty! Check filtering parameters in\
                              'filt_params'.")
+        else:
+            print('Number of units in summary figures is {}'.format(cluster_ids_summary.size))
     # Get `cluster_ids_selected` from `cluster_ids_summary`
     if (cluster_ids_selected is None) and unit_metrics_selected:
         print("'cluster_ids_selected' left empty, selecting up to {} units from\
@@ -457,6 +482,8 @@ def gen_figures(
             except Exception as err:
                 print("Failed to save the '{}' figure. Details: \n".format(name))
                 print(err)
+            else:
+                print('\nFigures saved in {}'.format(save_dir))
 
     return m, cluster_sets, fig_h
 
@@ -646,6 +673,9 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         pr = pr_hist(units_b, units=clusters, hist_win=pr_hist_win, bins=bins, ax=pr_ax)
         m['pres_ratio'] = pr
         n_cur_ax += 1
+    # TODO add this
+    if 'ptp_over_noise' in metrics:  # ptp over noise hist
+        pass
 
     fig.subplots_adjust(left=0.075, right=0.925, top=0.925, bottom=0.075, wspace=0.5, hspace=0.5)
     return fig, m

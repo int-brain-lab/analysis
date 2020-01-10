@@ -93,13 +93,20 @@ Below are the dataset_types required depending on the plots/metrics to be genera
         'ephysData.raw.timestamps',
         'ephysData.raw.wiring'
 
+Current sessions in examples: 'ZM_2104/2019-09-1/1', 'KS003/2019-11-1/1',
+'CSK-scan-008/2019-12-0/8', 'CSHL_020/2019-12-03/001'
+
 *Note: see the master plotting function (`analysis\v1_protocol\plot.gen_figures`) for detailed
 documentation on parametrizing all the possible metrics/plots.
 
-Current sessions in examples: 'ZM_2104/2019-09-1/1', 'KS003/2019-11-1/1',
-'CSK-scan-008/2019-12-0/8'
-
-TODO: add examples using different metrics and metrics params and saving.
+*Note: When saving figures, the `fig_names` input argument should be a dict with keys for the
+figures, and values as the name of the image file (NOT the full path).The keys in `fig_names`
+MUST be amongst the following:
+    'um_summary' : The name for the summary metrics figure.
+    'um_selected' : The name for the selected units' metrics figure.
+    'gr_summary' : The name for the summary grating response summary figure.
+    'gr_selected' : The name for the selected units' grating response figure.   
+See 'Example 2' and 'Example 3' for examples of saving figures.
 '''
 
 # Ensure the python path is set correctly
@@ -116,10 +123,10 @@ import brainbox as bb
 
 # The examples below can be run independently.
 
-# Example 1: For 'ZM_2104/2019-09-19/001' generate all 4 figures (grating response summary,
-# grating response selected, unit metrics summary, and unit metrics selected). Generate the
-# summary figures for all units, and the selected figures for 4 randomly chosen units from the
-# entire set of units.
+# Example 1: For 'ZM_2104/2019-09-19/001' 'probe_right', generate all 4 figures (grating response
+# summary, grating response selected, unit metrics summary, and unit metrics selected) using
+# default parameters. For the summary figures, use all units, and for the selected figures, use
+# 4 randomly chosen units.
 # -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
@@ -163,17 +170,17 @@ m, cluster_sets, _ = v1_plot.gen_figures(
     filt_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
 
 
-# Example 2: For 'KS003/2019-11-19/001' generate just the unit metrics summary and unit metrics
-# selected figures. Generate the summary figure for all units, and generate the selected figures
-# (in batches of 5) for all units with a minimum amplitude > 50 uV and a minimum firing rate > 3 
-# Hz. Save all figures in the home 'v1cert_figs' directory.
+# Example 2: For 'KS003/2019-11-25/001' 'probe01', generate just the unit metrics summary and unit
+# metrics selected figures. Generate the summary figure for all units, and generate the selected
+# figures (in batches of 5) for all units with a minimum amplitude > 40 uV and a minimum firing
+# rate > 1 Hz. Save all figures in the home 'v1cert_figs' directory.
 # -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
 # `gen_figures`
 one = ONE()
-eid = one.search(subject='KS003', date='2019-11-19', number=1)[0]
-probe = 'probe00'
+eid = one.search(subject='KS003', date='2019-11-25', number=1)[0]
+probe = 'probe01'
 
 # Get paths to the required dataset_types. If required dataset_types are not already downloaded,
 # download them.
@@ -209,9 +216,9 @@ fig_names = {'um_summary': 'KS003_2019-11-19_1_summary'}
 
 # Call master plotting function for metrics summary figure.
 m, cluster_sets, fig_list = v1_plot.gen_figures(
-    eid, probe, cluster_ids_summary=filt_units, extract_stim_info=False, unit_metrics_summary=True,
-    unit_metrics_selected=False, grating_response_summary=False, grating_response_selected=False,
-    save_dir=save_dir, fig_names=fig_names)
+    eid, probe, cluster_ids_selected=filt_units, extract_stim_info=False,
+    unit_metrics_summary=True, unit_metrics_selected=False, grating_response_summary=False,
+    grating_response_selected=False, save_dir=save_dir, fig_names=fig_names)
 
 # Call master plotting function in a loop on filtered units to generated selected figures for units
 # in batches of 5.
@@ -229,16 +236,19 @@ for i in range(n_i):
     cur_unit += batch_sz
 
 
-# Example 3: For 'KS003/2019-11-19/001' generate all 4 figures (grating response summary,
-# grating response selected, unit metrics summary, and unit metrics selected). Generate the
-# summary figures for all units with a minimum amplitude > 60 (`filt_units`). Generate the 
-# selected figures for all `filt_units` in batches of 5. Save all figures.
+# Example 3: For 'CSK-scan-008/2019-12-09/008' generate just the grating response figures. For
+# grating response parameters: change the time shown before and after the grating onset to each be
+# 1 s, change the bin width for determining spikes/bin to 10 ms, and the bin width of the smoothing
+# kernel to 50 ms. For receptive field parameters: change the bin width to 10 ms, the number of
+# bins for calculating the receptive fields to 10, and the number of depths to aggregate clusters
+# to 20. Save all figures in the home 'v1cert_figs' directory.
+#
 # -------------------------------------------------------------------------------------------------
 
 # Set the eid as `eid` and probe name as `probe` - these two input args are required for running
 # `gen_figures`
 one = ONE()
-eid = one.search(subject='KS003', date='2019-11-19', number=1)[0]
+eid = one.search(subject='CSK-scan-008', date='2019-12-09', number=8)[0]
 probe = 'probe00'
 
 # Get paths to the required dataset_types. If required dataset_types are not already downloaded,
@@ -268,16 +278,66 @@ dtypes = [
         ]
 d_paths = one.load(eid, dataset_types=dtypes, clobber=False, download_only=True)
 
-# Get the spikes alf bunch, and filter the units (this may take a few mins)
-alf_probe_path = os.path.split(d_paths[0])[0]
-spks_b = aio.load_object(alf_probe_path, 'spikes')
-units_b = bb.processing.get_units_bunch(spks_b)
-T = spks_b.times[-1] - spks_b.times[0]  # length of recording session
-filt_units = bb.processing.filter_units(
-    units_b, T, min_amp=60e-6, min_fr=0, max_fpr=100, rp=0.002)
+# Specify parameters for saving figures.
+save_dir = Path.joinpath(Path.home(), 'v1cert_figs')
+# Set filename of figures to save
+fig_names = {'gr_summary': 'CSK-scan-008_2019-12-09_008_grsummary',
+             'gr_selected': 'CSK-scan-008_2019-12-09_008_grselected'}
 
-# Run master plotting function on filtered units to get summary figures
+# Call master plotting with appropriate input args to get parametrized grating response figures:
+m, cluster_sets, _ = v1_plot.gen_figures(
+    eid, probe, grating_response_summary=True, grating_response_selected=True,
+    unit_metrics_summary=False, unit_metrics_selected=False,
+    grating_response_params={'pre_t': 1, 'post_t': 1, 'bin_t': 0.01, 'sigma': 0.05},
+    rf_params={'method': 'corr', 'binsize': 0.01, 'lags': 10, 'n_depths': 20, 'use_svd': False},
+    save_dir=save_dir, fig_names=fig_names)
 
-# Run master plotting function in a loop on filtered units to generated selected figures for units
-# in batches of 5.
 
+# Example 4: For 'CSHL_020/2019-12-03/001' 'probe00' generate the grating response summary and unit
+# metrics summary figures only. Filter the units used in these figures to only include those with
+# a minimum amplitude of 60 uV and no minimum firing rate. Add the coefficient of firing rate plot
+# to the default plots, with parameters that specify that the time window for computing firing rate
+# spike counts is 500 ms, and the moving average to compute instantaneous firing rate is 2 s.
+# -------------------------------------------------------------------------------------------------
+
+# Set the eid as `eid` and probe name as `probe` - these two input args are required for running
+# `gen_figures`
+one = ONE()
+eid = one.search(subject='CSHL_020', date='2019-12-03', number=1)[0]
+probe = 'probe00'
+
+# Get paths to the required dataset_types. If required dataset_types are not already downloaded,
+# download them.
+dtypes = [
+        'clusters.amps',
+        'clusters.channels',
+        'clusters.depths',
+        'clusters.metrics',
+        'clusters.peakToTrough',
+        'clusters.uuids',
+        'clusters.waveforms',
+        'clusters.waveformsChannels',
+        'spikes.amps',
+        'spikes.clusters',
+        'spikes.depths',
+        'spikes.samples',
+        'spikes.templates',
+        'spikes.times',
+        'ephysData.raw.meta',
+        '_spikeglx_sync.channels',
+        '_spikeglx_sync.polarities',
+        '_spikeglx_sync.times',
+        '_iblrig_RFMapStim.raw',
+        '_iblrig_taskSettings.raw',
+        '_iblrig_codeFiles.raw'
+        ]
+d_paths = one.load(eid, dataset_types=dtypes, clobber=False, download_only=True)
+
+# Call master plotting with appropriate input args to get parametrized summary figures:
+m, cluster_sets, _ = v1_plot.gen_figures(
+    eid, probe, grating_response_summary=True, grating_response_selected=False,
+    unit_metrics_summary=True, unit_metrics_selected=False,
+    filt_params={'min_amp': 60e-6, 'min_fr': 0},
+    summary_metrics = ['feat_vars', 'spks_missed', 'isi_viol', 'max_drift_depth',
+                       'cum_drift_depth', 'max_drift_amp', 'cum_drift_amp', 'pres_ratio', 'cv_fr'],
+    summary_metrics_params={'fr_hist_win': 0.5, 'fr_ma_win': 2})
