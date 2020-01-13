@@ -343,10 +343,11 @@ def gen_figures(
     ephys_file_dir = os.path.join(session_path, 'raw_ephys_data', probe)
     # Get `ap` ephys file if it exists.
     ephys_file_path = None
-    for f in os.listdir(ephys_file_dir):
-            if f.endswith('ap.bin') or f.endswith('ap.cbin'):
-                ephys_file_path = os.path.join(ephys_file_dir, f)
-                break
+    if Path.exists(Path(ephys_file_dir)):
+        for f in os.listdir(ephys_file_dir):
+                if f.endswith('ap.bin') or f.endswith('ap.cbin'):
+                    ephys_file_path = os.path.join(ephys_file_dir, f)
+                    break
     # Throw error if `ephys_file_path` is None and we have metrics that require it.
     require_ephys = ['s', 'amp_heatmap']
     if (ephys_file_path is None) & \
