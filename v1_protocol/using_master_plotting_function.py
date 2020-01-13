@@ -21,11 +21,12 @@ Below are instructions for ensuring Python has access to the appropriate code fo
     2) Create a conda environment in which you'll run the code. In your conda/OS terminal, run:
 
     ```
-    conda install conda==4.7.12  # first update conda to 4.7.12
+    conda update conda  # first update to latest version of conda
     cd ~\int-brain-lab\ibllib
-    conda env create --name v1_cert --file brainbox_env.yml
-    conda activate v1_cert
-    pip install -r requirements.txt
+    conda env create --name v1_cert --file brainbox_env.yml  # create env from `brainbox_env` file
+    conda activate v1_cert  # activate env
+    pip install -r requirements.txt  # install necessary non-conda packages
+    conda update jupyter_console  # update jupyter_console to be compatible with latest ipython
     ```
 
 Below are the git and conda commands you should run before each time you run the master plotting
