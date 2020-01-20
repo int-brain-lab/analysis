@@ -9,6 +9,7 @@ try:
 except:
     from v1_protocol.responsive import are_neurons_responsive
 
+
 def bin_responses(spike_times, spike_clusters, stim_times, stim_values, output_fr=True):
     """
     Compute firing rates during grating presentation
@@ -476,18 +477,23 @@ def plot_grating_figures(
     # calculate relevant metrics
     # --------------------------
     print('calcuating mean responses to gratings...', end='', flush=True)
-    # calculate mean responses to gratings
-    mask_clust = np.isin(spikes.clusters, cluster_ids)  # update mask for responsive clusters
+    # get mask for grating times - speed up later computations when filtering by these times
     mask_times = np.full(spikes.times.shape, fill_value=False)
     for epoch in epochs:
         mask_times |= (spikes.times >= grating_times[epoch].min()) & \
                       (spikes.times <= grating_times[epoch].max())
+    # find visually responsive neurons if no cluster ids specified
+    if len(cluster_ids) == 0:
+        cluster_ids, _ = get_vr_clusters(session_path)
+    mask_clust = np.isin(spikes.clusters, cluster_ids)
+    # find responsive clusters
     resp = {epoch: [] for epoch in epochs}
     for epoch in epochs:
         resp[epoch] = are_neurons_responsive(
             spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
             grating_vals[epoch], spont_times[epoch])
     responses = {epoch: [] for epoch in epochs}
+    # calculate mean responses to gratings
     for epoch in epochs:
         responses[epoch] = bin_responses(
             spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
@@ -568,6 +574,7 @@ def plot_grating_figures(
     # compute rasters for entire orientation sequence at beg/end epoch
     if plot_summary:
         print('computing rasters for example stimulus sequences...', end='', flush=True)
+        depth_bin = 20  # mm; bin size for depth dimension when computing rasters
         r = {epoch: None for epoch in epochs}
         r_times = {epoch: None for epoch in epochs}
         r_clusters = {epoch: None for epoch in epochs}
@@ -577,13 +584,8 @@ def plot_grating_figures(
             n_stims = len(np.unique(grating_vals[epoch]))
             mask_idxs_e = (spikes.times >= grating_times[epoch][:n_stims].min()) & \
                           (spikes.times <= grating_times[epoch][:n_stims].max())
-            r_tmp, r_times[epoch], r_clusters[epoch] = bincount2D(
-                spikes.times[mask_idxs_e], spikes.clusters[mask_idxs_e], bin_size)
-            # order activity by anatomical depth of neurons
-            d = dict(zip(spikes.clusters[mask_idxs_e], spikes.depths[mask_idxs_e]))
-            y = sorted([[i, d[i]] for i in d])
-            isort = np.argsort([x[1] for x in y])
-            r[epoch] = r_tmp[isort, :]
+            r[epoch], r_times[epoch], r_clusters[epoch] = bincount2D(
+                spikes.times[mask_idxs_e], spikes.depths[mask_idxs_e], bin_size, depth_bin)
         # package for plotting
         rasters = {'spikes': r, 'times': r_times, 'clusters': r_clusters, 'bin_size': bin_size}
         print('done')
@@ -656,6 +658,7 @@ def plot_grating_figures(
         'frac_resp_by_depth': responsive,
     }
     return fig_dict, metrics
+
 
 def plot_summary_figure(
         depths, ratios, responsive, peths_avg, osi, ori_pref, responses_mean, rasters,
@@ -741,22 +744,22 @@ def plot_summary_figure(
     # left side, top row
     # ---------------------------
     gs0 = gridspec.GridSpecFromSubplotSpec(
-        2, 2, subplot_spec=gs[0], wspace=0.1, hspace=0.3,
-        width_ratios=[1, 1], height_ratios=[3, 1])
+        2, 2, subplot_spec=gs[0], wspace=0.1, hspace=0.3, width_ratios=[1, 1], height_ratios=[3, 1])
 
     # plot binned spikes
     for i, epoch in enumerate(epochs):
         ax = fig.add_subplot(gs0[0, i])
         ax.imshow(
             rasters['spikes'][epoch], aspect='auto', cmap='binary',
-            vmax=rasters['bin_size'] / 0.001 / 4, origin='upper',
+            vmax=rasters['bin_size'] / 0.001 / 4, origin='lower',
             extent=np.r_[rasters['times'][epoch][[0, -1]], rasters['clusters'][epoch][[0, -1]]])
         ax.set_title('%s epoch\nFirst trial sequence' % epoch.capitalize())
         ax.set_xlabel('Time (s)')
         if ax.is_first_col():
-            ax.set_ylabel('Depth')
+            ax.set_ylabel('Depth (mm)')
         else:
             ax.set_yticks([])
+        ax.invert_yaxis()
 
     # plot histogram of firing rates
     for i, epoch in enumerate(epochs):
