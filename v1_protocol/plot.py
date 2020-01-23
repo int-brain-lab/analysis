@@ -477,7 +477,7 @@ def gen_figures(
         for name in fig_names:  # for each figure
             try:
                 # Create directory if doesn't already exist.
-                os.mkdir(save_dir) if not(os.path.exists(save_dir)) else []
+                os.makedirs(save_dir) if not(os.path.exists(save_dir)) else []
                 # Save figure.
                 fig_h[name].savefig(os.path.join(save_dir, fig_names[name] + '.png'))
             except Exception as err:
