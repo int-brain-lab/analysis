@@ -387,7 +387,7 @@ def plot_polar_psth_and_rasters(
             ax.set_ylabel('Orientation (deg)')
 
     if grid_spec is None:
-        plt.tight_layout()
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
         plt.subplots_adjust(top=0.85)
         plt.suptitle('Cluster %i' % cluster, x=0.57)
         plt.show()
@@ -449,6 +449,9 @@ def plot_grating_figures(
     fig_dict : dict
         A dict whose values are handles to one or both figures generated.
     """
+
+    import seaborn as sns
+    sns.set_context('paper')
 
     fig_dict = {}
     cluster_ids = cluster_ids_summary
@@ -634,7 +637,7 @@ def plot_grating_figures(
         fig_gr_summary = plot_summary_figure(
             ratios=ratios, depths=depths, responsive=responsive, peths_avg=peths_avg, osi=osi,
             ori_pref=ori_pref, responses_mean=responses_mean, rasters=rasters, save_file=save_file)
-        fig_gr_summary.suptitle('Summary Grating Responses')
+        fig_gr_summary.suptitle('Summary Grating Responses (N = %i clusters)' % len(cluster_ids))
         fig_dict['gr_summary'] = fig_gr_summary
 
     if plot_selected:
@@ -645,7 +648,7 @@ def plot_grating_figures(
         fig_gr_selected = plot_psths_and_rasters(
             mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
             off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
-        fig_gr_selected.suptitle('Selected Units Grating Responses')
+        # fig_gr_selected.suptitle('Selected Units Grating Responses')
         print('done')
         fig_dict['gr_selected'] = fig_gr_selected
     
@@ -775,7 +778,7 @@ def plot_summary_figure(
         if ax.is_first_col():
             ax.set_ylabel('Count')
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
     if save_file is None:
         plt.show()
     else:
@@ -792,7 +795,7 @@ def plot_psths_and_rasters(
     import seaborn as sns
     sns.set_context('paper')
 
-    fig = plt.figure(figsize=(15, 16))
+    fig = plt.figure(figsize=(12, 16))
     cluster_idxs = mean_responses.keys()
     n_clusters = len(cluster_idxs)
     n_cols = int(np.ceil(np.sqrt(n_clusters)))
@@ -807,7 +810,7 @@ def plot_psths_and_rasters(
             mean_responses[cluster_idx], binned_spikes[cluster_idx], osis[cluster_idx],
             grating_vals, on_idx, off_idx, bin_size, cluster=cluster_idx, grid_spec=gs0, fig=fig)
     gs.tight_layout(fig)
-    plt.subplots_adjust(wspace = 0.6, hspace = 0.6)
+    plt.subplots_adjust(wspace=0.6, hspace=0.6, top=0.9)
     if save_file is None:
         plt.show()
     else:

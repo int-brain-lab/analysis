@@ -414,9 +414,9 @@ def gen_figures(
               'cluster_ids_summary'.".format(n_selected_cl))
         if len(cluster_ids_summary) <= (n_selected_cl):  # select all of `cluster_ids_summary`
             cluster_ids_selected = cluster_ids_summary
-        else:  # select up to 5 units from `cluster_ids_summary`
-            cluster_ids_selected = np.random.choice(cluster_ids_summary,
-                                                    size=n_selected_cl, replace=False)
+        else:  # select up to `n_selected_cl` units from `cluster_ids_summary`
+            cluster_ids_selected = np.random.choice(
+                cluster_ids_summary, size=n_selected_cl, replace=False)
     cluster_sets['cluster_ids_summary'] = cluster_ids_summary
     cluster_sets['cluster_ids_selected'] = cluster_ids_selected
     fig_list_name = []  # print this list at end of function to show which figures were generated
@@ -426,9 +426,8 @@ def gen_figures(
     if grating_response_summary or grating_response_selected:
         print('Generating grating response figure(s)...', flush=True, end='')
         # Get visually responsive clusters as subset of `cluster_ids_summary`.
-        cluster_ids_summary_vr, cluster_ids_selected_vr = \
-            orientation.get_vr_clusters(alf_probe_path, clusters=cluster_ids_summary,
-                                        n_selected_cl=n_selected_cl)
+        cluster_ids_summary_vr, cluster_ids_selected_vr = orientation.get_vr_clusters(
+            alf_probe_path, clusters=cluster_ids_summary, n_selected_cl=n_selected_cl)
         cluster_sets['cluster_ids_summary_vr'] = cluster_ids_summary_vr
         cluster_sets['cluster_ids_selected_vr'] = cluster_ids_selected_vr
         # Generate grating figure(s)
@@ -572,6 +571,9 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     --------
     '''
 
+    import seaborn as sns
+    sns.set_context('paper')
+
     # Extract parameter values #
     # ------------------------ #
     bins = metrics_params['bins']
@@ -594,9 +596,9 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     # ---------- #
     ncols = 4  # axes per row of figure
     nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
-    fig = plt.figure(figsize=[16,8])
+    fig = plt.figure(figsize=[16, 8])
     fig.set_tight_layout(False)
-    fig.suptitle('Summary Metrics')
+    fig.suptitle('Summary Metrics (N = %i clusters)' % len(clusters))
     n_cur_ax = ncols + 1
 
     # Always output raster as half of first row 
@@ -758,6 +760,9 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     --------
     '''
 
+    import seaborn as sns
+    sns.set_context('paper')
+
     # Extract parameter values #
     # ------------------------ #
     bins = metrics_params['bins']
@@ -776,7 +781,7 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     # ---------- #
     nrows = len(metrics)  # units will be in columns, and different features in rows
     ncols = len(clusters)
-    fig = plt.figure(figsize=[16,8])
+    fig = plt.figure(figsize=[3 * ncols, 3 * nrows])
     fig.set_tight_layout(False)
     fig.suptitle('Selected Units Metrics')
     n_cur_ax = 1
@@ -876,9 +881,10 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     if 's' in metrics:  # waveforms plot
         pass
 
-    fig.subplots_adjust(left=0.075, right=0.925, top=0.96, bottom=0.05, wspace=0.4, hspace=0.9)
+    fig.subplots_adjust(left=0.075, right=0.925, top=0.90, bottom=0.05, wspace=0.4, hspace=0.9)
     plt.rcdefaults()  # restore matplotlib rc defaults
     return fig, m
+
 
 def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30000,
            n_ch_probe=385, dtype='int16', car=False, bins='auto', ax=None):
@@ -1296,6 +1302,7 @@ def cum_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
     ax.set_ylabel('Count')
 
     return cd
+
 
 def pr_hist(units_b, units=None, hist_win=10, bins='auto', ax=None):
     '''
