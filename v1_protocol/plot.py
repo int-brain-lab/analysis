@@ -478,7 +478,7 @@ def gen_figures(
                 # Create directory if doesn't already exist.
                 os.makedirs(save_dir) if not(os.path.exists(save_dir)) else []
                 # Save figure.
-                fig_h[name].savefig(os.path.join(save_dir, fig_names[name] + '.png'))
+                fig_h[name].savefig(os.path.join(save_dir, fig_names[name] + '.png'), dpi=300)
             except Exception as err:
                 print("Failed to save the '{}' figure. Details: \n".format(name))
                 print(err)
@@ -781,7 +781,7 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     # ---------- #
     nrows = len(metrics)  # units will be in columns, and different features in rows
     ncols = len(clusters)
-    fig = plt.figure(figsize=[3 * ncols, 3 * nrows])
+    fig = plt.figure(figsize=[3 * ncols, 2.5 * nrows])
     fig.set_tight_layout(False)
     fig.suptitle('Selected Units Metrics')
     n_cur_ax = 1
