@@ -109,7 +109,7 @@ def scatterplot(xs, ys, xlabel, ylabel, id_line=False, linewidth=1, ax=None):
         lmin = np.nanmin([np.nanquantile(xs, 0.01), np.nanquantile(ys, 0.01)])
         lmax = np.nanmax([np.nanquantile(xs, 0.99), np.nanquantile(ys, 0.99)])
         ax.plot([lmin, lmax], [lmin, lmax], '-', color=[0.7, 0.7, 0.7], linewidth=linewidth)
-    ax.scatter(xs, ys, marker='.', s=150, edgecolors=[1, 1, 1], alpha=1.0, color='k')
+    ax.scatter(xs, ys, marker='.', s=50, edgecolors=[1, 1, 1], alpha=1.0, color='k')
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.spines['top'].set_visible(False)
@@ -143,7 +143,7 @@ def plot_cdfs(prefs, xlabel, ax=None):
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Probability')
     ax.set_title('KS p-value = %1.2e' % p)
-    ax.legend(loc='upper left', frameon=False)
+    ax.legend(loc='lower right', frameon=False)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     if return_fig:
@@ -153,7 +153,8 @@ def plot_cdfs(prefs, xlabel, ax=None):
         return ax
 
 
-def plot_value_by_depth(values, depths, xlabel, ylabel, window=25, linewidth=1, ax=None):
+def plot_value_by_depth(
+        values, depths, xlabel, ylabel, window=25, linewidth=1, ax=None, center=True):
     """
     Plot a given value by depth along with a line indicating the running average of the value if
     `window` is greater than 0.
@@ -165,6 +166,7 @@ def plot_value_by_depth(values, depths, xlabel, ylabel, window=25, linewidth=1, 
     :param window: window for running average
     :param linewidth:
     :param ax:
+    :param center:
     :return:
     """
     return_fig = False
@@ -182,13 +184,13 @@ def plot_value_by_depth(values, depths, xlabel, ylabel, window=25, linewidth=1, 
 
     ax.scatter(values, depths, marker='.', c=[[0.1, 0.1, 0.1]], s=5)
     # plot center line at 1
-    ax.axvline(x=1, ymin=0.02, ymax=0.98, color=[0.7, 0.7, 0.7], linewidth=linewidth)
+    if center:
+        ax.axvline(x=1, ymin=0.02, ymax=0.98, color=[0.7, 0.7, 0.7], linewidth=linewidth)
+        ax.set_xscale('log')
     # plot running average
     if window > 0:
         ax.plot(running_average, x, 'r', linewidth=linewidth)
-    ax.set_xscale('log')
     ax.set_xlabel(xlabel)
-    ax.invert_yaxis()
     ax.set_ylabel(ylabel)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -222,11 +224,10 @@ def plot_histograms_by_epoch_depth(locations, values, val_label=None, axes=None)
         axes[i].set_title('%s epoch' % epoch.capitalize())
         axes[i].set_xlabel(val_label)
         axes[i].set_xlim(0, xmax)
-        axes[i].invert_yaxis()
         axes[i].spines['top'].set_visible(False)
         axes[i].spines['right'].set_visible(False)
         if i == 0:
-            axes[i].set_ylabel('Depth (mm)')
+            axes[i].set_ylabel('Depth on probe (mm; tip=0)')
         else:
             axes[i].set_yticks([])
     if return_fig:
@@ -699,66 +700,102 @@ def plot_summary_figure(
     sns.set_context('paper')
     epochs = osi.keys()
 
-    fig = plt.figure(figsize=(12, 6))
+    fig = plt.figure(figsize=(12, 8))
     gs = gridspec.GridSpec(1, 2, width_ratios=[1.5, 3])
 
     # right side
-    gs1 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[1], hspace=0.5)
+    gs1 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[1], hspace=0.35)
 
     # ---------------------------
     # right side, top row
     # ---------------------------
     gs1a = gridspec.GridSpecFromSubplotSpec(
-        1, 4, subplot_spec=gs1[0], wspace=0.5, width_ratios=[1, 0.5, 0.5, 1.5])
+        1, 4, subplot_spec=gs1[0], wspace=0.75, width_ratios=[0.5, 0.5, 1, 1])
 
-    # osi ratio as a function of depth
+    # osi beg as a function of depth
     ax = fig.add_subplot(gs1a[0])
     ax = plot_value_by_depth(
-        ratios, depths, xlabel='OSI ratio (beg/end)', ylabel='Depth (mm)', window=25,
+        osi['beg'], depths, xlabel='OSI Beg', ylabel='Depth on probe (mm; tip=0)',
+        window=0, center=False, ax=ax)
+
+    # osi end as a function of depth
+    ax = fig.add_subplot(gs1a[1])
+    ax = plot_value_by_depth(
+        osi['end'], depths, xlabel='OSI End', ylabel=None,
+        window=0, center=False, ax=ax)
+
+    gs1aa = gridspec.GridSpecFromSubplotSpec(
+        2, 1, subplot_spec=gs1a[2], hspace=1.0, height_ratios=[1, 1])
+
+    # osi beg vs end scatter
+    ax = fig.add_subplot(gs1aa[0])
+    ax = scatterplot(
+        osi['beg'], osi['end'], 'OSI (beg epoch)', 'OSI (end epoch)', id_line=True,
         linewidth=2, ax=ax)
 
-    # fraction of visual clusters by depth
-    ax0 = fig.add_subplot(gs1a[1])
-    ax1 = fig.add_subplot(gs1a[2])
-    axes = plot_histograms_by_epoch_depth(
-        responsive['depth'], responsive['fraction'], val_label='Fraction of\nvisual clusters',
-        axes=[ax0, ax1])
+    # osi cdf
+    ax = fig.add_subplot(gs1aa[1])
+    ax = plot_cdfs(osi, 'OSI', ax=ax)
 
-    # average psth
+    # osi ratio as a function of depth
     ax = fig.add_subplot(gs1a[3])
-    ax = plot_average_psths(
-        {epoch: peths_avg[epoch]['mean'] for epoch in epochs},
-        {epoch: peths_avg[epoch]['std'] for epoch in epochs},
-        on_idx=peths_avg['on_idx'], off_idx=peths_avg['off_idx'], bin_size=peths_avg['bin_size'],
-        tick_freq=1, ax=ax)
+    ax = plot_value_by_depth(
+        ratios, depths, xlabel='OSI ratio (beg/end)', ylabel='Depth on probe (mm; tip=0)',
+        window=25, linewidth=2, ax=ax)
 
     # ---------------------------
     # right side, bottom row
     # ---------------------------
     gs1b = gridspec.GridSpecFromSubplotSpec(
-        1, 3, subplot_spec=gs1[1], wspace=0.5, width_ratios=[1, 1, 1])
+        1, 4, subplot_spec=gs1[1], wspace=0.75, width_ratios=[0.5, 0.5, 1, 1])
 
-    # osi end vs beg
+    # ori pref beg as a function of depth
     ax = fig.add_subplot(gs1b[0])
-    ax = scatterplot(
-        osi['beg'], osi['end'], 'OSI (beg epoch)', 'OSI (end epoch)', id_line=True,
-        linewidth=2, ax=ax)
+    ax = plot_value_by_depth(
+        ori_pref['beg'], depths, xlabel='Ori Pref Beg', ylabel='Depth on probe (mm; tip=0)',
+        window=0, center=False, ax=ax)
 
-    # ori pref end vs beg
+    # osi end as a function of depth
     ax = fig.add_subplot(gs1b[1])
+    ax = plot_value_by_depth(
+        ori_pref['end'], depths, xlabel='Ori Pref End', ylabel=None,
+        window=0, center=False, ax=ax)
+
+    gs1bb = gridspec.GridSpecFromSubplotSpec(
+        2, 1, subplot_spec=gs1b[2], hspace=1.0, height_ratios=[1, 1])
+
+    # osi beg vs end scatter
+    ax = fig.add_subplot(gs1bb[0])
     ax = scatterplot(
-        ori_pref['beg'], ori_pref['end'], 'Ori Pref (beg epoch)', 'Ori Pref (end epoch)',
+        ori_pref['beg'], ori_pref['end'], 'Ori pref (beg epoch)', 'Ori pref (end epoch)',
         id_line=True, linewidth=2, ax=ax)
 
-    # ori pref cdf
-    ax = fig.add_subplot(gs1b[2])
-    ax = plot_cdfs(ori_pref, 'Orientation preference', ax=ax)
+    # osi cdf
+    ax = fig.add_subplot(gs1bb[1])
+    ax = plot_cdfs(ori_pref, 'Orientation', ax=ax)
+
+    # osi ratio as a function of depth
+    # ax = fig.add_subplot(gs1b[2])
+    # ax = plot_value_by_depth(
+    #     ratios_pref, depths, xlabel='Ori Pref ratio (beg/end)', ylabel=None,
+    #     window=25, linewidth=2, ax=ax)
+
+    gs1bb2 = gridspec.GridSpecFromSubplotSpec(
+        1, 2, subplot_spec=gs1b[3], wspace=0.25, width_ratios=[1, 1])
+
+    # fraction of visual clusters by depth
+    ax0 = fig.add_subplot(gs1bb2[0])
+    ax1 = fig.add_subplot(gs1bb2[1])
+    axes = plot_histograms_by_epoch_depth(
+        responsive['depth'], responsive['fraction'], val_label='Fraction of\nvisual clusters',
+        axes=[ax0, ax1])
 
     # ---------------------------
     # left side, top row
     # ---------------------------
     gs0 = gridspec.GridSpecFromSubplotSpec(
-        2, 2, subplot_spec=gs[0], wspace=0.1, hspace=0.3, width_ratios=[1, 1], height_ratios=[3, 1])
+        3, 2, subplot_spec=gs[0], wspace=0.1, hspace=0.5,
+        width_ratios=[1, 1], height_ratios=[3, 1, 1])
 
     # plot binned spikes
     for i, epoch in enumerate(epochs):
@@ -776,10 +813,13 @@ def plot_summary_figure(
         ax.set_title('%s epoch\nFirst trial sequence' % epoch.capitalize())
         ax.set_xlabel('Time (s)')
         if ax.is_first_col():
-            ax.set_ylabel('Depth (mm)')
+            ax.set_ylabel('Depth on probe (mm; tip=0)')
         else:
             ax.set_yticks([])
-        ax.invert_yaxis()
+
+    # ---------------------------
+    # left side, middle row
+    # ---------------------------
 
     # plot histogram of firing rates
     for i, epoch in enumerate(epochs):
@@ -794,6 +834,21 @@ def plot_summary_figure(
         ax.spines['right'].set_visible(False)
         if ax.is_first_col():
             ax.set_ylabel('Count')
+
+    # ---------------------------
+    # left side, bottom row
+    # ---------------------------
+
+    gs1c = gridspec.GridSpecFromSubplotSpec(
+        1, 1, subplot_spec=gs0[2, :])  # , wspace=0.5, width_ratios=[1, 1, 3])
+
+    # average psth
+    ax = fig.add_subplot(gs1c[0])
+    ax = plot_average_psths(
+        {epoch: peths_avg[epoch]['mean'] for epoch in epochs},
+        {epoch: peths_avg[epoch]['std'] for epoch in epochs},
+        on_idx=peths_avg['on_idx'], off_idx=peths_avg['off_idx'], bin_size=peths_avg['bin_size'],
+        tick_freq=1, ax=ax)
 
     plt.tight_layout(rect=[0, 0, 1, 0.97])
     if save_file is None:
