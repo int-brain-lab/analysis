@@ -581,6 +581,9 @@ def plot_grating_figures(
         r = {epoch: None for epoch in epochs}
         r_times = {epoch: None for epoch in epochs}
         r_clusters = {epoch: None for epoch in epochs}
+        r_vr = {epoch: None for epoch in epochs}
+        r_times_vr = {epoch: None for epoch in epochs}
+        r_clusters_vr = {epoch: None for epoch in epochs}
         for epoch in epochs:
             # restrict activity to a single stim series; assumes each possible grating direction
             # is displayed before repeating
@@ -589,8 +592,16 @@ def plot_grating_figures(
                           (spikes.times <= grating_times[epoch][:n_stims].max())
             r[epoch], r_times[epoch], r_clusters[epoch] = bincount2D(
                 spikes.times[mask_idxs_e], spikes.depths[mask_idxs_e], bin_size, depth_bin)
+
+            # just visually responsive clusters
+            mask_idxs_e_vr = mask_idxs_e & mask_clust
+            r_vr[epoch], r_times_vr[epoch], r_clusters_vr[epoch] = bincount2D(
+                spikes.times[mask_idxs_e_vr], spikes.depths[mask_idxs_e_vr], bin_size, depth_bin)
+
         # package for plotting
-        rasters = {'spikes': r, 'times': r_times, 'clusters': r_clusters, 'bin_size': bin_size}
+        rasters = {
+            'spikes': r, 'times': r_times, 'clusters': r_clusters, 'bin_size': bin_size,
+            'spikes_vr': r_vr, 'times_vr': r_times_vr, 'clusters_vr': r_clusters_vr}
         print('done')
 
     # -------------------------------------------------
@@ -752,10 +763,16 @@ def plot_summary_figure(
     # plot binned spikes
     for i, epoch in enumerate(epochs):
         ax = fig.add_subplot(gs0[0, i])
+        # plot all clusters
         ax.imshow(
-            rasters['spikes'][epoch], aspect='auto', cmap='binary',
-            vmax=rasters['bin_size'] / 0.001 / 4, origin='lower',
+            rasters['spikes'][epoch], aspect='auto', cmap='binary', vmax=1, origin='lower',
             extent=np.r_[rasters['times'][epoch][[0, -1]], rasters['clusters'][epoch][[0, -1]]])
+        # plot visually responsive clusters
+        ax.imshow(
+            rasters['spikes_vr'][epoch], aspect='auto', cmap='binary', vmax=1, origin='lower',
+            alpha=0.65,
+            extent=np.r_[
+                rasters['times_vr'][epoch][[0, -1]], rasters['clusters_vr'][epoch][[0, -1]]])
         ax.set_title('%s epoch\nFirst trial sequence' % epoch.capitalize())
         ax.set_xlabel('Time (s)')
         if ax.is_first_col():
