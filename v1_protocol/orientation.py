@@ -292,9 +292,8 @@ def plot_average_psths(means, stds, on_idx, off_idx, bin_size, ax=None, tick_fre
 
 
 def plot_polar_psth_and_rasters(
-        mean_responses, binned_responses, osi, grating_vals, on_idx, off_idx, bin_size,
-        tick_freq=1, cluster=None, grid_spec=None, fig=None):
-
+        mean_responses, binned_responses, osi, peths_mean, peths_std, grating_vals,
+        on_idx, off_idx, bin_size, tick_freq=1, cluster=None, grid_spec=None, fig=None):
     import matplotlib.gridspec as gridspec
     from matplotlib.ticker import FuncFormatter, FixedLocator
 
@@ -345,18 +344,38 @@ def plot_polar_psth_and_rasters(
         m = mean_responses[epoch]
         ax0.plot(np.concatenate([stim_ids, [stim_ids[0]]]), np.concatenate([m, [m[0]]]))
 
-        # plot rasters
         gs[1][i] = gridspec.GridSpecFromSubplotSpec(
-            n_stims, 1, subplot_spec=gs0[1, i + 1], hspace=0.0)
+            n_stims + 1, 1, subplot_spec=gs0[1, i + 1], hspace=0.0)
 
+        # plot peths
+        ax2 = fig.add_subplot(gs[1][i][0])
+        m = peths_mean[epoch]
+        s = peths_std[epoch]
+        n_bins = len(m)
+        ax2.fill_between(np.arange(n_bins), m - s, m + s, alpha=0.5)
+        ax2.plot(np.arange(n_bins), m)
+        ax2.axvline(x=on_idx, ymin=0.02, ymax=0.98, color='r')
+        ax2.axvline(x=off_idx, ymin=0.02, ymax=0.98, color='r')
+        ax2.set_xlim([0, n_bins])
+        ax2.set_xticks([])
+        ax2.set_xlabel('')
+        if epoch == 'beg':
+            ax2.set_ylabel('FR (Hz)')
+        else:
+            ax2.set_ylabel('')
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+
+        # plot rasters
         for j, stim_id in enumerate(stim_ids):
-            ax1 = fig.add_subplot(gs[1][i][j])
+            ax1 = fig.add_subplot(gs[1][i][j + 1])
             ax1.imshow(
-                binned_responses[epoch][j][:, 0, :], cmap='Greys', origin='lower', aspect='auto')
+                binned_responses[epoch][j][:, 0, :], cmap='Greys', origin='lower',
+                aspect='auto', vmax=1)
             ax1.spines['right'].set_visible(False)
             ax1.spines['top'].set_visible(False)
             ax1.axvline(x=on_idx, ymin=0, ymax=n_trials, color='r')
-            ax1.axvline(x=off_idx, ymin=0.02, ymax=0.98, linestyle='-', color='r')
+            ax1.axvline(x=off_idx, ymin=0.02, ymax=0.98, color='r')
             ax1.get_xaxis().set_major_locator(xtick_locs)
             ax1.get_xaxis().set_major_formatter(xtick_labs)
             if j == n_stims - 1:
@@ -620,6 +639,8 @@ def plot_grating_figures(
         mean_responses = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
         osis = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
         binned = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
+        peths_sel_mean = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
+        peths_sel_std = {cluster: {epoch: [] for epoch in epochs} for cluster in cluster_idxs}
         for cluster_idx in cluster_idxs:
             cluster = np.where(cluster_ids == cluster_idx)[0]
             for epoch in epochs:
@@ -627,12 +648,18 @@ def plot_grating_figures(
                 osis[cluster_idx][epoch] = osi[epoch][cluster]
                 stim_ids = np.unique(grating_vals[epoch])
                 binned[cluster_idx][epoch] = {j: None for j in range(len(stim_ids))}
+                peths_sel_mean[cluster_idx][epoch] = []
                 for j, stim_id in enumerate(stim_ids):
                     curr_stim_idxs = np.where(grating_vals[epoch] == stim_id)
                     align_times = grating_times[epoch][curr_stim_idxs, 0][0]
-                    _, binned[cluster_idx][epoch][j] = calculate_peths(
+                    peth_tmp, binned[cluster_idx][epoch][j] = calculate_peths(
                         spikes.times[mask_times], spikes.clusters[mask_times], [cluster_idx],
                         align_times, pre_time=pre_time, post_time=post_time, bin_size=bin_size)
+                    peths_sel_mean[cluster_idx][epoch].append(peth_tmp['means'])
+                peth_tmp = np.concatenate(peths_sel_mean[cluster_idx][epoch], axis=0)
+                peths_sel_mean[cluster_idx][epoch] = np.mean(peth_tmp, axis=0)
+                peths_sel_std[cluster_idx][epoch] = np.std(peth_tmp, axis=0) / \
+                    np.sqrt(peth_tmp.shape[0])
         print('done')
 
     # --------------
@@ -658,8 +685,9 @@ def plot_grating_figures(
         else:
             save_file = os.path.join(save_dir, 'grating_random_responses.' + format)
         fig_gr_selected = plot_psths_and_rasters(
-            mean_responses, binned, osis, grating_vals, on_idx=peths_avg['on_idx'],
-            off_idx=peths_avg['off_idx'], bin_size=bin_size, save_file=save_file)
+            mean_responses, binned, osis, peths_sel_mean, peths_sel_std, grating_vals,
+            on_idx=peths_avg['on_idx'], off_idx=peths_avg['off_idx'], bin_size=bin_size,
+            save_file=save_file)
         # fig_gr_selected.suptitle('Selected Units Grating Responses')
         print('done')
         fig_dict['gr_selected'] = fig_gr_selected
@@ -860,19 +888,21 @@ def plot_summary_figure(
 
 
 def plot_psths_and_rasters(
-        mean_responses, binned_spikes, osis, grating_vals, on_idx, off_idx, bin_size,
-        save_file=None):
+        mean_responses, binned_spikes, osis, peths_sel_mean, peths_sel_std, grating_vals, on_idx,
+        off_idx, bin_size, save_file=None):
 
     import matplotlib.gridspec as gridspec
     import seaborn as sns
     sns.set_context('paper')
 
-    fig = plt.figure(figsize=(12, 16))
     cluster_idxs = mean_responses.keys()
     n_clusters = len(cluster_idxs)
-    n_cols = int(np.ceil(np.sqrt(n_clusters)))
+    n_cols = 3  # int(np.ceil(np.sqrt(n_clusters)))
     n_rows = int(np.ceil(n_clusters / n_cols))
+
+    fig = plt.figure(figsize=(4 * n_cols, 4.5 * n_rows))
     gs = fig.add_gridspec(n_rows, n_cols)
+
     for i, cluster_idx in enumerate(cluster_idxs):
         r = int(np.floor(i / n_cols))
         c = int(i % n_cols)
@@ -880,6 +910,7 @@ def plot_psths_and_rasters(
             2, 3, subplot_spec=gs[r, c], height_ratios=[1, 3], width_ratios=[0.05, 4, 4])
         plot_polar_psth_and_rasters(
             mean_responses[cluster_idx], binned_spikes[cluster_idx], osis[cluster_idx],
+            peths_sel_mean[cluster_idx], peths_sel_std[cluster_idx],
             grating_vals, on_idx, off_idx, bin_size, cluster=cluster_idx, grid_spec=gs0, fig=fig)
     gs.tight_layout(fig)
     plt.subplots_adjust(wspace=0.6, hspace=0.6, top=0.9)
