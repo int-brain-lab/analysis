@@ -427,7 +427,7 @@ def gen_figures(
         print('Generating grating response figure(s)...', flush=True, end='')
         # Get visually responsive clusters as subset of `cluster_ids_summary`.
         cluster_ids_summary_vr, cluster_ids_selected_vr = orientation.get_vr_clusters(
-            alf_probe_path, clusters=cluster_ids_summary, n_selected_cl=n_selected_cl)
+            alf_probe_path, clusters=cluster_ids_summary, n_selected_cl=n_selected_cl, sort=True)
         cluster_sets['cluster_ids_summary_vr'] = cluster_ids_summary_vr
         cluster_sets['cluster_ids_selected_vr'] = cluster_ids_selected_vr
         # Generate grating figure(s)

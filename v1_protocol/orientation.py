@@ -512,6 +512,7 @@ def plot_grating_figures(
     # find responsive clusters
     resp = {epoch: [] for epoch in epochs}
     for epoch in epochs:
+        np.random.seed(0)  # to reproducibly get the same set of responsive neurons
         resp[epoch] = are_neurons_responsive(
             spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
             grating_vals[epoch], spont_times[epoch])
@@ -630,7 +631,7 @@ def plot_grating_figures(
     if plot_selected:
         print('computing psths and rasters for clusters...', end='', flush=True)
         if len(cluster_ids_selected) == 0:
-            if (n_rand_clusters < len(cluster_ids)):
+            if n_rand_clusters < len(cluster_ids):
                 cluster_idxs = np.random.choice(cluster_ids, size=n_rand_clusters, replace=False)
             else:
                 cluster_idxs = cluster_ids
@@ -921,7 +922,7 @@ def plot_psths_and_rasters(
     return fig
 
 
-def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
+def get_vr_clusters(session_path, clusters=None, n_selected_cl=4, sort=False):
     '''
     Gets visually responsive clusters
     
@@ -934,6 +935,9 @@ def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
         visually response subset from all clusters from recording session.)
     n_selected_cl : int
         The number of clusters to return in `vr_clusters_selected`
+    sort : bool
+        if True, return `n_selected_cl` with highest OSI; otherwise, return `n_selected_cl` random
+        clusters
     
     Returns
     -------
@@ -977,6 +981,7 @@ def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
     mask_clust = np.isin(spikes.clusters, clusters)
     resp = {epoch: [] for epoch in epochs}
     for epoch in epochs:
+        np.random.seed(0)  # to reproducibly get the same set of responsive neurons
         resp[epoch] = are_neurons_responsive(
             spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
             grating_vals[epoch], spont_times[epoch])
@@ -985,7 +990,23 @@ def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
     clusters_vr = clusters[resp_agg]
     print('done')
     if n_selected_cl < len(clusters_vr):
-        clusters_selected_vr = np.random.choice(clusters_vr, size=n_selected_cl, replace=False)
+        if sort:
+            # calculate mean responses to gratings
+            responses = {epoch: [] for epoch in epochs}
+            for epoch in epochs:
+                responses[epoch] = bin_responses(
+                    spikes.times[mask_clust], spikes.clusters[mask_clust], grating_times[epoch],
+                    grating_vals[epoch])
+            responses_mean = {epoch: np.mean(responses[epoch], axis=2) for epoch in epochs}
+            osi = {epoch: [] for epoch in epochs}
+            for epoch in epochs:
+                osi[epoch], _ = compute_selectivity(
+                    responses_mean[epoch], np.unique(grating_vals[epoch]), 'ori')
+            osi_avg = ((osi['beg'] + osi['end']) / 2)[resp_agg]
+            osi_idxs = np.argsort(osi_avg)
+            clusters_selected_vr = np.flip(clusters_vr[osi_idxs[-n_selected_cl:]])
+        else:
+            clusters_selected_vr = np.random.choice(clusters_vr, size=n_selected_cl, replace=False)
     else:
         clusters_selected_vr = clusters_vr
     return clusters_vr, clusters_selected_vr
