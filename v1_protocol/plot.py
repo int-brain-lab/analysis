@@ -454,6 +454,8 @@ def gen_figures(
         fig_um_summary, m = um_summary_plots(
             cluster_ids_summary, summary_metrics, units_b, alf_probe_path, ephys_file_path, m,
             summary_metrics_params, rf_params, certif_exists, save_dir=save_dir)
+        fig_um_summary.suptitle('Summary Metrics (N = %i / %i total clusters)' 
+                                % (len(cluster_ids_summary), np.max(spks_b.clusters)))
         fig_h['um_summary'] = fig_um_summary
         fig_list_name.extend(['unit_metrics_summary'])
         print('done')
@@ -599,7 +601,6 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
     fig = plt.figure(figsize=[16, 8])
     fig.set_tight_layout(False)
-    fig.suptitle('Summary Metrics (N = %i clusters)' % len(clusters))
     n_cur_ax = ncols + 1
 
     # Always output raster as half of first row 
@@ -980,8 +981,10 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
         fig, ax = plt.subplots()
 
     hist = np.histogram(s, bins)
-    hist_dist = stats.rv_histogram(hist)
-    ax.plot(s, hist_dist.pdf(s), label='pdf')
+    counts = np.insert(hist[0], 0, 0)
+    counts = np.append(counts, 0)
+    xvals = np.insert(hist[1], 0, 0)
+    ax.plot(xvals, counts)
     ax.set_title("'S' Values Hist")
     ax.set_xlabel("'S'")
     ax.set_ylabel("Count")
@@ -1136,8 +1139,10 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
         fig, ax = plt.subplots()
 
     hist = np.histogram(frac_missing, bins)
-    hist_dist = stats.rv_histogram(hist)
-    ax.plot(frac_missing, hist_dist.pdf(frac_missing), label='pdf')
+    counts = np.insert(hist[0], 0, 0)
+    counts = np.append(counts, 0)
+    xvals = np.insert(hist[1], 0, 0)
+    ax.plot(xvals, counts)
     ax.set_title("Fraction of Missing Spikes Hist")
     ax.set_xlabel("Fraction")
     ax.set_ylabel("Count")
@@ -1205,8 +1210,10 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
         fig, ax = plt.subplots()
 
     hist = np.histogram(frac_isi_viol, bins)
-    hist_dist = stats.rv_histogram(hist)
-    ax.plot(frac_isi_viol, hist_dist.pdf(frac_isi_viol), label='pdf')
+    counts = np.insert(hist[0], 0, 0)
+    counts = np.append(counts, 0)
+    xvals = np.insert(hist[1], 0, 0)
+    ax.plot(xvals, counts)
     ax.set_title("Fraction of ISI Violations")
     ax.set_xlabel("Fraction")
     ax.set_ylabel('Count')
@@ -1280,8 +1287,10 @@ def max_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
         fig, ax = plt.subplots()
 
     hist = np.histogram(md, bins)
-    hist_dist = stats.rv_histogram(hist)
-    ax.plot(md, hist_dist.pdf(md), label='pdf')
+    counts = np.insert(hist[0], 0, 0)
+    counts = np.append(counts, 0)
+    xvals = np.insert(hist[1], 0, 0)
+    ax.plot(xvals, counts)
     ax.set_title(tit)
     ax.set_xlabel(xlab)
     ax.set_ylabel('Count')
@@ -1356,8 +1365,10 @@ def cum_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
         fig, ax = plt.subplots()
 
     hist = np.histogram(cd, bins)
-    hist_dist = stats.rv_histogram(hist)
-    ax.plot(cd, hist_dist.pdf(cd), label='pdf')
+    counts = np.insert(hist[0], 0, 0)
+    counts = np.append(counts, 0)
+    xvals = np.insert(hist[1], 0, 0)
+    ax.plot(xvals, counts)
     ax.set_title(tit)
     ax.set_xlabel(xlab)
     ax.set_ylabel('Count')
@@ -1424,16 +1435,12 @@ def pr_hist(units_b, units=None, hist_win=10, bins='auto', ax=None):
         fig, ax = plt.subplots()
 
     hist = np.histogram(pr, bins)
-    hist_dist = stats.rv_histogram(hist)
-    ax.plot(pr, hist_dist.pdf(pr), label='pdf')
+    counts = np.insert(hist[0], 0, 0)
+    counts = np.append(counts, 0)
+    xvals = np.insert(hist[1], 0, 0)
+    ax.plot(xvals, counts)
     ax.set_title("Presence Ratio Hist")
     ax.set_xlabel("Presence Ratio")
     ax.set_ylabel('Count')
-
-    # Plot histogram.
-    if ax is None:
-        fig, ax = plt.subplots()
-
-    ax.hist(pr, bins)
 
     return pr
