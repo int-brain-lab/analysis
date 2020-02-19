@@ -63,6 +63,7 @@ from warnings import warn
 import shutil
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
 from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
@@ -478,7 +479,7 @@ def gen_figures(
                 # Create directory if doesn't already exist.
                 os.makedirs(save_dir) if not(os.path.exists(save_dir)) else []
                 # Save figure.
-                fig_h[name].savefig(os.path.join(save_dir, fig_names[name] + '.png'), dpi=300)
+                fig_h[name].savefig(os.path.join(save_dir, fig_names[name] + '.pdf'), dpi=300)
             except Exception as err:
                 print("Failed to save the '{}' figure. Details: \n".format(name))
                 print(err)
@@ -605,6 +606,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     # TODO change this so that raster takes up ~60% of first row
     raster_ax = fig.add_subplot(nrows, 2, 1)
     raster_depth.scatter_with_boundary_times(alf_probe_path, clusters, ax=raster_ax)  # raster
+    raster_ax.set_ylim(0, 3900)  # hardcode y lim to be length of NP probe
     # Always output rf maps as second half of first row
     if not(certif_exists):
         warn("'_iblcertif_' extraction files not found. RF Map plots will not be generated.")
@@ -964,15 +966,25 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
         wf2 = bb.io.extract_waveforms(ephys_file, ts2, ch, sr=sr, n_ch_probe=n_ch_probe,
                                       dtype=dtype, car=car)
         s[i] = bb.metrics.wf_similarity(wf1, wf2)
+    
+    # Remove NaNs and replace them with `s` mean values
+    if any(np.isnan(s)):
+        bad_units = np.where(np.isnan(s))
+        s = np.delete(s, bad_units)
+        # for each bad unit, replace with mean, and sort the array
+        s = np.sort(np.append(s, np.full(np.shape(bad_units), np.mean(s))))
+        
 
-    # Plot histogram.
+    # Plot histogram as pdf.
     if ax is None:
         fig, ax = plt.subplots()
 
-    ax.hist(s, bins)
+    hist = np.histogram(s, bins)
+    hist_dist = stats.rv_histogram(hist)
+    ax.plot(s, hist_dist.pdf(s), label='pdf')
     ax.set_title("'S' Values Hist")
     ax.set_xlabel("'S'")
-    ax.set_ylabel('Count')
+    ax.set_ylabel("Count")
     
     return s
 
@@ -1032,15 +1044,25 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
         ts = units_b['times'][str(unit)]
         cv_fr[i], _, _ = bb.metrics.firing_rate_coeff_var(ts, hist_win=hist_win, fr_win=fr_win,
                                                           n_bins=n_cv_bins)
+        
+    # Remove NaNs and replace them with `cv_fr` mean values
+    if any(np.isnan(cv_fr)):
+        bad_units = np.where(np.isnan(cv_fr))
+        cv_fr = np.delete(cv_fr, bad_units)
+        # for each bad unit, replace with mean, and sort the array
+        cv_fr = np.sort(np.append(cv_fr, np.full(np.shape(bad_units), np.mean(cv_fr))))
+        
 
-    # Plot histogram.
+    # Plot histogram as pdf.
     if ax is None:
         fig, ax = plt.subplots()
 
-    ax.hist(cv_fr, bins)
+    hist = np.histogram(cv_fr, bins)
+    hist_dist = stats.rv_histogram(hist)
+    ax.plot(cv_fr, hist_dist.pdf(cv_fr), label='pdf')
     ax.set_title("CV of Firing Rate Hist")
     ax.set_xlabel("CV of Firing Rate")
-    ax.set_ylabel('Count')
+    ax.set_ylabel("Count")
 
     return cv_fr
 
@@ -1098,16 +1120,27 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
             frac_missing[i], _, _ = bb.metrics.feat_cutoff(
                 amps, spks_per_bin=spks_per_bin, sigma=sigma)
         except:  # if didn't meet min num spikes requirement, set as nan
-            frac_missing[i] = np.nan    
+            frac_missing[i] = np.nan
     
-    # Plot histogram.
+    # Remove NaNs and replace them with `frac_missing` mean values
+    if any(np.isnan(frac_missing)):
+        bad_units = np.where(np.isnan(frac_missing))
+        frac_missing = np.delete(frac_missing, bad_units)
+        # for each bad unit, replace with mean, and sort the array
+        frac_missing = np.sort(np.append(frac_missing, np.full(np.shape(bad_units),
+                                                               np.mean(frac_missing))))
+        
+
+    # Plot histogram as pdf.
     if ax is None:
         fig, ax = plt.subplots()
 
-    ax.hist(frac_missing, bins)
-    ax.set_title("Fraction of Missing Spikes")
+    hist = np.histogram(frac_missing, bins)
+    hist_dist = stats.rv_histogram(hist)
+    ax.plot(frac_missing, hist_dist.pdf(frac_missing), label='pdf')
+    ax.set_title("Fraction of Missing Spikes Hist")
     ax.set_xlabel("Fraction")
-    ax.set_ylabel('Count')
+    ax.set_ylabel("Count")
     
     return frac_missing
 
@@ -1159,11 +1192,21 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
         ts = units_b['times'][str(unit)]
         frac_isi_viol[i], _, _ = bb.metrics.isi_viol(ts, rp=rp)
     
-    # Plot histogram.
+    # Remove NaNs and replace them with `frac_isi_viol` mean values
+    if any(np.isnan(frac_isi_viol)):
+        bad_units = np.where(np.isnan(frac_isi_viol))
+        frac_isi_viol = np.delete(frac_isi_viol, bad_units)
+        # for each bad unit, replace with mean, and sort the array
+        frac_isi_viol = np.sort(np.append(frac_isi_viol, np.full(np.shape(bad_units),
+                                                               np.mean(frac_isi_viol))))
+
+    # Plot histogram as pdf.
     if ax is None:
         fig, ax = plt.subplots()
 
-    ax.hist(frac_isi_viol, bins)
+    hist = np.histogram(frac_isi_viol, bins)
+    hist_dist = stats.rv_histogram(hist)
+    ax.plot(frac_isi_viol, hist_dist.pdf(frac_isi_viol), label='pdf')
     ax.set_title("Fraction of ISI Violations")
     ax.set_xlabel("Fraction")
     ax.set_ylabel('Count')
@@ -1225,11 +1268,20 @@ def max_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
             xlab = "Max Drift (uV)"
         md[i] = bb.metrics.max_drift(feat)
 
-    # Plot histogram.
+    # Remove NaNs and replace them with `md` mean values
+    if any(np.isnan(md)):
+        bad_units = np.where(np.isnan(md))
+        md = np.delete(md, bad_units)
+        # for each bad unit, replace with mean, and sort the array
+        md = np.sort(np.append(md, np.full(np.shape(bad_units), np.mean(md))))
+
+    # Plot histogram as pdf.
     if ax is None:
         fig, ax = plt.subplots()
 
-    ax.hist(md, bins)
+    hist = np.histogram(md, bins)
+    hist_dist = stats.rv_histogram(hist)
+    ax.plot(md, hist_dist.pdf(md), label='pdf')
     ax.set_title(tit)
     ax.set_xlabel(xlab)
     ax.set_ylabel('Count')
@@ -1292,11 +1344,20 @@ def cum_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
             xlab = "Mean Cumulative Drift (uV)"
         cd[i] = bb.metrics.cum_drift(feat)
 
-    # Plot histogram.
+    # Remove NaNs and replace them with `md` mean values
+    if any(np.isnan(cd)):
+        bad_units = np.where(np.isnan(cd))
+        cd = np.delete(cd, bad_units)
+        # for each bad unit, replace with mean, and sort the array
+        cd = np.sort(np.append(cd, np.full(np.shape(bad_units), np.mean(cd))))
+
+    # Plot histogram as pdf.
     if ax is None:
         fig, ax = plt.subplots()
 
-    ax.hist(cd, bins)
+    hist = np.histogram(cd, bins)
+    hist_dist = stats.rv_histogram(hist)
+    ax.plot(cd, hist_dist.pdf(cd), label='pdf')
     ax.set_title(tit)
     ax.set_xlabel(xlab)
     ax.set_ylabel('Count')
@@ -1351,13 +1412,28 @@ def pr_hist(units_b, units=None, hist_win=10, bins='auto', ax=None):
         ts = units_b['times'][str(unit)]
         pr[i], _ = bb.metrics.pres_ratio(ts, hist_win=hist_win)
 
+    # Remove NaNs and replace them with `md` mean values
+    if any(np.isnan(pr)):
+        bad_units = np.where(np.isnan(pr))
+        pr = np.delete(pr, bad_units)
+        # for each bad unit, replace with mean, and sort the array
+        pr = np.sort(np.append(pr, np.full(np.shape(bad_units), np.mean(pr))))
+
+    # Plot histogram as pdf.
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    hist = np.histogram(pr, bins)
+    hist_dist = stats.rv_histogram(hist)
+    ax.plot(pr, hist_dist.pdf(pr), label='pdf')
+    ax.set_title("Presence Ratio Hist")
+    ax.set_xlabel("Presence Ratio")
+    ax.set_ylabel('Count')
+
     # Plot histogram.
     if ax is None:
         fig, ax = plt.subplots()
 
     ax.hist(pr, bins)
-    ax.set_title("Presence Ratio Hist")
-    ax.set_xlabel("Presence Ratio")
-    ax.set_ylabel('Count')
 
     return pr
