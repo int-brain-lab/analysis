@@ -52,11 +52,11 @@ class WheelMoveSet(dj.Imported):
         # Load the wheel for this session
         move_key = key.copy()
         one = ONE()
-        session_uuid = str((acquisition.Session & key).fetch1('session_uuid'))
-        logger.info('WheelMoves for session %s', session_uuid)
+        eid, ver = (acquisition.Session & key).fetch1('session_uuid', 'task_protocol')
+        logger.info('WheelMoves for session %s, %s', str(eid), ver)
 
         try:  # Should be able to remove this
-            wheel = one.load_object(session_uuid, 'wheel')  # Fails for some sessions, e.g. CSHL_007\2019-11-08\002
+            wheel = one.load_object(str(eid), 'wheel')  # Fails for some sessions, e.g. CSHL_007\2019-11-08\002
             assert wheel is not None and len(wheel) > 1  # warning we have times and timestamps
             alf.io.check_dimensions(wheel)
         except ValueError:
@@ -105,8 +105,8 @@ class MovementTimes(dj.Computed):
         (acquisition.Session & 'task_protocol LIKE "%_iblrig_tasks_ephys%"')
 
     def make(self, key):
-        eid = str((acquisition.Session & key).fetch1('session_uuid'))  # For logging purposes
-        logger.info('MovementTimes for session %s', eid)
+        eid, ver = (acquisition.Session & key).fetch1('session_uuid', 'task_protocol')  # For logging purposes
+        logger.info('MovementTimes for session %s, %s', str(eid), ver)
         query = (WheelMoveSet.Move & key).proj(
             'move_id',
             'movement_onset',
@@ -128,24 +128,30 @@ class MovementTimes(dj.Computed):
         all_move_onsets = wheel_move_data['movement_onset']
         feedback_times = trial_data['trial_feedback_time']
         if np.isnan(feedback_times).any():
-            logger.warning('nans in feeback_times')
+            logger.warning('%i feedback_times nan', np.count_nonzero(np.isnan(feedback_times)))
 
-        def get_or(arr): return arr[-1] if arr.size > 0 else np.nan
-        ids = np.array([get_or(np.where(all_move_onsets < t)[0]) for t in feedback_times])
-        if np.isnan(ids).any():
-            logger.debug('%i feedback_times nan', np.count_nonzero(np.isnan(ids)))
-        onsets = all_move_onsets[ids]
+        def last(arr): return arr[-1] if arr.size > 0 else np.nan
 
-        cue_times = trial_data['trial_go_cue_time']
-        if np.isnan(cue_times).all():
-            logger.warning('trial_go_cue_time is all nan')
-            cue_times = trial_data['trial_stim_on_time']
-
+        ids = np.array([last(np.where(all_move_onsets < t)[0]) for t in feedback_times])
         try:
-            assert onsets.size == trial_data['trial_id'].size
+            assert ids.size == trial_data['trial_id'].size
         except AssertionError:
             logger.exception('Move onsets total trials mismatch')
             raise
+        onsets = np.full(trial_data['trial_id'].shape, np.nan)  # Initialize onsets for each trial
+        onsets[~np.isnan(ids)] = all_move_onsets[ids[~np.isnan(ids)]]  # Insert onsets for each trial
+
+        cue_times = trial_data['trial_go_cue_time']
+        if np.isnan(cue_times).any():
+            # If all nan, use stim on
+            if np.isnan(cue_times).all():
+                logger.warning('trial_go_cue_time is all nan, using trial_stim_on_time')
+                cue_times = trial_data['trial_stim_on_time']
+                if np.isnan(cue_times).any():
+                    n_nan = 'all' if np.isnan(cue_times).all() else str(np.count_nonzero(np.isnan(cue_times)))
+                    logger.warning('trial_stim_on_time nan for %s trials', n_nan)
+            else:
+                logger.warning('trial_go_cue_time is nan for %i trials', np.count_nonzero(np.isnan(cue_times)))
 
         movement_data = zip(
             trial_data['trial_id'],  # trial_id
