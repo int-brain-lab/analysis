@@ -1,5 +1,6 @@
-import matplotlib
-matplotlib.use('TkAgg')
+#import matplotlib
+#matplotlib.use('TkAgg')
+import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from ibl_pipeline import acquisition, behavior
@@ -198,10 +199,9 @@ def frames_for_period(start_time=None, end_time=None):
 # Plot the first fram in the upper subplot
 fig, axes = plt.subplots(nrows=2)
 frames = frames_for_period(trial_num)  # Get frame indicies for failed detection trial
+cam_ts = cam_ts[frames]
 frame_images = get_video_frames_preload(video_path, frames)
 #  frame = get_video_frame(video_path, frames[0])
-im = axes[0].imshow(frame_images[0])
-axes[0].axis('off')
 
 # Get the sample numbers for each onset and offset
 #  onoff_samps = np.array([[np.argmax(t >= a), np.argmax(t >= b)] for a, b in zip(on, off)])
@@ -216,49 +216,72 @@ for a, b in zip(on, off):
 # Plot the wheel trace in the lower subplot
 onoff_samps = np.array(onoff_samps)
 indicies = np.sort(np.hstack(onoff_samps))  # Points to split trace
-# Plot the wheel position and velocity
-axes[1].plot(on, pos[onoff_samps[:, 0]], 'go')
-axes[1].plot(off, pos[onoff_samps[:, 1]], 'bo')
-t_split = np.split(np.vstack((t, pos)).T, indicies, axis=0)
-axes[1].add_collection(LineCollection(t_split[1::2], colors='r'))  # Moving
-axes[1].add_collection(LineCollection(t_split[0::2], colors='k'))  # Not moving
-axes[1].set_ylabel('position')
-axes[1].legend(['onsets', 'offsets', 'in movement'])
-
-# Plot some trial events
-t1 = start_times[trial_num]
-t2 = feedback_times[trial_num]
-t3 = cue_times[trial_num]
-pos_rng = [pos.min(), pos.max()]  # The range for vertical lines on plot
-axes[1].vlines([t1, t2, t3], pos_rng[0], pos_rng[1],
-               colors=['r', 'b', 'g'], linewidth=0.5,
-               label=['start_time', 'feedback_time', 'cue_time'])
-
-# # Plot each sample
-# #plt.plot(wheel['timestamps'], wheel['position'], 'kx')
-#
 t_win = 3  # Time window of wheel plot
-axes[1].set_xlim([t[0], t[0] + t_win])  # @todo generalize
-axes[1].set_ylim(pos_rng)
-
-# Plot time marker
-ln = axes[1].axvline(x=cam_ts[frames[0]], color='k')
-axes[1].set_xlim([cam_ts[frames[0]]-(t_win/2), cam_ts[frames[0]]+(t_win/2)])
 
 
-def animate():
+def init():
+    im = axes[0].imshow(frame_images[0])
+    axes[0].axis('off')
+
+    # Plot the wheel position and velocity
+    axes[1].plot(on, pos[onoff_samps[:, 0]], 'go')
+    axes[1].plot(off, pos[onoff_samps[:, 1]], 'bo')
+    t_split = np.split(np.vstack((t, pos)).T, indicies, axis=0)
+    axes[1].add_collection(LineCollection(t_split[1::2], colors='r'))  # Moving
+    axes[1].add_collection(LineCollection(t_split[0::2], colors='k'))  # Not moving
+    axes[1].set_ylabel('position')
+    axes[1].legend(['onsets', 'offsets', 'in movement'])
+
+    # Plot some trial events
+    t1 = start_times[trial_num]
+    t2 = feedback_times[trial_num]
+    t3 = cue_times[trial_num]
+    pos_rng = [pos.min(), pos.max()]  # The range for vertical lines on plot
+    axes[1].vlines([t1, t2, t3], pos_rng[0], pos_rng[1],
+                   colors=['r', 'b', 'g'], linewidth=0.5,
+                   label=['start_time', 'feedback_time', 'cue_time'])
+
+    # # Plot each sample
+    # #plt.plot(wheel['timestamps'], wheel['position'], 'kx')
+    #
+    axes[1].set_xlim([t[0], t[0] + t_win])
+    axes[1].set_ylim(pos_rng)
+
+    # Plot time marker
+    ln = axes[1].axvline(x=cam_ts[0], color='k')
+    axes[1].set_xlim([cam_ts[0]-(t_win/2), cam_ts[0]+(t_win/2)])
+
+    return im, ln
+
+
+# def animate():
+#     tstart = time.time()  # for profiling
+#     for i in cycle(frames):
+#         #  frame = get_video_frame(video_path, i)
+#         t_x = cam_ts[i]
+#         ln.set_xdata([t_x, t_x])
+#         axes[1].set_xlim([t_x - (t_win / 2), t_x + (t_win / 2)])
+#         im.set_data(frame_images[i - frames[0]])
+#
+#         fig.canvas.draw()                         # redraw the canvas
+#         print('FPS:' + str(200/(time.time()-tstart)))
+#
+#
+# win = fig.canvas.manager.window
+# fig.canvas.manager.window.after(100, animate)
+# plt.show()
+
+def animate(i):
     tstart = time.time()  # for profiling
-    for i in cycle(frames):
-        #  frame = get_video_frame(video_path, i)
-        t_x = cam_ts[i]
-        ln.set_xdata([t_x, t_x])
-        axes[1].set_xlim([t_x - (t_win / 2), t_x + (t_win / 2)])
-        im.set_data(frame_images[i - frames[0]])
+    frame = frame_images[i]
+    t_x = cam_ts[i]
+    ln.set_xdata([t_x, t_x])
+    axes[1].set_xlim([t_x - (t_win / 2), t_x + (t_win / 2)])
+    im.set_data(frame)
+    print('FPS:' + str(200/(time.time()-tstart)))
+    return im, ln
 
-        fig.canvas.draw()                         # redraw the canvas
-        print('FPS:' + str(200/(time.time()-tstart)))
-
-
-win = fig.canvas.manager.window
-fig.canvas.manager.window.after(100, animate)
+im, ln = init()
+anim = animation.FuncAnimation(fig, animate,
+                               frames=len(frame_images), interval=20, blit=False, repeat=True)
 plt.show()
