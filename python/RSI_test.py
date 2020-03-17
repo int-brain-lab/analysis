@@ -13,6 +13,7 @@ import alf.io
 from oneibl.one import ONE
 from brainbox.io.one import load_spike_sorting
 import seaborn as sns
+import time
 
 
 def calc_fr(spikes, clusters):
@@ -78,28 +79,67 @@ metrics = {}
 for _, metric_name in metric_funcs:
     metrics[metric_name] = []
 
+i = 0
+eid = eids[0]
+probe = probes[0]
 
-for i, (eid, probe) in enumerate(zip(eids, probes)):
-    if eid in bad_eids: continue
-    print("{} from {}".format(i, len(eids)))
-    spikes, _ = load_spike_sorting(eid, one=one)
-    spikes = spikes[0]
+spikes, _ = load_spike_sorting(eid, one=one)
+spikes = spikes[0]
 
-    if spikes[probe]['times'] is None:
-        print('empty times skip')
-        continue
-
-    fr = calc_fr(spikes[probe]['times'], spikes[probe]['clusters'])
-    labs.append(one.list(eid, 'labs'))
+spikes, clusters = spikes[probe]['times'], spikes[probe]['clusters']
 
 
-    for j, (metric, metric_name) in enumerate(metric_funcs):
+ts = spikes[clusters == 0]
+hist_win=0.01
+fr_win=0.5
 
-        if str.endswith(metric_name, '_fr'):
-            metrics[metric_name].append(metric(fr))
-        else:
-            metrics[metric_name].append(metric(spikes[probe]['times'], spikes[probe]['clusters']))
+t_tot = ts[-1] - ts[0]
+n_bins_hist = np.int(t_tot / hist_win)
+counts = np.histogram(ts, n_bins_hist)[0]
+# Compute moving average of spike counts to get instantaneous firing rate in s.
+n_bins_fr = np.int(t_tot / fr_win)
+step_sz = np.int(len(counts) / n_bins_fr)
+fr_slow = np.array([np.sum(counts[step:(step + step_sz)])
+               for step in range(len(counts) - step_sz)]) / fr_win
 
+fr_fast = np.convolve(counts, np.ones(step_sz)) / fr_win
+
+@profile
+def f(ts, hist_win, fr_win):
+    t_tot = ts[-1] - ts[0]
+    n_bins_hist = np.int(t_tot / hist_win)
+    counts = np.histogram(ts, n_bins_hist)[0]
+    # Compute moving average of spike counts to get instantaneous firing rate in s.
+    n_bins_fr = np.int(t_tot / fr_win)
+    step_sz = np.int(len(counts) / n_bins_fr)
+
+    fr = np.array([np.sum(counts[step:(step + step_sz)])
+                   for step in range(len(counts) - step_sz)]) / fr_win
+    return fr
+
+@profile
+def f2(ts, hist_win, fr_win):
+    t_tot = ts[-1] - ts[0]
+    n_bins_hist = np.int(t_tot / hist_win)
+    counts = np.histogram(ts, n_bins_hist)[0]
+    # Compute moving average of spike counts to get instantaneous firing rate in s.
+    n_bins_fr = np.int(t_tot / fr_win)
+    step_sz = np.int(len(counts) / n_bins_fr)
+
+    fr = np.convolve(counts, np.ones(step_sz)) / fr_win
+    fr = fr[step_sz - 1:- step_sz]
+    return fr
+
+a = f(ts, hist_win, fr_win)
+b = f2(ts, hist_win, fr_win)
+
+print(a.shape)
+print(b.shape)
+print(np.sum(np.abs(a - b)))
+
+
+
+quit()
 
 def split(d, l):
     dizzle = {}
@@ -114,9 +154,9 @@ def split(d, l):
 for i, (metric, metric_name) in enumerate(metric_funcs):
 
     data = metrics[metric_name]
-    title = 'RSI_' + metric_name
+    title = 'RSI_hist_' + metric_name
     list_data = split(data, labs)
     plt.hist(list_data, color=sns.color_palette("colorblind", len(list_data)), stacked=True)
     plt.title(title)
-    plt.savefig('../../figures/hists/' + title)
+    plt.savefig('figures/hists/' + title)
     plt.show()

@@ -62,6 +62,7 @@ for eid, probe in zip(eids, probes):
         continue
 
     _ = one.load(eid, dataset_types='clusters.metrics', download_only=True)
+    probes = alf.io.load_object(session_path.joinpath('alf'), 'probes')
 
     try:
         probes = alf.io.load_object(session_path.joinpath('alf'), 'probes')
@@ -96,9 +97,9 @@ def split(d, l):
 for i, (metric, metric_name) in enumerate(metric_funcs):
 
     data = [metric(x) for x in metric_list]
-    print(data)
-    title = 'RSI_hist_' + metric_name
-    plt.hist(split(data, labs), color=sns.color_palette("colorblind", 6), stacked=True)
+    title = 'RSI_' + metric_name
+    list_data = split(data, labs)
+    plt.hist(list_data, color=sns.color_palette("colorblind", len(list_data)), stacked=True)
     plt.title(title)
-    plt.savefig('figures/hists/' + title)
+    plt.savefig('../../figures/hists/' + title)
     plt.show()
