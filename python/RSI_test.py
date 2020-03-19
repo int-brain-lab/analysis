@@ -14,6 +14,7 @@ from oneibl.one import ONE
 from brainbox.io.one import load_spike_sorting
 import seaborn as sns
 import time
+from sklearn.manifold import TSNE
 
 
 def calc_fr(spikes, clusters):
@@ -79,65 +80,43 @@ metrics = {}
 for _, metric_name in metric_funcs:
     metrics[metric_name] = []
 
-i = 0
-eid = eids[0]
-probe = probes[0]
 
-spikes, _ = load_spike_sorting(eid, one=one)
-spikes = spikes[0]
+for i, (eid, probe) in enumerate(zip(eids, probes)):
+    spikes, _ = load_spike_sorting(eid, one=one)
+    spikes = spikes[0]
 
-spikes, clusters = spikes[probe]['times'], spikes[probe]['clusters']
+    spikes, clusters = spikes[probe]['times'], spikes[probe]['clusters']
 
 
-ts = spikes[clusters == 0]
-hist_win=0.01
-fr_win=0.5
+    times_stimon = one.load(eid, dataset_types=['trials.stimOn_times'])[0]
+    #times_feedback = one.load(eid, dataset_types=['trials.feedback_times'])[0]
+    #feedback = one.load(eid, dataset_types=['trials.feedbackType'])[0]
+    depths = one.load(eid, dataset_types=['clusters.depths'])
+    for d in depths:
+        if d.shape == np.unique(clusters):
+            depths = d
+            break
 
-t_tot = ts[-1] - ts[0]
-n_bins_hist = np.int(t_tot / hist_win)
-counts = np.histogram(ts, n_bins_hist)[0]
-# Compute moving average of spike counts to get instantaneous firing rate in s.
-n_bins_fr = np.int(t_tot / fr_win)
-step_sz = np.int(len(counts) / n_bins_fr)
-fr_slow = np.array([np.sum(counts[step:(step + step_sz)])
-               for step in range(len(counts) - step_sz)]) / fr_win
+    #times = times_feedback[feedback == 1]
+    times = times_stimon
 
-fr_fast = np.convolve(counts, np.ones(step_sz)) / fr_win
+    start = time.time()
+    a, b = bb.singlecell.calculate_peths(spikes, clusters, list(range(len(np.unique(clusters)))), times)
+    print(time.time() - start)
 
-@profile
-def f(ts, hist_win, fr_win):
-    t_tot = ts[-1] - ts[0]
-    n_bins_hist = np.int(t_tot / hist_win)
-    counts = np.histogram(ts, n_bins_hist)[0]
-    # Compute moving average of spike counts to get instantaneous firing rate in s.
-    n_bins_fr = np.int(t_tot / fr_win)
-    step_sz = np.int(len(counts) / n_bins_fr)
+    vals, indizes = np.unique(clusters, return_index=True)
+    clusts = [clusters[i] for i in sorted(indizes)]
+    depths = depths[np.argsort(np.flip(clusts))]  # interesting results, weirdly enough
 
-    fr = np.array([np.sum(counts[step:(step + step_sz)])
-                   for step in range(len(counts) - step_sz)]) / fr_win
-    return fr
-
-@profile
-def f2(ts, hist_win, fr_win):
-    t_tot = ts[-1] - ts[0]
-    n_bins_hist = np.int(t_tot / hist_win)
-    counts = np.histogram(ts, n_bins_hist)[0]
-    # Compute moving average of spike counts to get instantaneous firing rate in s.
-    n_bins_fr = np.int(t_tot / fr_win)
-    step_sz = np.int(len(counts) / n_bins_fr)
-
-    fr = np.convolve(counts, np.ones(step_sz)) / fr_win
-    fr = fr[step_sz - 1:- step_sz]
-    return fr
-
-a = f(ts, hist_win, fr_win)
-b = f2(ts, hist_win, fr_win)
-
-print(a.shape)
-print(b.shape)
-print(np.sum(np.abs(a - b)))
-
-
+    perps = [5, 8]
+    np.random.seed(4)
+    for p in perps:
+        neurons_embedded = TSNE(perplexity=p).fit_transform(a.means)
+        plt.scatter(neurons_embedded[:, 0], neurons_embedded[:, 1], c=depths)
+        title = "bad sort Mouse {} Perplexity {}".format(one.list(eid, 'subject'), p)
+        plt.title(title)
+        plt.savefig('../../figures/' + title + '.png')
+        plt.close()
 
 quit()
 

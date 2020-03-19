@@ -87,7 +87,7 @@ for i, (eid, probe) in enumerate(zip(eids, probes)):
         if c['label'] == probe:
             print("{}, x: {}, y: {}, z: {}".format(c['label'], c['x'], c['y'], c['z']))
 
-
+    continue
     spikes, _ = load_spike_sorting(eid, one=one)
     spikes = spikes[0]
 
