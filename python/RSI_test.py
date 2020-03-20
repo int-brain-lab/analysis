@@ -15,6 +15,7 @@ from brainbox.io.one import load_spike_sorting
 import seaborn as sns
 import time
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 
 def calc_fr(spikes, clusters):
@@ -91,9 +92,13 @@ for i, (eid, probe) in enumerate(zip(eids, probes)):
 
 
     times_stimon = one.load(eid, dataset_types=['trials.stimOn_times'])[0]
-    #times_feedback = one.load(eid, dataset_types=['trials.feedback_times'])[0]
-    #feedback = one.load(eid, dataset_types=['trials.feedbackType'])[0]
+    contrastRight = one.load(eid, dataset_types=['trials.contrastRight'])[0]
+    times_feedback = one.load(eid, dataset_types=['trials.feedback_times'])[0]
+    feedback = one.load(eid, dataset_types=['trials.feedbackType'])[0]
     depths = np.array(one.load(eid, dataset_types=['clusters.depths']))
+
+    #times = times_feedback[feedback == 1]
+    times = times_stimon[(feedback == 1) & (np.nan_to_num(contrastRight) > 0)]
 
     session_path = one.path_from_eid(eid)
     if not session_path:
@@ -127,8 +132,6 @@ for i, (eid, probe) in enumerate(zip(eids, probes)):
             depths = d
             break
 
-    #times = times_feedback[feedback == 1]
-    times = times_stimon
 
     start = time.time()
     a, b = bb.singlecell.calculate_peths(spikes, clusters, quality.index[quality], times)
@@ -140,15 +143,21 @@ for i, (eid, probe) in enumerate(zip(eids, probes)):
     clusts = [clusters[i] for i in sorted(indizes)]
     depths = depths[np.argsort(np.flip(clusts))]  # interesting results, weirdly enough"""
 
-    perps = [5, 8]
-    np.random.seed(4)
-    for p in perps:
-        neurons_embedded = TSNE(perplexity=p).fit_transform(a.means)
-        plt.scatter(neurons_embedded[:, 0], neurons_embedded[:, 1], c=depths)
-        title = "good sort Mouse {} Perplexity {}".format(one.list(eid, 'subject'), p)
-        plt.title(title)
-        plt.savefig('../../figures/' + title + '.png')
-        plt.close()
+    pca = PCA(n_components=2)
+
+    #x = pca.fit_transform(np.swapaxes(a.means, 0, 1))
+    x = pca.fit_transform(a.means)
+
+
+    print(np.sum(pca.explained_variance_ratio_))
+    plt.scatter(x[:, 0], x[:, 1], c=depths)
+    title = "PCA neurons Time stimon (correct, rightward stim) Mouse {} (expl. var. {})".format(one.list(eid, 'subjects'), np.sum(pca.explained_variance_ratio_))
+    short_tit = "PCA neurons Time stimon (correct, rightward stim) Mouse {}".format(one.list(eid, 'subjects'))
+    print(short_tit)
+    plt.title(title)
+    plt.savefig('../../figures/' + short_tit + '.png')
+    plt.close()
+    quit()
 
 quit()
 
