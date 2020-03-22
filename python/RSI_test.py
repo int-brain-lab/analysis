@@ -16,7 +16,8 @@ import seaborn as sns
 import time
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
-
+import seaborn as sns
+from sklearn.cluster import DBSCAN
 
 def calc_fr(spikes, clusters):
     temp = []
@@ -143,21 +144,36 @@ for i, (eid, probe) in enumerate(zip(eids, probes)):
     clusts = [clusters[i] for i in sorted(indizes)]
     depths = depths[np.argsort(np.flip(clusts))]  # interesting results, weirdly enough"""
 
-    pca = PCA(n_components=2)
 
-    #x = pca.fit_transform(np.swapaxes(a.means, 0, 1))
-    x = pca.fit_transform(a.means)
+    a.means = a.means[np.sum(a.means, axis=1) != 0]
+    correlations = np.corrcoef(a.means)
+
+
+    sns.heatmap(correlations, square=True)
+    plt.show()
+
+
+    sns.heatmap(np.abs(correlations), square=True)
+    plt.show()
+
+    correlations = correlations[np.argsort(depths), np.argsort(depths)]
+    sns.heatmap(np.abs(correlations), square=True)
+    plt.show()
+
+    """pca = PCA(n_components=2)
+
+    x = pca.fit_transform(np.swapaxes(a.means, 0, 1))
+    #x = pca.fit_transform(a.means)
 
 
     print(np.sum(pca.explained_variance_ratio_))
-    plt.scatter(x[:, 0], x[:, 1], c=depths)
-    title = "PCA neurons Time stimon (correct, rightward stim) Mouse {} (expl. var. {})".format(one.list(eid, 'subjects'), np.sum(pca.explained_variance_ratio_))
-    short_tit = "PCA neurons Time stimon (correct, rightward stim) Mouse {}".format(one.list(eid, 'subjects'))
+    plt.scatter(x[:, 0], x[:, 1], c=range(28))
+    title = "PCA dynamics Time random Mouse {} (expl. var. {})".format(one.list(eid, 'subjects'), np.sum(pca.explained_variance_ratio_))
+    short_tit = "PCA dynamics Time random Mouse {}".format(one.list(eid, 'subjects'))
     print(short_tit)
     plt.title(title)
     plt.savefig('../../figures/' + short_tit + '.png')
-    plt.close()
-    quit()
+    plt.close()"""
 
 quit()
 
