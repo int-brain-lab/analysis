@@ -10,9 +10,9 @@ import numpy as np
 import brainbox.behavior.wheel as wh
 import cv2
 import time
-from itertools import cycle
 import os
 import random
+import re
 
 
 def get_video_frame(video_path, frame_number):
@@ -55,34 +55,42 @@ class Viewer:
         Plot the wheel trace alongside the video frames
         :param eid: uuid of experiment session to load
         :param trial: the trial id to plot
+        :param camera: the camera position to load, options: 'left' (default), 'right', 'body'
+        :param plot_dlc: when true, dlc output is overlaid onto frames
+        :param quick_load: when true, move onset detection is performed on individual trials
+        instead of entire session
+        :param t_win: the window in seconds over which to plot the wheel trace
         :return: Viewer object
         """
         self.t_win = t_win  # Time window of wheel plot
         self.one = ONE()
         self.quick_load = quick_load
-        self.eid = eid  # '77224050-7848-4680-ad3c-109d3bcd562c'  # ibl_witten_13\2019-11-01\001
-        self._session_data = {}  # Holds complete session data: trials, timestamps, etc.
-        self._plot_data = {}  # Holds data specific to current plot, namely data for single trial
 
         # If None, randomly pick a session to load
         if not eid:
             eids = self.find_sessions()
-            self.eid = random.choice(eids)
-            print('using session {}'.format(self.eid))
+            eid = random.choice(eids)
+            print('using session {}'.format(eid))
+
+        # Store complete session data: trials, timestamps, etc.
+        self._session_data = {'eid': eid, 'ref': self.eid2ref(eid)}
+        self._plot_data = {}  # Holds data specific to current plot, namely data for single trial
 
         # These are for the dict returned by ONE
-        self._session_data['trials'] = self.get_trial_data('ONE')
-        total_trials = self._session_data['trials']['intervals'].shape[0] - 1
+        trial_data = self.get_trial_data('ONE')
+        total_trials = trial_data['intervals'].shape[0]
         trial = random.randint(0, total_trials) if not trial else trial
+        self._session_data['total_trials'] = total_trials
+        self._session_data['trials'] = trial_data
 
         # Download the raw video for left camera only
         self.video_path, = self.download_raw_video(camera)
-        cam_ts = self.one.load(self.eid, ['camera.times'], dclass_output=True)
+        cam_ts = self.one.load(self._session_data['eid'], ['camera.times'], dclass_output=True)
         cam_ts, = [ts for ts, url in zip(cam_ts.data, cam_ts.url) if camera in url]
         # _, cam_ts, _ = one.load(eid, ['camera.times'])  # leftCamera is in the middle of the list
         self._session_data['camera_ts'] = cam_ts
         # Load wheel data
-        self._session_data['wheel'] = self.one.load_object(self.eid, 'wheel')
+        self._session_data['wheel'] = self.one.load_object(self._session_data['eid'], 'wheel')
 
         # Plot the first frame in the upper subplot
         fig, axes = plt.subplots(nrows=2)
@@ -94,8 +102,8 @@ class Viewer:
         self.anim = animation.FuncAnimation(fig, self.animate, init_func=self.init_plot,
                                             frames=5, interval=20, blit=False, repeat=True)
         self.anim.running = False
-        self.trial_num = trial
-        plt.show()
+        self.trial_num = trial  # Set trial and prepare plot/frame data
+        plt.show()  # Start animation
 
     @property
     def trial_num(self):
@@ -103,10 +111,23 @@ class Viewer:
 
     @trial_num.setter
     def trial_num(self, trial):
-        self._trial_num = int(trial)
+        """
+        Setter for the trial_num property.  Loads frames for trial, extracts onsets
+        for trial and reinitializes plot
+        :param trial: the trial number to select.  Must be > 0, <= len(trials['intervals'])
+        :return: None
+        """
+        # Validate input: trial must be within range (1, total trials)
+        trial = int(trial)
+        total_trials = self._session_data['total_trials']
+        if not 0 < trial <= total_trials:
+            raise IndexError(
+                'Trial number must be between 1 and {}'.format(total_trials))
+        self._trial_num = trial
+        print('Loading trial ' + str(self._trial_num))
 
         # Our plot data, e.g. data that falls within trial
-        data = {'frames': self.frames_for_period(self._session_data['camera_ts'], trial)}
+        data = {'frames': self.frames_for_period(self._session_data['camera_ts'], trial-1)}
         data['camera_ts'] = self._session_data['camera_ts'][data['frames']]
         data['frame_images'] = get_video_frames_preload(self.video_path, data['frames'])
         #  frame = get_video_frame(video_path, frames[0])
@@ -125,6 +146,10 @@ class Viewer:
             off_samp += np.argmax(ts[off_samp:] >= b)
             onoff_samps.append((on_samp, off_samp))
 
+        # Update title
+        ref = '{date:s}_{sequence:s}_{subject:s}'.format(**self._session_data['ref'])
+        self._plot_data['axes'][0].set_title(ref + ' #{}'.format(int(trial)))
+
         # Plot the wheel trace in the lower subplot
         data['moves']['onoff_samps'] = np.array(onoff_samps)
         # Points to split trace
@@ -132,14 +157,28 @@ class Viewer:
         data['frame_num'] = 0
         data['figure'] = self._plot_data['figure']
         data['axes'] = self._plot_data['axes']
+        if 'im' in data.keys():
+            # Copy over artists
+            data['im'] = self._plot_data['im']
+            data['ln'] = self._plot_data['ln']
 
+        # Stop running so we have to to reinitialize the plot after swapping out the plot data
         if self.anim.running:
             self.anim.running = False
-            self.anim.event_source.stop()
+            if self.anim:  # deals with issues on cleanup
+                self.anim.event_source.stop()
         self._plot_data = data
-        #self.init_plot()
-        #self.anim.event_source.start()
-        #self.anim.running = True
+
+    def eid2ref(self, eid):
+        """
+        Get human-readable session ref from path
+        :param eid: The experiment uuid to find reference for
+        :return: dict containing 'subject', 'date' and 'sequence'
+        """
+        path_str = str(self.one.path_from_eid(eid))
+        pattern = r'(?P<subject>\w+)([\\/])(?P<date>\d{4}-\d{2}-\d{2})(\2)(?P<sequence>\d{3})'
+        match = re.search(pattern, path_str)
+        return match.groupdict()
 
     def find_sessions(self):
         """
@@ -159,7 +198,7 @@ class Viewer:
         :return: the file path(s) of the raw videos
         """
         one = self.one
-        eid = self.eid
+        eid = self._session_data['eid']
         if cameras:
             cameras = [cameras] if isinstance(cameras, str) else cameras
             cam_files = ['_iblrig_{}Camera.raw.mp4'.format(cam) for cam in cameras]
@@ -190,7 +229,7 @@ class Viewer:
                   'trial_stim_on_time': 'stimOn_times',
                   'trial_feedback_time': 'feedback_times'}
         if mode is 'DataJoint':
-            restriction = acquisition.Session & {'session_uuid': self.eid}
+            restriction = acquisition.Session & {'session_uuid': self._session_data['eid']}
             query = (behavior.TrialSet.Trial & restriction).proj(
                 'trial_response_choice',
                 'trial_response_time',
@@ -203,7 +242,7 @@ class Viewer:
             data['intervals'] = np.c_[data['trial_start_time'], data['trial_end_time']]
             return data
         else:
-            return self.one.load_object(self.eid, 'trials')
+            return self.one.load_object(self._session_data['eid'], 'trials')
 
     def frames_for_period(self, cam_ts, start_time=None, end_time=None):
         if isinstance(start_time, int):
@@ -217,6 +256,7 @@ class Viewer:
     def extract_onsets_for_trial(self):
         wheel = self._session_data['wheel']
         trials = self._session_data['trials']
+        trial_idx = self.trial_num - 1  # Trials num starts at 1
         # Check the values and units of wheel position
         res = np.array([wh.ENC_RES, wh.ENC_RES / 2, wh.ENC_RES / 4])
         min_change_rad = 2 * np.pi / res
@@ -242,8 +282,14 @@ class Viewer:
         pos, t = wh.interpolate_position(wheel['timestamps'], wheel['position'], freq=1000)
         # Get the positions and times between our trial start and the next trial start
         if self.quick_load or not self.trial_num:
-            t_mask = np.logical_and(t >= trials['intervals'][self.trial_num, 0],
-                                    t <= trials['intervals'][self.trial_num + 1, 0])
+            try:
+                # End of previous trial to beginning of next
+                t_mask = np.logical_and(t >= trials['intervals'][trial_idx - 1, 1],
+                                        t <= trials['intervals'][trial_idx + 1, 0])
+            except IndexError:  # We're on the last trial
+                # End of previous trial to end of current
+                t_mask = np.logical_and(t >= trials['intervals'][trial_idx - 1, 1],
+                                        t <= trials['intervals'][trial_idx, 1])
         else:
             t_mask = np.ones_like(t, dtype=bool)
         wheel_ts = t[t_mask]
@@ -270,6 +316,7 @@ class Viewer:
 
         # Plot the wheel position
         ax = data['axes'][1]
+        ax.clear()
         ax.plot(on, wheel_pos[onoff_samps[:, 0]], 'go')
         ax.plot(off, wheel_pos[onoff_samps[:, 1]], 'bo')
         t_split = np.split(np.vstack((wheel_ts, wheel_pos)).T, indicies, axis=0)
@@ -279,9 +326,10 @@ class Viewer:
         ax.legend(['onsets', 'offsets', 'in movement'])
 
         # Plot some trial events
-        t1 = trials['intervals'][self.trial_num, 0]
-        t2 = trials['feedback_times'][self.trial_num]
-        t3 = trials['goCue_times'][self.trial_num]
+        trial_idx = self.trial_num - 1
+        t1 = trials['intervals'][trial_idx, 0]
+        t2 = trials['feedback_times'][trial_idx]
+        t3 = trials['goCue_times'][trial_idx]
         pos_rng = [wheel_pos.min(), wheel_pos.max()]  # The range for vertical lines on plot
         ax.vlines([t1, t2, t3], pos_rng[0], pos_rng[1],
                   colors=['r', 'b', 'g'], linewidth=0.5,
@@ -294,10 +342,10 @@ class Viewer:
         ax.set_ylim(pos_rng)
 
         # Plot time marker
-        if 'ln' in data.keys():
-            data['ln'].set_xdata([cam_ts[0], cam_ts[0]])
-        else:
-            data['ln'] = ax.axvline(x=cam_ts[0], color='k')
+        #if 'ln' in data.keys():
+        #    data['ln'].set_xdata([cam_ts[0], cam_ts[0]])
+        #else:
+        data['ln'] = ax.axvline(x=cam_ts[0], color='k')
         ax.set_xlim([cam_ts[0]-(self.t_win/2), cam_ts[0]+(self.t_win/2)])
 
         self._plot_data = data
@@ -322,12 +370,12 @@ class Viewer:
         data['ln'].set_xdata([t_x, t_x])
         data['axes'][1].set_xlim([t_x - (self.t_win / 2), t_x + (self.t_win / 2)])
         data['im'].set_data(frame)
-        print('Render time:' + str(time.time() - t_start))
+        #print('Render time:' + str(time.time() - t_start))
 
         return data['im'], data['ln']
 
     def process_key(self, event):
-        #frame_num = anim.save_count % len(anim._save_seq)
+        total_trials = self._session_data['total_trials']
         if event.key.isspace():
             if self.anim.running:
                 self.anim.event_source.stop()
@@ -348,37 +396,27 @@ class Viewer:
             self._plot_data['figure'].canvas.draw()
         elif event.key == 'r':
             # Pick random trial
-            total_trials = self._session_data['trials']['intervals'].shape[0] -1
             self.trial_num = random.randint(0, total_trials)
             self.init_plot()
             self.anim.event_source.start()
             self.anim.running = True
         elif event.key == 't':
             # Select trial
-            total_trials = self._session_data['trials']['intervals'].shape[0]
             trial = input("Input a trial within range (1, {}): \n".format(total_trials))
             if trial:
                 self.trial_num = int(trial)
                 self.init_plot()
                 self.anim.event_source.start()
                 self.anim.running = True
-
-
-
-
-    # def animate():
-#     tstart = time.time()  # for profiling
-#     for i in cycle(frames):
-#         #  frame = get_video_frame(video_path, i)
-#         t_x = cam_ts[i]
-#         ln.set_xdata([t_x, t_x])
-#         axes[1].set_xlim([t_x - (t_win / 2), t_x + (t_win / 2)])
-#         im.set_data(frame_images[i - frames[0]])
-#
-#         fig.canvas.draw()                         # redraw the canvas
-#         print('FPS:' + str(200/(time.time()-tstart)))
-#
-#
-# win = fig.canvas.manager.window
-# fig.canvas.manager.window.after(100, animate)
-# plt.show()
+        elif event.key == 'n':
+            # Next trial
+            self.trial_num = self.trial_num + 1 if self.trial_num < total_trials else 1
+            self.init_plot()
+            self.anim.event_source.start()
+            self.anim.running = True
+        elif event.key == 'p':
+            # Previous trial
+            self.trial_num = self.trial_num - 1 if self.trial_num > 1 else total_trials
+            self.init_plot()
+            self.anim.event_source.start()
+            self.anim.running = True
