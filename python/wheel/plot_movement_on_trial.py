@@ -1,5 +1,17 @@
-#import matplotlib
-#matplotlib.use('TkAgg')
+"""
+Wheel trace viewer.  Requires cv2
+
+Example 1 - inspect trial 100 of a given session
+    from python.wheel.plot_movement_on_trial import Viewer
+    eid = '77224050-7848-4680-ad3c-109d3bcd562c'
+    v = Viewer(eid=eid, trial=100)
+
+Example 2 - pick a random session to inspect
+    from python.wheel.plot_movement_on_trial import Viewer
+    v = Viewer()
+
+"""
+
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -50,13 +62,21 @@ def get_video_frames_preload(video_path, frame_numbers):
 
 
 class Viewer:
-    def __init__(self, eid, trial, camera='left', plot_dlc=True, quick_load=True, t_win=3):
+    def __init__(self, eid, trial, camera='left', plot_dlc=False, quick_load=True, t_win=3):
         """
-        Plot the wheel trace alongside the video frames
+        Plot the wheel trace alongside the video frames.  Below is list of key bindings:
+        :key n: plot movements of next trial
+        :key p: plot movements of previous trial
+        :key r: plot movements of a random trial
+        :key t: promp for a trial number to plot
+        :key space: pause/play frames
+        :key left: move to previous frame
+        :key right: move to next frame
+
         :param eid: uuid of experiment session to load
         :param trial: the trial id to plot
         :param camera: the camera position to load, options: 'left' (default), 'right', 'body'
-        :param plot_dlc: when true, dlc output is overlaid onto frames
+        :param plot_dlc: when true, dlc output is overlaid onto frames (unimplemented)
         :param quick_load: when true, move onset detection is performed on individual trials
         instead of entire session
         :param t_win: the window in seconds over which to plot the wheel trace
@@ -68,6 +88,7 @@ class Viewer:
 
         # If None, randomly pick a session to load
         if not eid:
+            print('Finding random session')
             eids = self.find_sessions()
             eid = random.choice(eids)
             print('using session {}'.format(eid))
@@ -214,7 +235,8 @@ class Viewer:
                 if filenames:
                     return [cache_dir.joinpath(file) for file in filenames]
             return http_download_file_list(urls, username=one._par.HTTP_DATA_SERVER_LOGIN,
-                    password=one._par.HTTP_DATA_SERVER_PWD, cache_dir=str(cache_dir))
+                                           password=one._par.HTTP_DATA_SERVER_PWD,
+                                           cache_dir=str(cache_dir))
         else:
             return one.load(eid, ['_iblrig_Camera.raw'], download_only=True)
 
@@ -245,15 +267,35 @@ class Viewer:
             return self.one.load_object(self._session_data['eid'], 'trials')
 
     def frames_for_period(self, cam_ts, start_time=None, end_time=None):
+        """
+        Load video frames between two events
+        :param cam_ts: a camera.times numpy array
+        :param start_time: a timestamp for the start of the period. If an int, the trial
+        interval start at that index is used.  If None, period starts at first frame
+        :param end_time: a timestamp for the end of the period. If an int, the trial
+        interval end at that index is used.  If None, period ends at last frame, unless start_time
+        is an int, in which case the trial interval at the start_time index is used
+        :return: numpy bool mask the same size as cam_ts
+        """
         if isinstance(start_time, int):
             end_times = self._session_data['trials']['intervals'][:, 1]
             strt_times = self._session_data['trials']['intervals'][:, 0]
             end_time = end_times[start_time] if not end_time else end_times[end_time]
             start_time = strt_times[start_time]
+        else:
+            if not start_time:
+                start_time = cam_ts[0]
+            if not end_time:
+                end_time = cam_ts[-1]
         mask = np.logical_and(cam_ts >= start_time, cam_ts <= end_time)
         return np.where(mask)[0]
 
     def extract_onsets_for_trial(self):
+        """
+        Extracts the movement onsets and offsets for the current trial
+        :return: tuple of onsets, offsets on, interpolated timestamps, interpolated positions,
+        and position units
+        """
         wheel = self._session_data['wheel']
         trials = self._session_data['trials']
         trial_idx = self.trial_num - 1  # Trials num starts at 1
@@ -266,12 +308,9 @@ class Viewer:
             # Assume values are in radians
             units = 'rad'
             encoding = np.argmin(np.abs(min_change_rad - pos_diff.min()))
-            min_change = min_change_rad[encoding]
         else:
             units = 'cm'
             encoding = np.argmin(np.abs(min_change_cm - pos_diff.min()))
-            min_change = min_change_cm[encoding]
-        enc_names = {0: '4X', 1: '2X', 2: '1X'}
         thresholds = wh.samples_to_cm(np.array([8, 1.5]), resolution=res[encoding])
         if units == 'rad':
             thresholds = wh.cm_to_rad(thresholds)
@@ -298,6 +337,10 @@ class Viewer:
         return on, off, wheel_ts, wheel_pos, units
 
     def init_plot(self):
+        """
+        Plot the wheel data for the current trial
+        :return: None
+        """
         data = self._plot_data
         trials = self._session_data['trials']
         if 'im' in data.keys():
@@ -335,16 +378,7 @@ class Viewer:
                   colors=['r', 'b', 'g'], linewidth=0.5,
                   label=['start_time', 'feedback_time', 'cue_time'])
 
-        # # Plot each sample
-        # #plt.plot(wheel['timestamps'], wheel['position'], 'kx')
-        #
-        #ax.set_xlim([wheel_ts[0], wheel_ts[0] + self.t_win])
         ax.set_ylim(pos_rng)
-
-        # Plot time marker
-        #if 'ln' in data.keys():
-        #    data['ln'].set_xdata([cam_ts[0], cam_ts[0]])
-        #else:
         data['ln'] = ax.axvline(x=cam_ts[0], color='k')
         ax.set_xlim([cam_ts[0]-(self.t_win/2), cam_ts[0]+(self.t_win/2)])
 
@@ -353,6 +387,12 @@ class Viewer:
         return data['im'], data['ln']
 
     def animate(self, i):
+        """
+        Callback for figure animation.  Sets image data for current frame and moves pointer
+        along axis
+        :param i: unused; the current timestep of the calling method
+        :return: None
+        """
         t_start = time.time()
         data = self._plot_data
         if i < 0:
@@ -370,11 +410,16 @@ class Viewer:
         data['ln'].set_xdata([t_x, t_x])
         data['axes'][1].set_xlim([t_x - (self.t_win / 2), t_x + (self.t_win / 2)])
         data['im'].set_data(frame)
-        #print('Render time:' + str(time.time() - t_start))
+        # print('Render time:' + str(time.time() - t_start))
 
         return data['im'], data['ln']
 
     def process_key(self, event):
+        """
+        Callback for key presses.
+        :param event: a figure key_press_event
+        :return: None
+        """
         total_trials = self._session_data['total_trials']
         if event.key.isspace():
             if self.anim.running:
