@@ -25,6 +25,7 @@ import time
 import os
 import random
 import re
+import sys
 
 
 def get_video_frame(video_path, frame_number):
@@ -54,7 +55,10 @@ def get_video_frames_preload(video_path, frame_numbers):
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[0])
     frame_images = []
     for i in frame_numbers:
-        print('loading frame #{}'.format(i))
+        sys.stdout.write('\r')
+        sys.stdout.write('loading frame {}/{}'.format(i, frame_numbers[-1]))
+        sys.stdout.flush()
+        # print('loading frame #{}'.format(i))
         ret, frame = cap.read()
         frame_images.append(frame)
     cap.release()
@@ -145,7 +149,7 @@ class Viewer:
             raise IndexError(
                 'Trial number must be between 1 and {}'.format(total_trials))
         self._trial_num = trial
-        print('Loading trial ' + str(self._trial_num))
+        sys.stdout.write('\rLoading trial ' + str(self._trial_num))
 
         # Our plot data, e.g. data that falls within trial
         data = {'frames': self.frames_for_period(self._session_data['camera_ts'], trial-1)}
@@ -157,21 +161,12 @@ class Viewer:
         data['moves'] = {'intervals': np.c_[on, off]}
         data['wheel'] = {'ts': ts, 'pos': pos, 'units': units}
 
-        # Get the sample numbers for each onset and offset
-        #  onoff_samps = np.array([[np.argmax(t >= a), np.argmax(t >= b)] for a, b in zip(on, off)])
-        onoff_samps = list()
-        on_samp = 0
-        off_samp = 0
-        for a, b in zip(on, off):
-            on_samp += np.argmax(ts[on_samp:] >= a)
-            off_samp += np.argmax(ts[off_samp:] >= b)
-            onoff_samps.append((on_samp, off_samp))
-
         # Update title
         ref = '{date:s}_{sequence:s}_{subject:s}'.format(**self._session_data['ref'])
         self._plot_data['axes'][0].set_title(ref + ' #{}'.format(int(trial)))
 
-        # Plot the wheel trace in the lower subplot
+        # Get the sample numbers for each onset and offset
+        onoff_samps = np.c_[np.searchsorted(ts, on), np.searchsorted(ts, off)]
         data['moves']['onoff_samps'] = np.array(onoff_samps)
         # Points to split trace
         data['moves']['indicies'] = np.sort(np.hstack(onoff_samps))
@@ -404,7 +399,9 @@ class Viewer:
             if self._plot_data['frame_num'] >= len(data['frame_images']):
                 self._plot_data['frame_num'] = 0
         i = self._plot_data['frame_num']
-        print('Frame {} / {}'.format(i, len(data['frame_images'])))
+        sys.stdout.write('\rFrame {} / {}'.format(i, len(data['frame_images'])))
+        sys.stdout.flush()
+        # print('Frame {} / {}'.format(i, len(data['frame_images'])))
         frame = data['frame_images'][i]
         t_x = data['camera_ts'][i]
         data['ln'].set_xdata([t_x, t_x])
