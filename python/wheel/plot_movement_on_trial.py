@@ -66,7 +66,8 @@ def get_video_frames_preload(video_path, frame_numbers):
 
 
 class Viewer:
-    def __init__(self, eid, trial, camera='left', plot_dlc=False, quick_load=True, t_win=3):
+    def __init__(self, eid=None, trial=None, camera='left', plot_dlc=False, quick_load=True,
+                 t_win=3):
         """
         Plot the wheel trace alongside the video frames.  Below is list of key bindings:
         :key n: plot movements of next trial
