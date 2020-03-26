@@ -30,7 +30,13 @@ class PsyTrack(dj.Computed):
     weight_contrastright:                float 
     """
 
-    key_source = subject.Subject & behavior.TrialSet.Trial
+    # compute the model for each subject that has trials
+    # for now, only subjects for which we expect no more data
+    key_source = subject.Subject & subject.Death \
+                 & (subject.SubjectProject &
+                    'subject_project = "ibl_neuropixel_brainwide_01" OR subject_project = '
+                    '"churchland_learninglifespan"') \
+                 & behavior.TrialSet.Trial
 
     def make(self, key):
 
@@ -60,6 +66,7 @@ class PsyTrack(dj.Computed):
         # grab the day boundaries to estimate that sigDay
         D.update({'dayLength': np.array(pd.DataFrame({'session_start_time':
                                                           session_start_time}).groupby(['session_start_time']).size())})
+        print(D)
 
         # =================================== #
         # specify the weights to fit and hyperparameters
@@ -93,4 +100,4 @@ class PsyTrack(dj.Computed):
 
 # ============================= #
 # POPULATE
-PsyTrack.populate(display_progress=True)
+PsyTrack.populate((subject.SubjectLab & 'lab_name = "churchlandlab"'), display_progress=True)
