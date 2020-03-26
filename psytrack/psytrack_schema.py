@@ -78,7 +78,6 @@ class PsyTrack(dj.Computed):
         # =================================== #
         # INSERT INTO THE KEY FOR EACH TRIAL
 
-        shell()
         weights = []
         for i, days in enumerate(session_date):
             key.update(
@@ -89,6 +88,7 @@ class PsyTrack(dj.Computed):
                 weight_contrastright = wMode[2][i])
             weights.append(key.copy())
 
+        print(weights)
         self.insert(weights)
 
 # ============================= #
