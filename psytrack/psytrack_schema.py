@@ -38,12 +38,12 @@ class PsyTrack(dj.Computed):
 
         # grab all trials for this subject & session
         trials = ((behavior.TrialSet.Trial & 'trial_response_choice != "No Go"') \
-                 * acquisition.Session.proj(session_date='DATE(session_start_time)')) & key
+                 * acquisition.Session) & key
 
-        stim_left, stim_right, resp, feedback, session_date, trial_id = trials.fetch(
+        stim_left, stim_right, resp, feedback, session_start_time, trial_id = trials.fetch(
             'trial_stim_contrast_left', 'trial_stim_contrast_right',
             'trial_response_choice', 'trial_feedback_type',
-            'session_date', 'trial_id')
+            'session_start_time', 'trial_id')
 
         # =================================== #
         # convert to psytrack format
@@ -58,8 +58,8 @@ class PsyTrack(dj.Computed):
         D.update({'inputs': {'contrast_left': np.array(np.tanh(p * stim_left) / np.tanh(p))[:, None],
                              'contrast_right': np.array(np.tanh(p * stim_right) / np.tanh(p))[:, None]}})
         # grab the day boundaries to estimate that sigDay
-        D.update({'dayLength': np.array(pd.DataFrame({'session_date':
-                                                          session_date}).groupby(['session_date']).size())})
+        D.update({'dayLength': np.array(pd.DataFrame({'session_start_time':
+                                                          session_start_time}).groupby(['session_start_time']).size())})
 
         # =================================== #
         # specify the weights to fit and hyperparameters
@@ -79,9 +79,9 @@ class PsyTrack(dj.Computed):
         # INSERT INTO THE KEY FOR EACH TRIAL
 
         weights = []
-        for i, days in enumerate(session_date):
+        for i, days in enumerate(session_start_time):
             key.update(
-                session_start_time = session_date[i],
+                session_start_time = session_start_time[i],
                 trial_id = trial_id[i],
                 weight_bias = wMode[0][i],
                 weight_contrastleft = wMode[1][i],
