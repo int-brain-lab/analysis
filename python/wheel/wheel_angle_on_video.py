@@ -49,7 +49,6 @@ def download_raw_video(eid, cameras=None):
 def Print_Wheel_Angle_On_Video(eid, video_type, trial_range, save_video=True):
 
     '''
-    Initially that will download all videos of a session
 
     eid: session id, e.g. 'dfd8e7df-dc51-4589-b6ca-7baccfeb94b4'
     video_type: one of 'left', 'right', 'body'
