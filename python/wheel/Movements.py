@@ -42,10 +42,9 @@ class WheelMoveSet(dj.Imported):
         movement_amplitude:     float # movement amplitude
         """
 
-    key_source = behavior.CompleteWheelSession & \
-        (acquisition.Session & 'task_protocol LIKE "%_iblrig_tasks_ephys%"')
+    key_source = behavior.CompleteWheelSession
 
-    # key_source = behavior.CompleteTrialSession & \
+    # key_source = behavior.CompleteWheelSession & \
     #     (acquisition.Session & 'task_protocol LIKE "%_iblrig_tasks_ephys%"')
 
     def make(self, key):
@@ -83,7 +82,8 @@ class WheelMoveSet(dj.Imported):
                 min_change = min_change_cm[encoding]
             enc_names = {0: '4X', 1: '2X', 2: '1X'}
             logger.info('Wheel in %s units using %s encoding', units, enc_names[int(encoding)])
-            assert np.allclose(pos_diff, min_change, rtol=1e-05), 'wheel position skips'
+            if '_iblrig_tasks_ephys' in ver:
+                assert np.allclose(pos_diff, min_change, rtol=1e-05), 'wheel position skips'
         except ValueError:
             logger.exception('Inconsistent wheel data')
             raise
@@ -136,8 +136,7 @@ class MovementTimes(dj.Computed):
     movement_onset:         float # time in seconds when last movement onset occurred
     """
 
-    key_source = behavior.CompleteTrialSession & WheelMoveSet & \
-        (acquisition.Session & 'task_protocol LIKE "%_iblrig_tasks_ephys%"')
+    key_source = behavior.CompleteTrialSession & WheelMoveSet
 
     def make(self, key):
         eid, ver = (acquisition.Session & key).fetch1('session_uuid', 'task_protocol')  # For logging purposes

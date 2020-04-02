@@ -52,6 +52,9 @@ def get_video_frames_preload(video_path, frame_numbers):
     :return: numpy array corresponding to frame of interest.  Dimensions are (1024, 1280, 3)
     """
     cap = cv2.VideoCapture(str(video_path))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if 0 < frame_numbers[-1] >= total_frames:
+        raise IndexError('frame numbers must be between 0 and ' + str(total_frames))
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[0])
     frame_images = []
     for i in frame_numbers:
@@ -193,7 +196,7 @@ class Viewer:
         :return: dict containing 'subject', 'date' and 'sequence'
         """
         path_str = str(self.one.path_from_eid(eid))
-        pattern = r'(?P<subject>\w+)([\\/])(?P<date>\d{4}-\d{2}-\d{2})(\2)(?P<sequence>\d{3})'
+        pattern = r'(?P<subject>[\w-]+)([\\/])(?P<date>\d{4}-\d{2}-\d{2})(\2)(?P<sequence>\d{3})'
         match = re.search(pattern, path_str)
         return match.groupdict()
 
