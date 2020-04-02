@@ -42,7 +42,7 @@ else:
 
 print(dates)
 subjects = pd.DataFrame(one.alyx.get(
-    '/subjects?&alive=True&water_restricted=True&responsible_user=anup.khanal'))
+    '/subjects?&alive=True&water_restricted=True&responsible_user=anneu'))
 sub = subjects['nickname'].unique()
 print(sub)
 
@@ -53,7 +53,7 @@ for s in sub:
         wa_ = {
             'subject': s,
             'date_time': dat,
-            'water_type': 'Water 4% Citric Acid',
+            'water_type': 'Water 2% Citric Acid',
             'water_administered': 1,
             'user': 'anneu',
             'adlib': True}
