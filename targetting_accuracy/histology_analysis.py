@@ -28,7 +28,27 @@ def planed_vs_manipulator(trj_planned, trj_manipulator):
 
     '''
 
-def manipulator_vs_histology(trj_theory, trj_hist):
+
+def compare_2_probes(dict_1,dict_2):
+    '''
+    Given two probes in the following format, it calculates the cummulative
+    ecleudian between comparable channels
+    Dict format for Insertion function
+    {'x': 544.0,
+    'y': 1285.0,
+    'z': 0.0,
+    'phi': 0.0,
+    'theta': 5.0,
+    'depth': 4501.0}
+    INPUT:
+        dict_1,dict_2: 2 dictionaries with probe coordinates
+    OUTPUT:
+        cecle: Comulative ecludian error
+    '''
+    
+
+
+def manipulator_vs_histology(trj_hist):
     '''
     Measures the error between the manipulator or planned probe insertion 
     and the one from histology
@@ -36,9 +56,26 @@ def manipulator_vs_histology(trj_theory, trj_hist):
         trj_theory: Planned trajectory
         trj_hist: Histology trajectory
     OUTPUT:
-        cecle: Comulative ecludian error
         
     '''
+    for i in range(len(trj_hist)):
+        pen = trj_hist.iloc[i,:]
+        hist_probe = {'x': pen['x'],
+                      'y':  pen['y'],
+                      'z':  pen['z'],
+                      'phi':  pen['phi'],
+                      'theta': pen['theta'],
+                      'depth':  pen['depth']}
+        micro_probe ={'x': pen['mcr_x'],
+                      'y':  pen['mcr_y'],
+                      'z':  pen['mcr_z'],
+                      'phi': pen['mcr_phi'],
+                      'theta': pen['mcr_theta'],
+                      'depth': pen['mcr_depth']}
+        euc_comp = compare_2_probes(hist_probe, micro_probe)
+        
+        
+        
     
 def penetration_query():
     '''
@@ -179,17 +216,6 @@ def fig_delta_coordinates(trj_hist):
     delta[1,1].spines['top'].set_visible(False)
     delta[1,1].spines['right'].set_visible(False)
     delta[1,1].set_ylabel('AP error (um)')
-
-def cumulative_error(trj_hist):
-    '''
-    Calculates the cumulative error between the tracked histology and the
-    recorded location in the micromanipulator
-    INPUT:
-        trj_hist : pandas dataframe with penetration locations
-    OUTPUT:
-        figure with cumulative error per lab
-    '''
-
 
 def patch_name(dataframe):
     '''
