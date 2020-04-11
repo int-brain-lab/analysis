@@ -12,27 +12,75 @@ from ibllib.pipes import histology
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
-
-
+from ibllib.ephys.neuropixel import SITES_COORDINATES
+from scipy.spatial import distance
 # Function definitions
 
-def planed_vs_manipulator(trj_planned, trj_manipulator):
+def planed_vs_histology(trj_hist):
     '''
     Measures the error between the planned probe insertion and the one recorded
     in the manipulator on recording day.
     INPUT:
-        trj_planned: Planned trajectory
-        trj_manipulator: Micromanipulator trajectory
+        trj_hist: Histology dataframe
     OUTPUT:
-        cecle: Comulative ecludian error
+        figure
 
     '''
+    trj_hist['mean_cecler'] = np.nan
+    trj_hist['r_miss'] = np.nan
+    trj_hist['r_out'] = np.nan
+    
+    for i in range(len(trj_hist)):
+        pen = trj_hist.iloc[i,:]
+        hist_probe = {'x': pen['x'],
+                      'y':  pen['y'],
+                      'z':  pen['z'],
+                      'phi':  pen['phi'],
+                      'theta': pen['theta'],
+                      'depth':  pen['depth']}
+        pln_probe ={'x': pen['pln_x'],
+                      'y':  pen['pln_y'],
+                      'z':  pen['pln_z'],
+                      'phi': pen['pln_phi'],
+                      'theta': pen['pln_theta'],
+                      'depth': pen['pln_depth']}
+        try:
+            trj_hist.iloc[i,-3], trj_hist.iloc[i,-2], \
+            trj_hist.iloc[i,-1] = compare_2_probes(pln_probe, hist_probe)
+        except:
+            pass
+    
+    
+    figure, delta = plt.subplots(1,2, figsize =[10,5])
+    plt.sca(delta[0])
+    plt.xticks(rotation = 45)
+    plt.rcParams.update({'font.size': 12})
+    sns.swarmplot(data = trj_hist, y = 'mean_cecler',
+                 x = 'lab', ax = delta[0], color='k')
+    sns.boxplot(data = trj_hist, y = 'mean_cecler',
+                 x = 'lab', ax = delta[0], color='gray')
+    delta[0].set_xlabel('Laboratory Location')
+    delta[0].spines['top'].set_visible(False)
+    delta[0].spines['right'].set_visible(False)
+    delta[0].set_ylabel('Mean euclidean error (um)')
+    plt.sca(delta[1])
+    plt.xticks(rotation = 45)
+    plt.rcParams.update({'font.size': 12})
+    sns.swarmplot(data = trj_hist, y = 'r_out',
+                 x = 'lab', ax = delta[1], color='k')
+    sns.boxplot(data = trj_hist, y = 'r_out',
+                 x = 'lab', ax = delta[1], color='gray')
+    delta[1].set_xlabel('Laboratory Location')
+    delta[1].spines['top'].set_visible(False)
+    delta[1].spines['right'].set_visible(False)
+    delta[1].set_ylabel('Fraction of regions missed')
+    
+    return delta
 
-
-def compare_2_probes(dict_1,dict_2):
+def compare_2_probes(dict1,dict2):
     '''
-    Given two probes in the following format, it calculates the cummulative
-    ecleudian between comparable channels
+    Given two probes in the following format, it calculates the cerror between 
+    the probes. Dict2 is compared to dict1
     Dict format for Insertion function
     {'x': 544.0,
     'y': 1285.0,
@@ -43,9 +91,33 @@ def compare_2_probes(dict_1,dict_2):
     INPUT:
         dict_1,dict_2: 2 dictionaries with probe coordinates
     OUTPUT:
-        cecle: Comulative ecludian error
+        cecler: Comulative ecludian error
+        r_miss: each channel that debiates from the intetion adds 1/divided by
+        total number of channels. 1 is all are different
+        r_out: number of unique regions in dict1 missed divided by total possible
     '''
+    # mean eucledian error
+    dict_1_ins = atlas.Insertion.from_dict(dict1)
+    dict1_regions, _, dict1_xyz = histology.get_brain_regions(dict_1_ins.xyz)
+    dict_2_ins = atlas.Insertion.from_dict(dict2)
+    dict2_regions, _, dict2_xyz = histology.get_brain_regions(dict_2_ins.xyz)
+    cecler = 0
+    for i  in range(len(dict1_xyz)):
+        cecler += distance.euclidean(dict1_xyz[i,:], dict2_xyz[i,:])
+    mean_cecler = (cecler/len(dict1_xyz))*(10**6)
     
+    #score areas missmatch
+    r_miss = 0
+    for i in range(len(dict1_regions['id'])):
+        r_miss += 1 - int(dict1_regions['id'][i] == dict2_regions['id'][i])
+    r_miss = r_miss/len(dict1_regions['id'])
+    
+    #percentage of regions totally missed
+    r_out = (1 - len(np.intersect1d(np.unique(dict1_regions['id']), 
+                               np.unique(dict2_regions['id'])))/
+             len(np.unique(dict1_regions['id'])))
+    
+    return mean_cecler, r_miss, r_out
 
 
 def manipulator_vs_histology(trj_hist):
@@ -56,8 +128,14 @@ def manipulator_vs_histology(trj_hist):
         trj_theory: Planned trajectory
         trj_hist: Histology trajectory
     OUTPUT:
-        
+        trj_hist: Histology dataframe with extra 3 columns
+        mean_cecler, r_miss, r_out (see def compare 2 probes for definition)
     '''
+    
+    trj_hist['mean_cecler'] = np.nan
+    trj_hist['r_miss'] = np.nan
+    trj_hist['r_out'] = np.nan
+    
     for i in range(len(trj_hist)):
         pen = trj_hist.iloc[i,:]
         hist_probe = {'x': pen['x'],
@@ -72,10 +150,38 @@ def manipulator_vs_histology(trj_hist):
                       'phi': pen['mcr_phi'],
                       'theta': pen['mcr_theta'],
                       'depth': pen['mcr_depth']}
-        euc_comp = compare_2_probes(hist_probe, micro_probe)
-        
-        
-        
+        try:
+            trj_hist.iloc[i,-3], trj_hist.iloc[i,-2], \
+            trj_hist.iloc[i,-1] = compare_2_probes(micro_probe, hist_probe)
+        except:
+            pass
+    
+    
+    figure, delta = plt.subplots(1,2, figsize =[10,5])
+    plt.sca(delta[0])
+    plt.xticks(rotation = 45)
+    plt.rcParams.update({'font.size': 12})
+    sns.swarmplot(data = trj_hist, y = 'mean_cecler',
+                 x = 'lab', ax = delta[0], color='k')
+    sns.boxplot(data = trj_hist, y = 'mean_cecler',
+                 x = 'lab', ax = delta[0], color='gray')
+    delta[0].set_xlabel('Laboratory Location')
+    delta[0].spines['top'].set_visible(False)
+    delta[0].spines['right'].set_visible(False)
+    delta[0].set_ylabel('Mean euclidean error (um)')
+    plt.sca(delta[1])
+    plt.xticks(rotation = 45)
+    plt.rcParams.update({'font.size': 12})
+    sns.swarmplot(data = trj_hist, y = 'r_out',
+                 x = 'lab', ax = delta[1], color='k')
+    sns.boxplot(data = trj_hist, y = 'r_out',
+                 x = 'lab', ax = delta[1], color='gray')
+    delta[1].set_xlabel('Laboratory Location')
+    delta[1].spines['top'].set_visible(False)
+    delta[1].spines['right'].set_visible(False)
+    delta[1].set_ylabel('Fraction of regions missed')
+    
+    return delta
     
 def penetration_query():
     '''
@@ -133,7 +239,7 @@ def penetration_query():
                  trj_hist['probe_insertion'][i] ,'mcr_x'] =  float(micro['x'])
             trj_hist.loc[trj_hist['probe_insertion'] == \
                  trj_hist['probe_insertion'][i] ,'mcr_y'] =  float(micro['y'])
-            ttrj_hist.loc[trj_hist['probe_insertion'] == \
+            trj_hist.loc[trj_hist['probe_insertion'] == \
                  trj_hist['probe_insertion'][i] ,'mcr_z'] = float(micro['z'])
         
         except:
@@ -144,15 +250,15 @@ def penetration_query():
             trj_hist.loc[trj_hist['probe_insertion'] == \
                  trj_hist['probe_insertion'][i] ,'pln_depth'] = float(pln['depth'])
             trj_hist.loc[trj_hist['probe_insertion'] == \
-                 trj_hist['probe_insertion'][i] ,'pln_phi'] =  float(pln['phi'])
+                 trj_hist['probe_insertion'][i] ,'pln_phi'] = float(pln['phi'])
             trj_hist.loc[trj_hist['probe_insertion'] == \
-                 trj_hist['probe_insertion'][i] ,'pln_roll'] =  float(pln['roll'])
+                 trj_hist['probe_insertion'][i] ,'pln_roll'] = float(pln['roll'])
             trj_hist.loc[trj_hist['probe_insertion'] == \
-                 trj_hist['probe_insertion'][i] ,'pln_theta'] =  float(pln['theta'])
+                 trj_hist['probe_insertion'][i] ,'pln_theta'] = float(pln['theta'])
             trj_hist.loc[trj_hist['probe_insertion'] == \
-                 trj_hist['probe_insertion'][i] ,'pln_x'] =  float(pln['x'])
+                 trj_hist['probe_insertion'][i] ,'pln_x'] = float(pln['x'])
             trj_hist.loc[trj_hist['probe_insertion'] == \
-                 trj_hist['probe_insertion'][i] ,'pln_y'] =  float(pln['y'])
+                 trj_hist['probe_insertion'][i] ,'pln_y'] = float(pln['y'])
             trj_hist.loc[trj_hist['probe_insertion'] == \
                  trj_hist['probe_insertion'][i] ,'pln_z'] = float(pln['z'])
         except:
@@ -235,8 +341,7 @@ def patch_name(dataframe):
                                 'zadorlab':  'Zador Lab'})
     return dataframe
 
-
-if __name__ == __main__:
+if _main_ == _name_:
      ## Get dataframe with data
      trj_hist = penetration_query()
      ## Fix the name
@@ -244,8 +349,8 @@ if __name__ == __main__:
      ## Figure with error in penetration depth
      fig_delta_coordinates(trj_hist)
      # Figure with cumulative error between two probes
-     cumulative_error(trj_hist)
-     
+     manipulator_vs_histology(trj_hist)
+     planed_vs_histology(trj_hist)
      
      
     
