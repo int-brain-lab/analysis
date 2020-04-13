@@ -341,11 +341,23 @@ def patch_name(dataframe):
                                 'zadorlab':  'Zador Lab'})
     return dataframe
 
-if _main_ == _name_:
+def duplicate_dataframe (dataframe):
+    '''
+    Very terrible function, I need to find a better solution
+    '''
+    dataframe_w_mean = dataframe.copy()
+    dataframe_w_mean['lab'] = 'Mean'
+    dataframe = dataframe.append(dataframe_w_mean)
+    return dataframe
+
+
+if __name__ == "__main__":
      ## Get dataframe with data
      trj_hist = penetration_query()
      ## Fix the name
      trj_hist = patch_name(trj_hist)
+     ## Duplicate dataframe for mean (TODO optimize)
+     trj_hist = duplicate_dataframe (trj_hist)
      ## Figure with error in penetration depth
      fig_delta_coordinates(trj_hist)
      # Figure with cumulative error between two probes
