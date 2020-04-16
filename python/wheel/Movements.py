@@ -173,7 +173,7 @@ class MovementTimes(dj.Computed):
 
         all_move_onsets = wheel_move_data['movement_onset']
         peak_amp = wheel_move_data['movement_amplitude']
-        flinch = peak_amp < THRESH
+        flinch = abs(peak_amp) < THRESH
         go_trial = trial_data['trial_response_choice'] != 'No Go'
         feedback_times = trial_data['trial_feedback_time']
         cue_times = trial_data['trial_go_cue_time']
@@ -217,7 +217,8 @@ class MovementTimes(dj.Computed):
             one = ONE()
             task_params = one.load_object(str(eid), '_iblrig_taskSettings.raw')
             min_qt = task_params['raw']['QUIESCENT_PERIOD']
-            assert min_qt
+            if len(min_qt) > len(cue_times):
+                min_qt = np.array(min_qt[0:cue_times.size])
         except BaseException:
             logger.warning('failed to load min quiescent time')
             min_qt = 0.2
