@@ -11,21 +11,26 @@ Example 2 - pick a random session to inspect
     v = Viewer()
 
 """
-
-import matplotlib.animation as animation
-import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
-from ibl_pipeline import acquisition, behavior
-from oneibl.one import ONE
-from oneibl.webclient import http_download_file_list
-import numpy as np
-import brainbox.behavior.wheel as wh
-import cv2
 import time
 import os
 import random
+import json
 import re
 import sys
+import logging
+from itertools import cycle, repeat
+from more_itertools import chunked
+
+import cv2
+import numpy as np
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+
+# from ibl_pipeline import acquisition, behavior
+from oneibl.one import ONE
+from oneibl.webclient import http_download_file_list
+import brainbox.behavior.wheel as wh
 
 
 def get_video_frame(video_path, frame_number):
@@ -61,16 +66,62 @@ def get_video_frames_preload(video_path, frame_numbers):
         sys.stdout.write('\r')
         sys.stdout.write('loading frame {}/{}'.format(i, frame_numbers[-1]))
         sys.stdout.flush()
-        # print('loading frame #{}'.format(i))
         ret, frame = cap.read()
         frame_images.append(frame)
     cap.release()
     return frame_images
 
 
+def get_pupil_diameter(alf_path):
+    """
+    Shamelessly stolen from Micheal Schartner
+    """
+    json1_file = open(alf_path / '_ibl_leftCamera.dlc.metadata.json')
+    json1_str = json1_file.read()
+    json1_data = json.loads(json1_str)['columns']
+
+    # check order
+    assert json1_data[0] == 'pupil_top_r_x', 'Order is off!'
+    assert json1_data[11] == 'pupil_left_r_likelihood', 'Order is off!'
+
+    dlc = np.load(alf_path / '_ibl_leftCamera.dlc.npy')
+
+    K = {}
+    K['pupil_top_r'] = dlc[:, :3]
+    K['pupil_right_r'] = dlc[:, 3:6]
+    K['pupil_bottom_r'] = dlc[:, 6:9]
+    K['pupil_left_r'] = dlc[:, 9:12]
+
+    # Set values to nan if likelyhood is too low
+    XYs = {}
+    for part in K:
+        x = np.ma.masked_where(K[part][:, 2] < 0.9, K[part][:, 0])
+        x = x.filled(np.nan)
+        y = np.ma.masked_where(K[part][:, 2] < 0.9, K[part][:, 1])
+        y = y.filled(np.nan)
+        XYs[part] = [x, y]
+
+    # get both diameters (d1 = top - bottom, d2 = left - right)
+    d1 = ((XYs['pupil_top_r'][0] - XYs['pupil_bottom_r'][0])**2 +
+          (XYs['pupil_top_r'][1] - XYs['pupil_bottom_r'][1])**2)**0.5
+    d2 = ((XYs['pupil_left_r'][0] - XYs['pupil_right_r'][0])**2 +
+          (XYs['pupil_left_r'][1] - XYs['pupil_right_r'][1])**2)**0.5
+    d = np.mean([d1, d2], axis=0)
+
+    return d
+
+
+def calc_optic_flow(frames, roi=None):
+    # https://docs.opencv.org/2.4/modules/video/doc/motion_analysis_and_object_tracking.html#calcopticalflowfarneback
+    # https://stackoverflow.com/questions/38131822/what-is-output-from-opencvs-dense-optical-flow-farneback-function-how-can-th
+    #     flow = cv2.calcOpticalFlowFarneback(prvs,next,None, 0.5, 3, 15, 3, 10, 1.2, 0)
+    #     mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
+    pass  # TODO
+
+
 class Viewer:
-    def __init__(self, eid=None, trial=None, camera='left', plot_dlc=False, quick_load=True,
-                 t_win=3):
+    def __init__(self, eid=None, trial=None, camera='left', dlc_features=None, quick_load=True,
+                 t_win=3, one=None):
         """
         Plot the wheel trace alongside the video frames.  Below is list of key bindings:
         :key n: plot movements of next trial
@@ -84,26 +135,32 @@ class Viewer:
         :param eid: uuid of experiment session to load
         :param trial: the trial id to plot
         :param camera: the camera position to load, options: 'left' (default), 'right', 'body'
-        :param plot_dlc: when true, dlc output is overlaid onto frames (unimplemented)
+        :param plot_dlc: tuple of dlc features overlay onto frames
         :param quick_load: when true, move onset detection is performed on individual trials
         instead of entire session
         :param t_win: the window in seconds over which to plot the wheel trace
         :return: Viewer object
         """
+        self._logger = logging.getLogger('ibllib')
+
         self.t_win = t_win  # Time window of wheel plot
-        self.one = ONE()
+        self.one = one or ONE()
         self.quick_load = quick_load
 
         # If None, randomly pick a session to load
         if not eid:
-            print('Finding random session')
-            eids = self.find_sessions()
+            self._logger.info('Finding random session')
+            eids = self.find_sessions(dlc=dlc_features is not None)
             eid = random.choice(eids)
-            print('using session {}'.format(eid))
+            self._logger.info('using session ' + eid)
 
         # Store complete session data: trials, timestamps, etc.
-        self._session_data = {'eid': eid, 'ref': self.eid2ref(eid)}
+        self._session_data = {'eid': eid, 'ref': self.eid2ref(eid), 'dlc': None}
         self._plot_data = {}  # Holds data specific to current plot, namely data for single trial
+
+        # Download the DLC data if required
+        if dlc_features:
+            self._session_data['dlc'] = self.get_dlc(dlc_features, camera=camera)
 
         # These are for the dict returned by ONE
         trial_data = self.get_trial_data('ONE')
@@ -112,12 +169,21 @@ class Viewer:
         self._session_data['total_trials'] = total_trials
         self._session_data['trials'] = trial_data
 
+        # Check for local first movement times
+        first_moves = self.one.path_from_eid(eid) / 'alf' / '_ibl_trials.firstMovement_times.npy'
+        if first_moves.exists() and 'firstMovement_times' not in trial_data:
+            # Load file if exists locally
+            self._session_data['trials']['firstMovement_times'] = np.load(first_moves)
+
         # Download the raw video for left camera only
         self.video_path, = self.download_raw_video(camera)
         cam_ts = self.one.load(self._session_data['eid'], ['camera.times'], dclass_output=True)
         cam_ts, = [ts for ts, url in zip(cam_ts.data, cam_ts.url) if camera in url]
         # _, cam_ts, _ = one.load(eid, ['camera.times'])  # leftCamera is in the middle of the list
         self._session_data['camera_ts'] = cam_ts
+        fps = 1 / np.diff(cam_ts).mean()
+        print("Frame rate = %.0fHz" % fps)
+
         # Load wheel data
         self._session_data['wheel'] = self.one.load_object(self._session_data['eid'], 'wheel')
 
@@ -129,7 +195,8 @@ class Viewer:
         self._trial_num = trial
 
         self.anim = animation.FuncAnimation(fig, self.animate, init_func=self.init_plot,
-                                            frames=5, interval=20, blit=False, repeat=True)
+                                            frames=cycle(range(60)), interval=20, blit=False,
+                                            repeat=True, cache_frame_data=False)
         self.anim.running = False
         self.trial_num = trial  # Set trial and prepare plot/frame data
         plt.show()  # Start animation
@@ -167,7 +234,15 @@ class Viewer:
 
         # Update title
         ref = '{date:s}_{sequence:s}_{subject:s}'.format(**self._session_data['ref'])
-        self._plot_data['axes'][0].set_title(ref + ' #{}'.format(int(trial)))
+        if 'firstMovement_times' in self._session_data['trials']:
+            first_move = self._session_data['trials']['firstMovement_times'][trial - 1]
+            go_cue = self._session_data['trials']['goCue_times'][trial - 1]
+            rt = (first_move - go_cue) * 1000
+            title = '%s #%i rt = %.2f ms' % (ref, trial, rt)
+        else:
+            title = '%s #%i' % (ref, trial)
+
+        self._plot_data['axes'][0].set_title(title)
 
         # Get the sample numbers for each onset and offset
         onoff_samps = np.c_[np.searchsorted(ts, on), np.searchsorted(ts, off)]
@@ -177,10 +252,11 @@ class Viewer:
         data['frame_num'] = 0
         data['figure'] = self._plot_data['figure']
         data['axes'] = self._plot_data['axes']
-        if 'im' in data.keys():
+        if 'im' in self._plot_data.keys():
             # Copy over artists
             data['im'] = self._plot_data['im']
             data['ln'] = self._plot_data['ln']
+            data['dlc'] = self._plot_data['dlc']
 
         # Stop running so we have to to reinitialize the plot after swapping out the plot data
         if self.anim.running:
@@ -200,19 +276,22 @@ class Viewer:
         match = re.search(pattern, path_str)
         return match.groupdict()
 
-    def find_sessions(self):
+    def find_sessions(self, dlc=False):
         """
         Compile list of eids with required files, i.e. raw camera and wheel data
+        :param dlc: search for sessions with DLC output
         :return: list of session eids
         """
         datasets = ['_iblrig_Camera.raw', 'camera.times',
                     'wheel.timestamps', 'wheel.position']
+        if dlc:
+            datasets.append('camera.dlc')
         return self.one.search(dataset_types=datasets)
 
     def download_raw_video(self, cameras=None):
         """
-        Downloads the raw video from FlatIron or cache dir.  This allows you to download just one of the
-        three videos
+        Downloads the raw video from FlatIron or cache dir.  This allows you to download just one
+        of the three videos
         :param cameras: the specific camera to load (i.e. 'left', 'right', or 'body') If None all
         three videos are downloaded.
         :return: the file path(s) of the raw videos
@@ -222,7 +301,7 @@ class Viewer:
         if cameras:
             cameras = [cameras] if isinstance(cameras, str) else cameras
             cam_files = ['_iblrig_{}Camera.raw.mp4'.format(cam) for cam in cameras]
-            datasets = one._alyxClient.get('sessions/' + eid)['data_dataset_session_related']
+            datasets = one.alyx.rest('sessions', 'read', id=eid)['data_dataset_session_related']
             urls = [ds['data_url'] for ds in datasets if ds['name'] in cam_files]
             cache_dir = one.path_from_eid(eid).joinpath('raw_video_data')
             if not os.path.exists(str(cache_dir)):
@@ -250,20 +329,66 @@ class Viewer:
                   'trial_stim_on_time': 'stimOn_times',
                   'trial_feedback_time': 'feedback_times'}
         if mode is 'DataJoint':
-            restriction = acquisition.Session & {'session_uuid': self._session_data['eid']}
-            query = (behavior.TrialSet.Trial & restriction).proj(
-                'trial_response_choice',
-                'trial_response_time',
-                'trial_stim_on_time',
-                'trial_go_cue_time',
-                'trial_feedback_time',
-                'trial_start_time',
-                'trial_end_time')
-            data = query.fetch(order_by='trial_id')
-            data['intervals'] = np.c_[data['trial_start_time'], data['trial_end_time']]
-            return data
+            # restriction = acquisition.Session & {'session_uuid': self._session_data['eid']}
+            # query = (behavior.TrialSet.Trial & restriction).proj(
+            #     'trial_response_choice',
+            #     'trial_response_time',
+            #     'trial_stim_on_time',
+            #     'trial_go_cue_time',
+            #     'trial_feedback_time',
+            #     'trial_start_time',
+            #     'trial_end_time')
+            # data = query.fetch(order_by='trial_id')
+            # data['intervals'] = np.c_[data['trial_start_time'], data['trial_end_time']]
+            # return data
+            raise NotImplementedError('DataJoint support has been removed')
         else:
             return self.one.load_object(self._session_data['eid'], 'trials')
+
+    def get_dlc(self, features='all', camera='left'):
+        """
+        Load the DLC data from file and discard features we don't need.
+        :param features: tuple of features to load, or 'all' to load all available
+        :param camera: which camera dlc data to load ('left', 'right', 'body')
+        :return: None; data saved to self._session_data as dict with keys ('columns, 'data')
+        """
+        files = self.one.load(self._session_data['eid'], ['camera.dlc'], download_only=True)
+        filename = '_ibl_{}Camera.dlc'.format(camera)
+        if not (f for f in files if camera in f):
+            self._logger.warning('No DLC found for %s camera', camera)
+            return
+        dlc_path = self.one.path_from_eid(self._session_data['eid']) / 'raw_video_data' / filename
+        with open(str(dlc_path) + '.metadata.json', 'r') as meta_file:
+            meta = meta_file.read()
+        columns = json.loads(meta)['columns']  # parse file
+        dlc = np.load(str(dlc_path) + '.npy')
+
+        # Discard unused columns
+        if features != 'all':
+            incl = np.array([col.startswith(tuple(features)) for col in columns])
+        else:
+            incl = np.ones(len(columns), dtype=bool)
+
+        dlc = {
+            'labels': [col for col, keep in zip(columns, incl) if keep],
+            'features': dlc[:,incl]}
+        assert len(dlc['labels']) % 3 == 0, \
+            'should be three columns per feature in the form (x, y, likelihood)'
+        return dlc
+
+    def update_dlc_plot(self, frame_idx=0):
+        """
+        Update the coordinates and alpha values of DLC overlay markers
+        :param frame_idx: the index in the trial's frame list
+        :return: None
+        """
+        i = self._plot_data['frames'][frame_idx]
+        dlc = self._session_data['dlc']
+        # Loop through labels list range in threes, i.e. [0, 1, 2], [3, 4, 5]
+        for j, ln in zip(chunked(range(len(dlc['labels'])), 3), self._plot_data['dlc']):
+            x, y, l = dlc['features'][i, j]
+            ln.set_offsets(np.c_[x, y])  # Update marker position
+            ln.set_alpha(l)  # Update alpha based on likelihood
 
     def frames_for_period(self, cam_ts, start_time=None, end_time=None):
         """
@@ -300,16 +425,20 @@ class Viewer:
         trial_idx = self.trial_num - 1  # Trials num starts at 1
         # Check the values and units of wheel position
         res = np.array([wh.ENC_RES, wh.ENC_RES / 2, wh.ENC_RES / 4])
-        min_change_rad = 2 * np.pi / res
-        min_change_cm = wh.WHEEL_DIAMETER * np.pi / res
-        pos_diff = np.abs(np.ediff1d(wheel['position']))
-        if pos_diff.min() < min_change_cm.min():
+        # min change in rad and cm for each decoding type
+        # [rad_X4, rad_X2, rad_X1, cm_X4, cm_X2, cm_X1]
+        min_change = np.concatenate([2 * np.pi / res, wh.WHEEL_DIAMETER * np.pi / res])
+        pos_diff = np.abs(np.ediff1d(wheel['position'])).min()
+
+        # find min change closest to min pos_diff
+        idx = np.argmin(np.abs(min_change - pos_diff))
+        if idx < len(res):
             # Assume values are in radians
             units = 'rad'
-            encoding = np.argmin(np.abs(min_change_rad - pos_diff.min()))
+            encoding = idx
         else:
             units = 'cm'
-            encoding = np.argmin(np.abs(min_change_cm - pos_diff.min()))
+            encoding = idx - len(res)
         thresholds = wh.samples_to_cm(np.array([8, 1.5]), resolution=res[encoding])
         if units == 'rad':
             thresholds = wh.cm_to_rad(thresholds)
@@ -340,12 +469,32 @@ class Viewer:
         Plot the wheel data for the current trial
         :return: None
         """
+        self._logger.debug('Initializing plot')
         data = self._plot_data
         trials = self._session_data['trials']
+        trial_idx = self.trial_num - 1
         if 'im' in data.keys():
             data['im'].set_data(data['frame_images'][0])
         else:
             data['im'] = data['axes'][0].imshow(data['frame_images'][0])
+
+        # Plot DLC features
+        dlc = self._session_data.get('dlc')
+        dlc_paths = []  # DLC marker PathsCollections
+        if dlc:  # DLC data loaded
+            if data.get('dlc'):  # Already initialized
+                self.update_dlc_plot()  # Update positions for first frame
+            else:  # Plot new elements
+                i = data['frames'][0]  # First frame
+                cmap = ['b', 'g', 'r', 'c', 'm', 'y']
+                # Each feature has three dimensions (x, y, likelihood)
+                labels = chunked(range(len(dlc['labels'])), 3)
+                for j, colour in zip(labels, cycle(sorted(cmap * 2))):
+                    x, y, l = dlc['features'][i, j]
+                    p = data['axes'][0].scatter(x, y, marker='+', c=colour, s=100, alpha=l)
+                    dlc_paths.append(p)
+        data['dlc'] = dlc_paths or None
+
         data['axes'][0].axis('off')
 
         indicies = data['moves']['indicies']
@@ -361,21 +510,27 @@ class Viewer:
         ax.clear()
         ax.plot(on, wheel_pos[onoff_samps[:, 0]], 'go')
         ax.plot(off, wheel_pos[onoff_samps[:, 1]], 'bo')
+        if 'firstMovement_times' in trials:
+            first_move = trials['firstMovement_times'][trial_idx]
+            if ~np.isnan(first_move):
+                first_move_pos = wheel_pos[np.where(wheel_ts > first_move)[0][0]]
+                ax.plot(first_move, first_move_pos, 'ro')
+
         t_split = np.split(np.vstack((wheel_ts, wheel_pos)).T, indicies, axis=0)
         ax.add_collection(LineCollection(t_split[1::2], colors='r'))  # Moving
         ax.add_collection(LineCollection(t_split[0::2], colors='k'))  # Not moving
         ax.set_ylabel('position / ' + data['wheel']['units'])
-        ax.legend(['onsets', 'offsets', 'in movement'])
+        ax.legend(['onsets', 'offsets', 'first move', 'in movement'])
 
         # Plot some trial events
-        trial_idx = self.trial_num - 1
         t1 = trials['intervals'][trial_idx, 0]
         t2 = trials['feedback_times'][trial_idx]
         t3 = trials['goCue_times'][trial_idx]
+        t4 = trials['stimOn_times'][trial_idx]
         pos_rng = [wheel_pos.min(), wheel_pos.max()]  # The range for vertical lines on plot
-        ax.vlines([t1, t2, t3], pos_rng[0], pos_rng[1],
-                  colors=['r', 'b', 'g'], linewidth=0.5,
-                  label=['start_time', 'feedback_time', 'cue_time'])
+        ax.vlines([t1, t2, t3, t4], pos_rng[0], pos_rng[1],
+                  colors=['r', 'b', 'y', 'g'], linewidth=0.5,
+                  label=['start_time', 'feedback_time', 'stim_on', 'cue_time'])
 
         ax.set_ylim(pos_rng)
         data['ln'] = ax.axvline(x=cam_ts[0], color='k')
@@ -383,7 +538,7 @@ class Viewer:
 
         self._plot_data = data
 
-        return data['im'], data['ln']
+        return data['im'], data['ln'], data['dlc']
 
     def animate(self, i):
         """
@@ -402,16 +557,19 @@ class Viewer:
             self._plot_data['frame_num'] += 1
             if self._plot_data['frame_num'] >= len(data['frame_images']):
                 self._plot_data['frame_num'] = 0
-        i = self._plot_data['frame_num']
+        i = self._plot_data['frame_num']  # NB: This is index for current trial's frame list
+        # Print current frame number to terminal
         sys.stdout.write('\rFrame {} / {}'.format(i, len(data['frame_images'])))
         sys.stdout.flush()
-        # print('Frame {} / {}'.format(i, len(data['frame_images'])))
+
         frame = data['frame_images'][i]
         t_x = data['camera_ts'][i]
         data['ln'].set_xdata([t_x, t_x])
         data['axes'][1].set_xlim([t_x - (self.t_win / 2), t_x + (self.t_win / 2)])
         data['im'].set_data(frame)
-        # print('Render time:' + str(time.time() - t_start))
+        if data['dlc']:
+            self.update_dlc_plot(i)
+        self._logger.debug('Render time: %.3f', time.time() - t_start)
 
         return data['im'], data['ln']
 
@@ -448,6 +606,7 @@ class Viewer:
             self.anim.running = True
         elif event.key == 't':
             # Select trial
+            sys.stdout.write('\r')
             trial = input("Input a trial within range (1, {}): \n".format(total_trials))
             if trial:
                 self.trial_num = int(trial)
