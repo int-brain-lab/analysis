@@ -12,13 +12,11 @@ Example 2 - pick a random session to inspect
 
 """
 import time
-import os
 import random
 import json
-import re
 import sys
 import logging
-from itertools import cycle, repeat
+from itertools import cycle
 from more_itertools import chunked
 
 import cv2
@@ -31,6 +29,7 @@ from matplotlib.collections import LineCollection
 from oneibl.one import ONE
 from oneibl.webclient import http_download_file_list
 import brainbox.behavior.wheel as wh
+from python.wheel.exp_ref import eid2ref
 
 
 def get_video_frame(video_path, frame_number):
@@ -69,7 +68,7 @@ def get_video_frames_preload(video_path, frame_numbers):
         ret, frame = cap.read()
         frame_images.append(frame)
     cap.release()
-    return frame_images
+    return np.array(frame_images)
 
 
 def get_pupil_diameter(alf_path):
@@ -155,7 +154,7 @@ class Viewer:
             self._logger.info('using session ' + eid)
 
         # Store complete session data: trials, timestamps, etc.
-        self._session_data = {'eid': eid, 'ref': self.eid2ref(eid), 'dlc': None}
+        self._session_data = {'eid': eid, 'ref': eid2ref(eid, one=one, parse=False), 'dlc': None}
         self._plot_data = {}  # Holds data specific to current plot, namely data for single trial
 
         # Download the DLC data if required
@@ -265,17 +264,6 @@ class Viewer:
                 self.anim.event_source.stop()
         self._plot_data = data
 
-    def eid2ref(self, eid):
-        """
-        Get human-readable session ref from path
-        :param eid: The experiment uuid to find reference for
-        :return: dict containing 'subject', 'date' and 'sequence'
-        """
-        path_str = str(self.one.path_from_eid(eid))
-        pattern = r'(?P<subject>[\w-]+)([\\/])(?P<date>\d{4}-\d{2}-\d{2})(\2)(?P<sequence>\d{3})'
-        match = re.search(pattern, path_str)
-        return match.groupdict()
-
     def find_sessions(self, dlc=False):
         """
         Compile list of eids with required files, i.e. raw camera and wheel data
@@ -304,14 +292,13 @@ class Viewer:
             datasets = one.alyx.rest('sessions', 'read', id=eid)['data_dataset_session_related']
             urls = [ds['data_url'] for ds in datasets if ds['name'] in cam_files]
             cache_dir = one.path_from_eid(eid).joinpath('raw_video_data')
-            if not os.path.exists(str(cache_dir)):
-                os.mkdir(str(cache_dir))
-            else:  # Check if file already downloaded
-                cam_files = [file[:-4] for file in cam_files]  # Remove ext
-                filenames = [f for f in os.listdir(str(cache_dir))
-                             if any([cam in f for cam in cam_files])]
-                if filenames:
-                    return [cache_dir.joinpath(file) for file in filenames]
+            cache_dir.mkdir(exist_ok=True)  # Create folder if doesn't already exist
+            # Check if file already downloaded
+            cam_files = [file[:-4] for file in cam_files]  # Remove ext
+            filenames = [f for f in cache_dir.iterdir()
+                         if any([cam in str(f) for cam in cam_files])]
+            if filenames:
+                return [cache_dir.joinpath(file) for file in filenames]
             return http_download_file_list(urls, username=one._par.HTTP_DATA_SERVER_LOGIN,
                                            password=one._par.HTTP_DATA_SERVER_PWD,
                                            cache_dir=str(cache_dir))
@@ -354,7 +341,7 @@ class Viewer:
         """
         files = self.one.load(self._session_data['eid'], ['camera.dlc'], download_only=True)
         filename = '_ibl_{}Camera.dlc'.format(camera)
-        if not (f for f in files if camera in f):
+        if not [f for f in files if f and camera in str(f)]:
             self._logger.warning('No DLC found for %s camera', camera)
             return
         dlc_path = self.one.path_from_eid(self._session_data['eid']) / 'raw_video_data' / filename
@@ -402,10 +389,10 @@ class Viewer:
         :return: numpy bool mask the same size as cam_ts
         """
         if isinstance(start_time, int):
-            end_times = self._session_data['trials']['intervals'][:, 1]
-            strt_times = self._session_data['trials']['intervals'][:, 0]
-            end_time = end_times[start_time] if not end_time else end_times[end_time]
-            start_time = strt_times[start_time]
+            trial_ends = self._session_data['trials']['intervals'][:, 1]
+            trial_starts = self._session_data['trials']['intervals'][:, 0]
+            end_time = trial_ends[start_time] if not end_time else trial_ends[end_time]
+            start_time = trial_starts[start_time]
         else:
             if not start_time:
                 start_time = cam_ts[0]
