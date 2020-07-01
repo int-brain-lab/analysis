@@ -53,11 +53,15 @@ def get_video_frames_preload(video_path, frame_numbers):
     Obtain numpy array corresponding to a particular video frame in video_path
     :param video_path: local path to mp4 file
     :param frame_numbers: video frame to be returned
-    :return: numpy array corresponding to frame of interest.  Dimensions are (1024, 1280, 3)
+    :return: numpy array corresponding to frame of interest.  Dimensions are (1024, 1280,
+    3).  Also returns the frame rate and total number of frames
     """
     cap = cv2.VideoCapture(str(video_path))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    if 0 < frame_numbers[-1] >= total_frames:
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if len(frame_numbers) == 0:
+        return None, fps, total_frames
+    elif 0 < frame_numbers[-1] >= total_frames:
         raise IndexError('frame numbers must be between 0 and ' + str(total_frames))
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_numbers[0])
     frame_images = []
@@ -68,7 +72,7 @@ def get_video_frames_preload(video_path, frame_numbers):
         ret, frame = cap.read()
         frame_images.append(frame)
     cap.release()
-    return np.array(frame_images)
+    return np.array(frame_images), fps, total_frames
 
 
 def get_pupil_diameter(alf_path):
@@ -151,7 +155,7 @@ class Viewer:
             self._logger.info('Finding random session')
             eids = self.find_sessions(dlc=dlc_features is not None)
             eid = random.choice(eids)
-            self._logger.info('using session ' + eid)
+            self._logger.info('using session %s (%s)', eid, eid2ref(eid, as_dict=False))
 
         # Store complete session data: trials, timestamps, etc.
         self._session_data = {'eid': eid, 'ref': eid2ref(eid, one=one, parse=False), 'dlc': None}
@@ -179,12 +183,33 @@ class Viewer:
         cam_ts = self.one.load(self._session_data['eid'], ['camera.times'], dclass_output=True)
         cam_ts, = [ts for ts, url in zip(cam_ts.data, cam_ts.url) if camera in url]
         # _, cam_ts, _ = one.load(eid, ['camera.times'])  # leftCamera is in the middle of the list
-        self._session_data['camera_ts'] = cam_ts
-        fps = 1 / np.diff(cam_ts).mean()
+        Fs = 1 / np.diff(cam_ts).mean()  # Approx. frequency of camera timestamps
+        # Verify video frames and timestamps agree
+        _, fps, count = get_video_frames_preload(self.video_path, [])
+
+        if count != cam_ts.size:
+            assert count <= cam_ts.size, 'fewer camera timestamps than frames'
+            msg = 'number of timestamps does not match number video file frames: '
+            self._logger.warning(msg + '%i more timestamps than frames' % cam_ts.size - count)
+
+        assert Fs - fps < 1, 'camera timestamps do not match reported frame rate'
         print("Frame rate = %.0fHz" % fps)
+        self._session_data['camera_ts'] = cam_ts#[-count:]  # Remove extraneous timestamps
 
         # Load wheel data
         self._session_data['wheel'] = self.one.load_object(self._session_data['eid'], 'wheel')
+        if 'firstMovement_times' in self._session_data['trials']:
+            pos, t = wh.interpolate_position(
+                self._session_data['wheel']['timestamps'],
+                self._session_data['wheel']['position'], freq=1000)
+            v, acc = wh.velocity_smoothed(pos, 1000)
+            first_vel = np.full(self._session_data['trials']['goCue_times'].size, np.nan)
+            for i, move in enumerate(self._session_data['trials']['firstMovement_times']):
+                mask = np.logical_and(move + .5 > t, t > move - .5)
+                idx, = np.where(np.abs(v[mask]) >= 0.5)
+                if len(idx) > 0:
+                    first_vel[i] = t[mask][idx[0]]
+            self._session_data['trials']['adjusted_move_times'] = first_vel
 
         # Plot the first frame in the upper subplot
         fig, axes = plt.subplots(nrows=2)
@@ -198,6 +223,9 @@ class Viewer:
                                             repeat=True, cache_frame_data=False)
         self.anim.running = False
         self.trial_num = trial  # Set trial and prepare plot/frame data
+
+    @staticmethod
+    def run():
         plt.show()  # Start animation
 
     @property
@@ -222,9 +250,12 @@ class Viewer:
         sys.stdout.write('\rLoading trial ' + str(self._trial_num))
 
         # Our plot data, e.g. data that falls within trial
-        data = {'frames': self.frames_for_period(self._session_data['camera_ts'], trial-1)}
-        data['camera_ts'] = self._session_data['camera_ts'][data['frames']]
-        data['frame_images'] = get_video_frames_preload(self.video_path, data['frames'])
+        frame_ids = self.frames_for_period(self._session_data['camera_ts'], trial-1)
+        data = {
+            'frames': frame_ids,
+            'camera_ts': self._session_data['camera_ts'][frame_ids],
+            'frame_images': get_video_frames_preload(self.video_path, frame_ids)[0]
+        }
         #  frame = get_video_frame(video_path, frames[0])
 
         on, off, ts, pos, units = self.extract_onsets_for_trial()
@@ -344,7 +375,7 @@ class Viewer:
         if not [f for f in files if f and camera in str(f)]:
             self._logger.warning('No DLC found for %s camera', camera)
             return
-        dlc_path = self.one.path_from_eid(self._session_data['eid']) / 'raw_video_data' / filename
+        dlc_path = self.one.path_from_eid(self._session_data['eid']) / 'alf' / filename
         with open(str(dlc_path) + '.metadata.json', 'r') as meta_file:
             meta = meta_file.read()
         columns = json.loads(meta)['columns']  # parse file
@@ -358,7 +389,7 @@ class Viewer:
 
         dlc = {
             'labels': [col for col, keep in zip(columns, incl) if keep],
-            'features': dlc[:,incl]}
+            'features': dlc[:, incl]}
         assert len(dlc['labels']) % 3 == 0, \
             'should be three columns per feature in the form (x, y, likelihood)'
         return dlc
@@ -502,6 +533,10 @@ class Viewer:
             if ~np.isnan(first_move):
                 first_move_pos = wheel_pos[np.where(wheel_ts > first_move)[0][0]]
                 ax.plot(first_move, first_move_pos, 'ro')
+        if 'adjusted_move_times' in trials:
+            m = trials['adjusted_move_times'][trial_idx]
+            if ~np.isnan(m):
+                ax.axvline(x=m, color='m')
 
         t_split = np.split(np.vstack((wheel_ts, wheel_pos)).T, indicies, axis=0)
         ax.add_collection(LineCollection(t_split[1::2], colors='r'))  # Moving
