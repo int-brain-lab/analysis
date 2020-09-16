@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 #
-# Reaction time analysis from wheel data without wheel velocity smoothing
+# Reaction time analysis from wheel data
 #
 # Return all significant wheel velocity changes in each trial
+#
+# Plot histrograms of the reaction times relative to either goCue or stimOn times
 #
 # Author: Naoki Hiratani (N.Hiratani@gmail.com)
 #
@@ -139,7 +141,7 @@ def main():
     plt.title('[Movement onset] - [goCue]')
     
     plt.show()
-    svfg.savefig('fig_unsmoothed_RT_subject_' + subject_name + '_Nsessions' + str(eid_count) + '.pdf')
+    svfg.savefig('fig_RT_hist_all_subject_' + subject_name + '_Nsessions' + str(eid_count) + '.pdf')
 
 if __name__ == "__main__":
     param = sys.argv
