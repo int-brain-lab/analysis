@@ -18,7 +18,7 @@ ba = AllenAtlas()
 ephys = dj.create_virtual_module('ephys', 'ibl_ephys')
 
 
-def CSK_PSTH(trials, pre_time=0.2, post_time=0.5, bin_size=0.025, smoothing=0.025):
+def CSK_PSTH(trials, pre_time=0, post_time=0.2, bin_size=0.01, smoothing=0.025):
     """
     A PSTH function that relies on the datajoint data format returned by quieries containing ephys.AlignedTrialSpikes 
     trials: (array-like) trial_spike_times returned by the above mentrioned query (event is always at 0 seconds) 
@@ -27,8 +27,7 @@ def CSK_PSTH(trials, pre_time=0.2, post_time=0.5, bin_size=0.025, smoothing=0.02
     """
     n_bins = round((pre_time+post_time)/bin_size)
     event_idx = round(pre_time/bin_size)
-    all_counts = np.zeros([n_bins,len(trials)])
-    
+    all_counts = np.zeros([int(n_bins),len(trials)])
     if smoothing > 0: # build gaussian window for smoothing
         w = n_bins - 1 if n_bins % 2 == 0 else n_bins
         window = gaussian(w, std=smoothing / bin_size)
@@ -39,10 +38,13 @@ def CSK_PSTH(trials, pre_time=0.2, post_time=0.5, bin_size=0.025, smoothing=0.02
         
 
     for i in range(len(trials)):        
-        counts, bins = np.histogram(trials.trial_spike_times.iloc[i],bins=n_bins,range=[-pre_time,post_time])
+        counts, bins = np.histogram(trials.trial_spike_times.iloc[i], bins=int(n_bins), range=[-pre_time,post_time])
         all_counts[:,i] = counts
     PSTH = all_counts.mean(axis=1)
-    smooth_PSTH = convolve(PSTH,window,mode='same')
+    if smoothing > 0:
+        smooth_PSTH = convolve(PSTH,window,mode='same')
+    else:
+        smooth_PSTH = PSTH
     return smooth_PSTH, event_idx
 
 
@@ -60,7 +62,8 @@ def binned_spike_rate(trials, pre_time=0, post_time=0.5):
         after0 = st[st > pre_time]
         in_win = after0[after0<post_time]
         binned_spk_counts = np.append(binned_spk_counts,in_win)
-    return binned_spk_counts
+    sr = len(binned_spk_counts)/(pre_time-post_time)
+    return 
 
 
 def vis_PSTH_from_dj(data, spike_times, cluster_ids, event, contrasts, alpha=.05, pre_time=0,
@@ -112,19 +115,19 @@ def vis_PSTH_from_dj(data, spike_times, cluster_ids, event, contrasts, alpha=.05
             left_trials = np.where(day_trials.signedContrast < 0)[0]
             right_trials = np.where(day_trials.signedContrast > 0)[0]
             zero_trials = np.where(day_trials.signedContrast == 0)[0]
-            left_PSTH = binned_spike_rate(day_trials.iloc[left_trials], pre_time=pre_time, post_time=post_time)
-            right_PSTH = binned_spike_rate(day_trials.iloc[right_trials], pre_time=pre_time, post_time=post_time)
-            zero_PSTH = binned_spike_rate(day_trials.iloc[zero_trials], pre_time=pre_time, post_time=post_time)
-            if len(left_PSTH)>5 or len(right_PSTH) >5 or len(zero_PSTH)>5:
+            left_PSTH,_ = CSK_PSTH(day_trials.iloc[left_trials], pre_time=pre_time, post_time=post_time,bin_size=bin_size,smoothing=0)
+            right_PSTH,_ = CSK_PSTH(day_trials.iloc[right_trials], pre_time=pre_time, post_time=post_time,bin_size=bin_size,smoothing=0)
+            # zero_PSTH,_ = CSK_PSTH(day_trials.iloc[zero_trials], pre_time=pre_time, post_time=post_time)
+            if len(left_PSTH)>5 or len(right_PSTH) >5:
             
-                _, p1 = ttest_ind(left_PSTH, zero_PSTH)  # Kolmogorov-Smirnov test to see if either is more active than zero contrast
-                _, p2 = ttest_ind(right_PSTH, zero_PSTH)
+                # _, p1 = ttest_ind(left_PSTH, zero_PSTH)  # Kolmogorov-Smirnov test to see if either is more active than zero contrast
+                # _, p2 = ttest_ind(right_PSTH, zero_PSTH)
                 _, p3 = ttest_ind(right_PSTH, left_PSTH)
                 if p3 < alpha:  # and (np.any(left_PSTH>FR_cutoff) or np.any(right_PSTH>FR_cutoff)):
                     sig_clu.append(cluster)
                     sig_left.append(left_PSTH)
                     sig_right.append(right_PSTH)
-                    sig_zero.append(zero_PSTH)
+                    # sig_zero.append(zero_PSTH)
                     sig_region.append(area)
                 
             #if (np.any(left_PSTH>FR_cutoff) or np.any(right_PSTH>FR_cutoff)):
@@ -132,7 +135,7 @@ def vis_PSTH_from_dj(data, spike_times, cluster_ids, event, contrasts, alpha=.05
     sigClusters.cluster_id = sig_clu
     sigClusters.left_PSTH = sig_left
     sigClusters.right_PSTH = sig_right
-    sigClusters.zero_PSTH = sig_zero
+    # sigClusters.zero_PSTH = sig_zero
     # brain_areas = group_cortical(sig_region)
     sigClusters.brain_area = sig_region
     
@@ -161,6 +164,7 @@ subs = np.unique(subs)
 #get PSTHs for all subjects with histology
 
 post_times = np.arange(.05,.5,.05)
+pre_times = np.arange(0,0.45,.05)
 sigs2 = []
 all_all_areas2 = []
 
@@ -170,7 +174,9 @@ for sub in subs:
     print('working on subject: {}'.format(sub))
     temp = (ephys.AlignedTrialSpikes & 'event = "stim on"') * (subject.Subject & 'subject_nickname = "{}"'.format(sub)) * behavior.TrialSet.Trial * (ephys.GoodCluster & 'is_good = "1"') * histology.ClusterBrainRegion & 'insertion_data_source = "Histology track"' 
     stimons = temp & 'event= "stim on"'
+    keep = False
     if len(stimons) > 0:
+        keep = True
         sigs = []   
         all_all_areas = []
         data = pd.DataFrame(stimons.fetch('subject_uuid', 'session_start_time', 'probe_idx', 'cluster_id',
@@ -178,13 +184,15 @@ for sub in subs:
             'subject_nickname','trial_start_time', 'trial_end_time','trial_stim_on_time',
             'trial_stim_contrast_left', 'trial_stim_contrast_right','acronym', as_dict=True))
         data['signedContrast'] = data.trial_stim_contrast_left - data.trial_stim_contrast_right
-        for post_time in post_times:
-            sig, all_areas = vis_PSTH_from_dj(data, data.trial_spike_times, data.cluster_id, data.event, data.signedContrast,post_time=post_time, alpha = .5)
+        for i,post_time in enumerate(post_times):
+            sig, all_areas = vis_PSTH_from_dj(data, data.trial_spike_times, data.cluster_id, data.event, data.signedContrast, pre_time=round(pre_times[i],2), post_time=post_time, alpha=0.01, bin_size=.01)
             sigs.append(sig)
             all_all_areas.append(all_areas)
-    sigs2.append(sigs)
-    all_all_areas2.append(all_all_areas)
+    if keep:
+        sigs2.append(sigs)
+        all_all_areas2.append(all_all_areas)
         
+
 
 # concatonate and find proportion of visual neurons in each area
 sig_df = pd.concat(sigs)
