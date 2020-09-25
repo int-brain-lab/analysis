@@ -57,12 +57,13 @@ def binned_spike_rate(trials, pre_time=0, post_time=0.5):
     binned_spk_counts = np.array([])
     for i in range(len(trials)):
         st = trials.trial_spike_times.iloc[i]
-        in_win = len(st[np.logical_and(st > pre_time, st < post_time)])
-        np.append(binned_spk_counts,in_win)
+        after0 = st[st > pre_time]
+        in_win = after0[after0<post_time]
+        binned_spk_counts = np.append(binned_spk_counts,in_win)
     return binned_spk_counts
 
 
-def vis_PSTH_from_dj(data, spike_times, cluster_ids, event, contrasts, alpha=.01, pre_time=0,
+def vis_PSTH_from_dj(data, spike_times, cluster_ids, event, contrasts, alpha=.05, pre_time=0,
         post_time=0.2, bin_size=0.02, smoothing=0.01, FR_cutoff = .1):
     """
     function to find if a neuron is visual based on its PSTH. compares the PSTH of a cluster for left, right, or 
@@ -164,20 +165,21 @@ sigs2 = []
 all_all_areas2 = []
 
 for sub in subs:
-    sigs = []   
-    all_all_areas = []
+
     count = 0
     print('working on subject: {}'.format(sub))
     temp = (ephys.AlignedTrialSpikes & 'event = "stim on"') * (subject.Subject & 'subject_nickname = "{}"'.format(sub)) * behavior.TrialSet.Trial * (ephys.GoodCluster & 'is_good = "1"') * histology.ClusterBrainRegion & 'insertion_data_source = "Histology track"' 
     stimons = temp & 'event= "stim on"'
     if len(stimons) > 0:
+        sigs = []   
+        all_all_areas = []
         data = pd.DataFrame(stimons.fetch('subject_uuid', 'session_start_time', 'probe_idx', 'cluster_id',
             'trial_id', 'event', 'trial_spike_times', 'trial_spikes_ts',
             'subject_nickname','trial_start_time', 'trial_end_time','trial_stim_on_time',
             'trial_stim_contrast_left', 'trial_stim_contrast_right','acronym', as_dict=True))
         data['signedContrast'] = data.trial_stim_contrast_left - data.trial_stim_contrast_right
         for post_time in post_times:
-            sig, all_areas = vis_PSTH_from_dj(data, data.trial_spike_times, data.cluster_id, data.event, data.signedContrast,post_time=post_time, alpha = .001)
+            sig, all_areas = vis_PSTH_from_dj(data, data.trial_spike_times, data.cluster_id, data.event, data.signedContrast,post_time=post_time, alpha = .5)
             sigs.append(sig)
             all_all_areas.append(all_areas)
     sigs2.append(sigs)
