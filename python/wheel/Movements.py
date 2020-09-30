@@ -36,6 +36,7 @@ class WheelMoveSet(dj.Imported):
         # all times are in absolute seconds relative to session
         definition = """
         -> master
+        move_id:                int # wheel movement id
         ---
         movement_onset:         float # time of movement onset in seconds from session start
         movement_offset:        float # time of movement offset in seconds from session start
@@ -43,14 +44,14 @@ class WheelMoveSet(dj.Imported):
         movement_amplitude:     float # the absolute peak amplitude relative to onset position
         """
 
-        class DirectionChange(dj.Part):
-            # all times are in absolute seconds relative to session
-            definition = """
-            -> master
-            change_id:              int # direction change id
-            ---
-            change_time:            float # time of direction change
-            """
+    class DirectionChange(dj.Part):
+        # all times are in absolute seconds relative to session
+        definition = """
+        -> master.Move
+        change_id:              int # direction change id
+        ---
+        change_time:            float # time of direction change
+        """
 
     key_source = behavior.CompleteWheelSession
 
@@ -123,7 +124,7 @@ class WheelMoveSet(dj.Imported):
         # Insert the keys in order
         self.insert1(key)
         self.Move.insert(moves)
-        self.Move.DirectionChange.insert(changes)
+        self.DirectionChange.insert(changes)
 
 
 @schema
