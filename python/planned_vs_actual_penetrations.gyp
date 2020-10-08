@@ -1,3 +1,5 @@
+## Chris Krasniak 2020-10-08
+
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -90,27 +92,12 @@ def dist(coords1,coords2):
         dist += (coords1[i]-coords2[i])**2
     dist=np.sqrt(dist)
     return dist
-def traj_plot3d(ax,theta,phi,xyz0,depth=3.8):
-    brainGrid = np.load('/Users/ckrasnia/Desktop/Zador_Lab/IBL/lesion_project/brainGridData.npy')
-    top,tip = probe_sph2cart(theta,phi,xyz0,depth=depth/pixelsize)
-  
-    ax.plot([top[0],tip[0]],[top[1],tip[1]],[top[2],tip[2]])
-    ax.set_ylabel('AP')
-    ax.set_xlabel('ML')
-    ax.set_zlabel('DV')
 
 def coords2allen(traj,bregma=[228.5, 190]):
     traj['allenx'] = (traj.x * 1 / (pixelSize*1000)) + bregma[0]
     traj['alleny'] = (traj.y * -1 / (pixelSize*1000)) + bregma[1]
     traj['allenz'] = (traj.z * -1 / (voxelSize)) + bregma[1]
     return traj
-
-
-all_traj = get_all_traj_one('Planned') #'Micro-manipulator'
-labs = np.unique(all_traj.lab)
-hist_traj = get_all_traj_one('Histology track')
-hist_traj = hist_traj[hist_traj['lab']=='zadorlab'] 
-my_traj = all_traj[all_traj['lab']=='zadorlab']
 
 bregma = [228.5, 190]
 pixelSize = .025  # mm
@@ -119,74 +106,78 @@ bg_bregma = [540, 0, 570] #AP, DV, LR
 voxelSize = 10 #um
 brainGrid = np.load('/Users/ckrasnia/Desktop/Zador_Lab/IBL/lesion_project/brainGridData.npy')
 
-# my_traj['allenx'] = (my_traj.x * 1 / (pixelSize*1000)) + bregma[0]
-# my_traj['alleny'] = (my_traj.y * -1 / (pixelSize*1000)) + bregma[1]
-# my_traj['allenz'] = (my_traj.z * -1 / (voxelSize)) + bregma[1]
-# my_traj = my_traj[my_traj.subject_nickname!='CSK-scan-008']
-# # fig,ax = plt.subplots()
-# fig = plt.figure()
-# plt.imshow(allenOutline, cmap="gray", interpolation='nearest')
-# # plt.plot(bregma[0],bregma[1],'xk')
 
-# ax =sns.scatterplot(x='allenx',y='alleny',data=my_traj, hue='subject_nickname',legend='brief', palette='dark', style='theta')
-# plt.axis('off')
-# plt.legend(loc='upper right',bbox_to_anchor=(1.5, 1.02))
-# plt.show(block=False)
+all_traj = get_all_traj_one('Planned') #'Micro-manipulator'
+# all_traj= all_traj[all_traj['lab']=='zadorlab']
+labs = np.unique(all_traj.lab)
+cmap2 = sns.color_palette("tab10")
+labcolors = [cmap2[i] for i in range(len(labs))]
 
-# surface_diff=[]
-# for hist in range(len(hist_traj)):
-#     temp = hist_traj.probe_insertion.iloc[hist]
-#     manip = all_traj[all_traj.probe_insertion==temp] 
-#     surface_diff.append(dist([manip.x,manip.y],[hist_traj.x.iloc[hist],hist_traj.y.iloc[hist]]).iloc[0])
-# hist_traj['surface_diff'] = surface_diff
-# hist_traj = coords2allen(hist_traj)
+lab_data = {}
 
-# fig = plt.figure()
-# plt.imshow(allenOutline, cmap="gray", interpolation='nearest')
-# plt.plot(bregma[0],bregma[1],'xk')
-# cmap = sns.dark_palette("#69d", reverse=True, as_cmap=True)
-# ax =sns.scatterplot(x='allenx',y='alleny',data=hist_traj, hue='surface_diff',legend='brief', palette=cmap, size='surface_diff', style='probe_name')
-# plt.axis('off')
-# plt.legend(loc='upper right',bbox_to_anchor=(1.4, 1.02))
-# plt.show(block=False)
 
-arrows = []
-for i in range(len(hist_traj)):
-    probe = hist_traj.iloc[i]
-    matching = my_traj[my_traj.probe_insertion==probe.probe_insertion]
-    if not matching.empty:
-        line = np.array([[matching.allenx.iloc[0],probe.allenx],[matching.alleny.iloc[0],probe.alleny]])
-        arrow = np.array([[matching.allenx.iloc[0],matching.alleny.iloc[0]],[probe.allenx-matching.allenx.iloc[0],probe.alleny-matching.alleny.iloc[0]]])
-        arrows.append(arrow)
+cnt=0
+for lab in labs:
 
-fig, axs = plt.subplots(nrows=1,ncols=2)
-ax1 = axs[0]
-ax1.imshow(allenOutline, cmap="gray", interpolation='nearest')
-cmap = sns.dark_palette("#69d", reverse=True, as_cmap=True)
-ax1.plot(bregma[0],bregma[1],'xk')
-ax1.axis('off')
+    fig, axs = plt.subplots(nrows=1,ncols=2,gridspec_kw={'width_ratios': [5, 1]})
+    ax1 = axs[0]
+    ax1.imshow(allenOutline, cmap="gray", interpolation='nearest')
+    cmap = sns.dark_palette("#69d", reverse=True, as_cmap=True)
+    ax1.plot(bregma[0],bregma[1],'xk')
+    ax1.axis('off')
 
-sum_x = 0
-sum_y = 0
-differences = []
-for arrow in arrows:
-    length = np.sqrt(arrow[1,0]**2+arrow[1,1]**2)
-    ax1.arrow(arrow[0,0],arrow[0,1],arrow[1,0],arrow[1,1],width=length/10)
-    differences.append(length*(pixelSize*1000))
+    hist_traj = get_all_traj_one('Histology track')
+    hist_traj = hist_traj[hist_traj['lab']==lab] 
+    planned_traj = all_traj[all_traj['lab']==lab]
+    hist_traj = coords2allen(hist_traj)
+    planned_traj = coords2allen(planned_traj) 
+
+    bregma = [228.5, 190]
+    pixelSize = .025  # mm
+    allenOutline = np.load('/Users/ckrasnia/Desktop/Zador_Lab/scanData/allen_dorsal_outline')
+    bg_bregma = [540, 0, 570] #AP, DV, LR
+    voxelSize = 10 #um
+    brainGrid = np.load('/Users/ckrasnia/Desktop/Zador_Lab/IBL/lesion_project/brainGridData.npy')
+
+    arrows = []
+    for i in range(len(hist_traj)):
+        probe = hist_traj.iloc[i]
+        matching = planned_traj[planned_traj.probe_insertion==probe.probe_insertion]
+        if not matching.empty:
+            line = np.array([[matching.allenx.iloc[0],probe.allenx],[matching.alleny.iloc[0],probe.alleny]])
+            arrow = np.array([[matching.allenx.iloc[0],matching.alleny.iloc[0]],[probe.allenx-matching.allenx.iloc[0],probe.alleny-matching.alleny.iloc[0]]])
+            arrows.append(arrow)
+
+    sum_x = 0
+    sum_y = 0
+    differences = []
+    for arrow in arrows:
+        length = np.sqrt(arrow[1,0]**2+arrow[1,1]**2)
+        ax1.arrow(arrow[0,0],arrow[0,1],arrow[1,0],arrow[1,1],width=length/10,color=labcolors[cnt])
+        differences.append(length*(pixelSize*1000))
+    lab_data[lab] = differences
+    
+    ax2 = axs[1]
+    ax2.bar([lab]*len(differences),np.nanmean(differences),alpha=.5,fill=False,edgecolor='k')
+    ax2.scatter([lab]*len(differences),differences, color=labcolors[cnt])
+    
+
+    cnt+=1
+plt.show(block=False)
+
 ax2 = axs[1]
-sns.boxplot(y=differences,ax=ax2)
+cnt=0
+
+for name,data in lab_data.items():    
+    ax2.bar([name]*len(data),np.nanmean(data),alpha=.5,fill=False,edgecolor='k')
+    ax2.scatter([name]*len(data),data, color=labcolors[cnt])
+    cnt+=1
+
 ax2.set_ylabel('distance from planned (um)')
+plt.xticks(rotation=45)
 plt.show(block=False)
 
 
 
 
 
-
-
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# for i in range(len(my_traj)):
-#     traj_plot3d(ax,my_traj.theta.iloc[i],my_traj.phi.iloc[i],[my_traj.allenx.iloc[i],my_traj.alleny.iloc[i], my_traj.allenz.iloc[i]])
-# # ax.scatter(brainGrid[:,2],brainGrid[:,0],brainGrid[:,1],alpha=.1) 
-# plt.show()
