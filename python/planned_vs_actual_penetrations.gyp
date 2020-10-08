@@ -164,20 +164,3 @@ for lab in labs:
 
     cnt+=1
 plt.show(block=False)
-
-ax2 = axs[1]
-cnt=0
-
-for name,data in lab_data.items():    
-    ax2.bar([name]*len(data),np.nanmean(data),alpha=.5,fill=False,edgecolor='k')
-    ax2.scatter([name]*len(data),data, color=labcolors[cnt])
-    cnt+=1
-
-ax2.set_ylabel('distance from planned (um)')
-plt.xticks(rotation=45)
-plt.show(block=False)
-
-
-
-
-
