@@ -86,7 +86,7 @@ class WheelMoveSet(dj.Imported):
         # Build list of table entries
         keys = ('move_id', 'movement_onset', 'movement_offset', 'max_velocity', 'movement_amplitude')
         on_off, amp, vel_t = wheel_moves.values()  # Unpack into short vars
-        moves = [dict(zip(keys, (i, on, off, amp[i], vel_t[i])), **move_key)
+        moves = [dict(zip(keys, (i, on, off, vel_t[i], amp[i])), **move_key)
                  for i, (on, off) in enumerate(on_off)]
 
         # Calculate direction changes
