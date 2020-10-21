@@ -295,20 +295,21 @@ def get_ap_partial(eid, one, t_start, probe):
     probe_idx = pdict[probe]
     dsets = one.alyx.rest(
         'datasets', 'list', session=eid,
-        django='name__icontains,ap.cbin')
+        django='name__icontains,ap.cbin,collection__endswith,%s' %probe)
     for fr in dsets[probe_idx]['file_records']:
         if fr['data_url']:
             url_cbin = fr['data_url']
 
     dsets = one.alyx.rest(
         'datasets', 'list', session=eid,
-        django='name__icontains,ap.ch')
+        django='name__icontains,ap.ch,collection__endswith,%s' %probe)
     for fr in dsets[probe_idx]['file_records']:
         if fr['data_url']:
             url_ch = fr['data_url']
    
     ap_chunk = one.download_raw_partial(url_cbin, url_ch, start_chunk, end_chunk -1)
     
+    print(url_cbin,url_ch) 
     
     times_data = sample2time(np.arange(start_chunk * fs, end_chunk * fs))
     
