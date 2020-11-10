@@ -1,14 +1,16 @@
 """
+THIS HAS SINCE MOVED TO IBLAPPS.  DO NOT USE THIS FILE.
+
 Wheel trace viewer.  Requires cv2
 
 Example 1 - inspect trial 100 of a given session
     from python.wheel.plot_movement_on_trial import Viewer
     eid = '77224050-7848-4680-ad3c-109d3bcd562c'
-    v = Viewer(eid=eid, trial=100)
+    v = Viewer(eid=eid, trial=100).run()
 
 Example 2 - pick a random session to inspect
     from python.wheel.plot_movement_on_trial import Viewer
-    v = Viewer()
+    Viewer.run()
 
 """
 import time
@@ -126,6 +128,8 @@ class Viewer:
     def __init__(self, eid=None, trial=None, camera='left', dlc_features=None, quick_load=True,
                  t_win=3, one=None):
         """
+        THIS HAS SINCE MOVED TO IBLAPPS.  DO NOT USE THIS FILE.
+
         Plot the wheel trace alongside the video frames.  Below is list of key bindings:
         :key n: plot movements of next trial
         :key p: plot movements of previous trial
@@ -144,7 +148,9 @@ class Viewer:
         :param t_win: the window in seconds over which to plot the wheel trace
         :return: Viewer object
         """
+        raise Exception('This module is outdated, please use dlc.wheel_dlc_viewer in iblapps')
         self._logger = logging.getLogger('ibllib')
+        self._logger.error()
 
         self.t_win = t_win  # Time window of wheel plot
         self.one = one or ONE()
@@ -190,7 +196,7 @@ class Viewer:
         if count != cam_ts.size:
             assert count <= cam_ts.size, 'fewer camera timestamps than frames'
             msg = 'number of timestamps does not match number video file frames: '
-            self._logger.warning(msg + '%i more timestamps than frames' % cam_ts.size - count)
+            self._logger.warning(msg + '%i more timestamps than frames', cam_ts.size - count)
 
         assert Fs - fps < 1, 'camera timestamps do not match reported frame rate'
         print("Frame rate = %.0fHz" % fps)
@@ -202,14 +208,6 @@ class Viewer:
             pos, t = wh.interpolate_position(
                 self._session_data['wheel']['timestamps'],
                 self._session_data['wheel']['position'], freq=1000)
-            v, acc = wh.velocity_smoothed(pos, 1000)
-            first_vel = np.full(self._session_data['trials']['goCue_times'].size, np.nan)
-            for i, move in enumerate(self._session_data['trials']['firstMovement_times']):
-                mask = np.logical_and(move + .5 > t, t > move - .5)
-                idx, = np.where(np.abs(v[mask]) >= 0.5)
-                if len(idx) > 0:
-                    first_vel[i] = t[mask][idx[0]]
-            self._session_data['trials']['adjusted_move_times'] = first_vel
 
         # Plot the first frame in the upper subplot
         fig, axes = plt.subplots(nrows=2)
@@ -314,6 +312,7 @@ class Viewer:
         :param cameras: the specific camera to load (i.e. 'left', 'right', or 'body') If None all
         three videos are downloaded.
         :return: the file path(s) of the raw videos
+        # FIXME Currently returns if only one video already downloaded
         """
         one = self.one
         eid = self._session_data['eid']
@@ -533,10 +532,6 @@ class Viewer:
             if ~np.isnan(first_move):
                 first_move_pos = wheel_pos[np.where(wheel_ts > first_move)[0][0]]
                 ax.plot(first_move, first_move_pos, 'ro')
-        if 'adjusted_move_times' in trials:
-            m = trials['adjusted_move_times'][trial_idx]
-            if ~np.isnan(m):
-                ax.axvline(x=m, color='m')
 
         t_split = np.split(np.vstack((wheel_ts, wheel_pos)).T, indicies, axis=0)
         ax.add_collection(LineCollection(t_split[1::2], colors='r'))  # Moving
