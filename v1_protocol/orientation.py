@@ -33,7 +33,7 @@ def bin_responses(spike_times, spike_clusters, stim_times, stim_values, output_f
     n_stims = len(stim_ids)
     n_reps = len(np.where(stim_values == stim_values[0])[0])
     responses = np.zeros(shape=(n_clusters, n_stims, n_reps))
-    stim_reps = np.zeros(shape=n_stims, dtype=np.int)
+    stim_reps = np.zeros(shape=n_stims, dtype=int)
     for stim_time, stim_val in zip(stim_times, stim_values):
         i_stim = np.where(stim_ids == stim_val)[0][0]
         i_rep = stim_reps[i_stim]
@@ -437,14 +437,14 @@ def plot_grating_figures(
         a flag for plotting the summary figure
     plot_selected : bool
         a flag for plotting the selected units figure
-        
+
     Returns
     -------
     metrics : dict
         - 'osi' (dict): keys 'beg', 'end' point to arrays of osis during these epochs
         - 'orientation_pref' (dict): keys 'beg', 'end' point to arrays of orientation preference
         - 'frac_resp_by_depth' (dict): fraction of responsive clusters by depth
-    
+
     fig_dict : dict
         A dict whose values are handles to one or both figures generated.
     """
@@ -453,10 +453,10 @@ def plot_grating_figures(
     cluster_ids = cluster_ids_summary
     cluster_idxs = cluster_ids_selected
     epochs = ['beg', 'end']
-    
+
     # -------------------------
     # load required alf objects
-    # -------------------------  
+    # -------------------------
     print('loading alf objects...', end='', flush=True)
     spikes = ioalf.load_object(session_path, 'spikes')
     clusters = ioalf.load_object(session_path, 'clusters')
@@ -564,7 +564,7 @@ def plot_grating_figures(
     peths_avg['on_idx'] = int(pre_time / bin_size)
     peths_avg['off_idx'] = peths_avg['on_idx'] + int(2 / bin_size)
     print('done')
-    
+
     # compute rasters for entire orientation sequence at beg/end epoch
     if plot_summary:
         print('computing rasters for example stimulus sequences...', end='', flush=True)
@@ -646,7 +646,7 @@ def plot_grating_figures(
         fig_gr_selected.suptitle('Selected Units Grating Responses')
         print('done')
         fig_dict['gr_selected'] = fig_gr_selected
-    
+
     # -----------------------------
     # package up and return metrics
     # -----------------------------
@@ -777,7 +777,7 @@ def plot_summary_figure(
         plt.show()
     else:
         plt.savefig(save_file, dpi=300)
-    
+
     return fig
 
 
@@ -815,7 +815,7 @@ def plot_psths_and_rasters(
 def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
     '''
     Gets visually responsive clusters
-    
+
     Parameters
     ----------
     session_path : str
@@ -825,7 +825,7 @@ def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
         visually response subset from all clusters from recording session.)
     n_selected_cl : int
         The number of clusters to return in `vr_clusters_selected`
-    
+
     Returns
     -------
     clusters_vr : ndarray
@@ -833,7 +833,7 @@ def get_vr_clusters(session_path, clusters=None, n_selected_cl=4):
     clusters_selected_vr : ndarray
         A subset of `n_selected_cl` `vr_clusters`
     '''
-    
+
     print('finding visually responsive clusters...', end='', flush=True)
 
     # -------------------------

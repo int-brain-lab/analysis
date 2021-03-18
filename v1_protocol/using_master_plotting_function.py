@@ -4,7 +4,7 @@ Complete instructions and examples for using the master plotting function, `plot
 Below are instructions for ensuring Python has access to the appropriate code for running:
 
     1) Clone the directories and checkout the 'brainbox' branch of the 'ibllib' repository.
-    *Note, if you have already cloned the 'analysis' and 'ibllib' repositories, then create a new 
+    *Note, if you have already cloned the 'analysis' and 'ibllib' repositories, then create a new
     directory in your home directory, 'int-brain-lab', and move the 'analysis' and 'ibllib'
     directories here. Else, in your git/OS terminal, run:
 
@@ -58,7 +58,7 @@ Below are the dataset_types required depending on the plots/metrics to be genera
         # download ALL data
         one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
         ```
-    
+
     Default (required for the default function call and all other function calls):
         'clusters.amps',
         'clusters.channels',
@@ -74,7 +74,7 @@ Below are the dataset_types required depending on the plots/metrics to be genera
         'spikes.samples',
         'spikes.templates',
         'spikes.times'
-    
+
     Required for stimulus info extraction and to generate grating response figures:
         'ephysData.raw.meta',
         '_spikeglx_sync.channels',
@@ -83,7 +83,7 @@ Below are the dataset_types required depending on the plots/metrics to be genera
         '_iblrig_RFMapStim.raw',
         '_iblrig_taskSettings.raw',
         '_iblrig_codeFiles.raw'
-        
+
     Required for metrics/plots that need access to the raw data:
         'ephysData.raw.ap',
         'ephysData.raw.ch',
@@ -106,7 +106,7 @@ MUST be amongst the following:
     'um_summary' : The name for the summary metrics figure.
     'um_selected' : The name for the selected units' metrics figure.
     'gr_summary' : The name for the summary grating response summary figure.
-    'gr_selected' : The name for the selected units' grating response figure.   
+    'gr_selected' : The name for the selected units' grating response figure.
 See 'Example 2' and 'Example 3' for examples of saving figures.
 '''
 
@@ -167,7 +167,7 @@ d_paths = one.load(eid, dataset_types=dtypes, clobber=False, download_only=True)
 # The below choice of `auto_filt_cl_params` ensures that all units are included.
 m, cluster_sets, _ = v1_plot.gen_figures(
     eid, probe, n_selected_cl=4,
-    grating_response_selected=True, unit_metrics_selected=True, 
+    grating_response_selected=True, unit_metrics_selected=True,
     filt_params={'min_amp': 0, 'min_fr': 0, 'max_fpr': 100, 'rp': 0.002})
 
 
@@ -225,7 +225,7 @@ m, cluster_sets, fig_list = v1_plot.gen_figures(
 # in batches of 5.
 
 batch_sz = 5  # number of units per figure
-n_i = np.int(np.ceil(len(filt_units) / batch_sz))  # number of iterations in for loop
+n_i = int(np.ceil(len(filt_units) / batch_sz))  # number of iterations in for loop
 cur_unit = 0
 for i in range(n_i):
     fig_names = {'um_selected': 'KS003_2019-11-19_1_selected_' + str(i)}

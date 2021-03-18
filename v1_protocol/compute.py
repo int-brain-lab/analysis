@@ -93,7 +93,7 @@ def are_neurons_responsive(spike_times, spike_clusters, stimulus_intervals=None,
     assert stimulus_counts.shape == stimulus_counts.shape
     # Generate the responsive vector (for every neuron, whether it is
     # responsive).
-    responsive = np.zeros(stimulus_counts.shape[0], dtype=np.bool)
+    responsive = np.zeros(stimulus_counts.shape[0], dtype=bool)
     n_neurons = stimulus_counts.shape[0]
     for i in range(n_neurons):
         x = stimulus_counts[i, :]
