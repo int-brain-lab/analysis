@@ -13,7 +13,7 @@ create figures from raw data, it is still recommended to download *all* data for
     >>> eid = one.search(subject='ZM_2104', date='2019-09-19', number=1)[0]
     # download data
     >>> one.load(eid, dataset_types=one.list(), clobber=False, download_only=True)
-    
+
 Here is a list of required data (alf objects) depending on the figures to be generated:
     Default (required for the default function call and all other function calls):
         'clusters.amps',
@@ -30,7 +30,7 @@ Here is a list of required data (alf objects) depending on the figures to be gen
         'spikes.samples',
         'spikes.templates',
         'spikes.times'
-    
+
     Required for stimulus info extraction and to generate grating response figures:
         'ephysData.raw.meta',
         '_spikeglx_sync.channels',
@@ -39,7 +39,7 @@ Here is a list of required data (alf objects) depending on the figures to be gen
         '_iblrig_RFMapStim.raw',
         '_iblrig_taskSettings.raw',
         '_iblrig_codeFiles.raw'
-        
+
     Required for metrics/plots that need access to the raw data:
         'ephysData.raw.ap',
         'ephysData.raw.ch',
@@ -50,7 +50,7 @@ Here is a list of required data (alf objects) depending on the figures to be gen
         'ephysData.raw.timestamps',
         'ephysData.raw.wiring'
 
-For additional details on and examples of running `gen_figures`, see the 
+For additional details on and examples of running `gen_figures`, see the
 `using_master_plotting_function` script in this same directory.
 
 TODO metrics to add: 1) chebyshev's inequality, 2) cluster residuals, 3) silhouette, 4) d_prime,
@@ -114,7 +114,7 @@ def gen_figures(
     grating_response_summary : bool (optional)
         A flag for returning a figure with summary grating response plots for `cluster_ids_summary`
     grating_response_selected : bool (optional)
-        A flag for returning a figure with single grating response plots for `cluster_ids_selected` 
+        A flag for returning a figure with single grating response plots for `cluster_ids_selected`
     unit_metrics_summary : bool (optional)
         A flag for returning a figure with summary metrics plots for `cluster_ids_summary`.
     unit_metrics_selected : bool (optional)
@@ -136,7 +136,7 @@ def gen_figures(
                                of max amp. (requires raw ephys data)
     selected_metrics : list (optional)
         The selected metrics plots to generate for the `unit_metrics_selected` figure for
-        `cluster_ids_summary`. Possible values can include: 
+        `cluster_ids_summary`. Possible values can include:
             'isi_viol' : Plot of the histogram of isi violations.
             'spks_missed' : Plot of the pdf of the spike amplitude distribution.
             'cv_fr' : Plot of the firing rate.
@@ -165,22 +165,22 @@ def gen_figures(
             'max_fpr' : float
                 The maximum false positive rate of the unit (using the fp formula in Hill et al.
                 (2011) J Neurosci 31: 8699-8705)
-            'rp' : float 
+            'rp' : float
                 The refractory period (in s) of the unit. Used to calculate `max_fp`.
     summary_metrics_params : dict
         Parameters used for the summary metrics figure:
-            'bins' : int OR sequence OR string. 
+            'bins' : int OR sequence OR string.
                 The number of bins (or the bins, or the method used to compute the bins) used for
                 computing the histograms. (see `numpy.histogram_bin_edges`).
-            'rp' : float 
+            'rp' : float
                 The refractory period (in s) of the unit.
-            'spks_per_bin' : int 
+            'spks_per_bin' : int
                 The number of spikes per bin from which to compute the spike feature histogram for
                 `spks_missed`.
             'sigma' : float
                 The standard deviation for the gaussian kernel used to compute the pdf from the
                 spike feature histogram for `spks_missed`.
-            'n_ch' : int 
+            'n_ch' : int
                 The number of channels used to compute `s`.
             'fr_hist_win' : float
                 The time window (in s) to use for computing spike counts for the instantaneous
@@ -205,11 +205,11 @@ def gen_figures(
         Parameters used for the receptive field summary plot:
             'method' : string
                 The method used to compute receptive fields ('corr' or 'sta').
-            'binsize' : float 
+            'binsize' : float
                 The bin width (s) used.
-            'lags' : int 
+            'lags' : int
                 The number of bins for calculating receptive field.
-            'n_depths' : int 
+            'n_depths' : int
                 The number of depths to aggregate clusters over.
             'use_svd' : bool
                 `True` plots 1st spatial SVD component of rf; `False` plots time lag with
@@ -239,7 +239,7 @@ def gen_figures(
                     'beg'
                     'end'
             'frac_resp_by_depth' : dict
-                The fraction of units in `cluster_sets['cluster_ids_summary_vr]'` responsive by 
+                The fraction of units in `cluster_sets['cluster_ids_summary_vr]'` responsive by
                 depth at beginning or end of session. Possible keys:
                     'fraction' : dict
                         The fraction of units responsive at the beginning and end of a session, at
@@ -253,10 +253,10 @@ def gen_figures(
             'var_amps' : ndarray
                 The coefficient of variation of the amplitude distribution for each unit in
                 `cluster_sets['cluster_ids_summary']`.
-            'fraction_missing' : ndarray 
+            'fraction_missing' : ndarray
                 Estimated fraction of missing spikes for each unit in
                 `cluster_sets['cluster_ids_summary']`.
-            'isi_viol' : ndarray 
+            'isi_viol' : ndarray
                 Fraction of isi violations for each unit in `cluster_sets['cluster_ids_summary']`.
             'max_drift_depth' : ndarray
                 Max drift depth value for each unit in `cluster_sets['cluster_ids_summary']`.
@@ -267,7 +267,7 @@ def gen_figures(
             'cum_drift_amp' : ndarray
                 Cumulative drift amp value for each unit in `cluster_sets['cluster_ids_summary']`.
             'pres_ratio' : ndarray
-                The presence ratio for each unit in `cluster_sets['cluster_ids_summary']`. 
+                The presence ratio for each unit in `cluster_sets['cluster_ids_summary']`.
     cluster_sets : dict
         Contains the ids of different sets of clusters used to generate the different figures.
         Possible keys:
@@ -275,7 +275,7 @@ def gen_figures(
             'cluster_ids_selected'
             'cluster_ids_summary_vr' : a visually responsive subset of 'cluster_ids_summary'.
             'cluster_ids_selected_vr' : a subset of `n_selected_cl` clusters from
-                'cluster_ids_summary_vr'. 
+                'cluster_ids_summary_vr'.
     fig_h : dict
         Contains the handles to the figures generated. Possible keys:
             'fig_gr_summary' : the grating responses summary figure
@@ -367,7 +367,7 @@ def gen_figures(
             eid, dataset_types=required_dtypes, clobber=False, download_only=True)
         if None in required_paths:  # this means we are missing a required dtype
             raise FileNotFoundError(
-                "At least one of the required dataset_types for extracting stimulus info is" 
+                "At least one of the required dataset_types for extracting stimulus info is"
                 "missing. The required dataset_types are {}".format(required_dtypes))
         # Proceed with extraction.
         certification_protocol.extract_stimulus_info_to_alf(session_path, save=True)
@@ -388,16 +388,16 @@ def gen_figures(
             " 'extract_stim_info' to True to extract the '_iblcertif_' files.")
     # Get units bunch.
     spks_b = aio.load_object(alf_probe_path, 'spikes')
-    print('Re-formatting alf data to save time during plotting. May take a few minutes...', 
+    print('Re-formatting alf data to save time during plotting. May take a few minutes...',
           flush=True, end='')
     units_b = bb.processing.get_units_bunch(spks_b)
     print('done')
 
     # Set `cluster_ids_summary` and `cluster_ids_selected` #
     # ---------------------------------------------------- #
-    
+
     # Filter all clusters according to `filt_params`
-    if (cluster_ids_summary is None) and unit_metrics_summary:  
+    if (cluster_ids_summary is None) and unit_metrics_summary:
         print("'cluster_ids_summary' left empty, selecting filtered units.")
         T = spks_b['times'][-1] - spks_b['times'][0]
         cluster_ids_summary = bb.processing.filter_units(
@@ -442,9 +442,9 @@ def gen_figures(
             n_rand_clusters=n_selected_cl,
             plot_summary=grating_response_summary,
             plot_selected=grating_response_selected)
-        fig_h.update(grating_figs) 
+        fig_h.update(grating_figs)
         m.update(grating_metrics)
-        fig_list_name.extend(['grating_response_summary', 'grating_response_selected']) 
+        fig_list_name.extend(['grating_response_summary', 'grating_response_selected'])
         print('done')
 
     # Generate summary unit metrics figure #
@@ -468,7 +468,7 @@ def gen_figures(
         fig_h['um_selected'] = fig_um_selected
         fig_list_name.extend(['unit_metrics_selected'])
         print('done')
-    
+
     print('\n\nFinished generating figures {} for session {}'.format(fig_list_name, session_path))
 
     # Save figures #
@@ -520,18 +520,18 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
         A bunch containing metrics as fields.
     metrics_params : dict
         Parameters used for the summary metrics figure:
-            'bins' : int OR sequence OR string. 
+            'bins' : int OR sequence OR string.
                 The number of bins (or the bins, or the method used to compute the bins) used for
                 computing the histograms. (see `numpy.histogram_bin_edges`).
-            'rp' : float 
+            'rp' : float
                 The refractory period (in s) of the unit
-            'spks_per_bin' : int 
+            'spks_per_bin' : int
                 The number of spikes per bin from which to compute the spike feature histogram for
                 `spks_missed`.
             'sigma' : float
                 The standard deviation for the gaussian kernel used to compute the pdf from the
                 spike feature histogram for `spks_missed`.
-            'n_ch' : int 
+            'n_ch' : int
                 The number of channels used to compute `s`.
             'fr_hist_win' : float
                 The time window (in s) to use for computing spike counts for the instantaneous
@@ -567,7 +567,7 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     --------
     brainbox.metrics.metrics
     brainbox.plot.plot
-    
+
     Examples
     --------
     '''
@@ -589,17 +589,17 @@ def um_summary_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_path
     rf_lags = rf_params['lags']
     rf_n_depths = rf_params['n_depths']
     use_svd = rf_params['use_svd']
-    
+
     # Set figure #
     # ---------- #
     ncols = 4  # axes per row of figure
-    nrows = np.int(np.ceil(len(metrics) / ncols)) + 1
+    nrows = int(np.ceil(len(metrics) / ncols)) + 1
     fig = plt.figure(figsize=[16,8])
     fig.set_tight_layout(False)
     fig.suptitle('Summary Metrics')
     n_cur_ax = ncols + 1
 
-    # Always output raster as half of first row 
+    # Always output raster as half of first row
     # TODO change this so that raster takes up ~60% of first row
     raster_ax = fig.add_subplot(nrows, 2, 1)
     raster_depth.scatter_with_boundary_times(alf_probe_path, clusters, ax=raster_ax)  # raster
@@ -713,18 +713,18 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
         A bunch containing metrics as fields.
     metrics_params : dict
         Parameters used for the summary metrics figure:
-            'bins' : int OR sequence OR string. 
+            'bins' : int OR sequence OR string.
                 The number of bins (or the bins, or the method used to compute the bins) used for
                 computing the histograms. (see `numpy.histogram_bin_edges`).
-            'rp' : float 
+            'rp' : float
                 The refractory period (in s) of the unit
-            'spks_per_bin' : int 
+            'spks_per_bin' : int
                 The number of spikes per bin from which to compute the spike feature histogram for
                 `spks_missed`.
             'sigma' : float
                 The standard deviation for the gaussian kernel used to compute the pdf from the
                 spike feature histogram for `spks_missed`.
-            'n_ch' : int 
+            'n_ch' : int
                 The number of channels used in plotting the amplitude heatmap.
             'fr_hist_win' : float
                 The time window (in s) to use for computing spike counts for the instantaneous
@@ -753,7 +753,7 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     --------
     brainbox.metrics.metrics
     brainbox.plot.plot
-    
+
     Examples
     --------
     '''
@@ -783,7 +783,7 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     small_font = 6
     med_font = 8
     big_font = 10
-    
+
     plt.rc('font', size=small_font)          # default text sizes
     plt.rc('axes', titlesize=med_font)       # fontsize of the axes title
     plt.rc('axes', labelsize=small_font)     # fontsize of the x and y labels
@@ -791,9 +791,9 @@ def um_selected_plots(clusters, metrics, units_b, alf_probe_path, ephys_file_pat
     plt.rc('ytick', labelsize=small_font)    # fontsize of the tick labels
     plt.rc('legend', fontsize=small_font)    # legend fontsize
     plt.rc('figure', titlesize=big_font)     # fontsize of the figure title
-    
+
     # Get alf objects for this session (needed for some metrics calculations below)
-    clstrs_b = aio.load_object(alf_probe_path, 'clusters')    
+    clstrs_b = aio.load_object(alf_probe_path, 'clusters')
 
     if 'isi_viol' in metrics:  # isi histogram
         for unit in clusters:
@@ -914,7 +914,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
     bins : int OR sequence OR string
         The number of bins used in computing the histograms. Can be a string, which specifies
         the method to use to compute the optimal number of bins (see `numpy.histogram_bin_edges`).
-    ax : axessubplot (optional) 
+    ax : axessubplot (optional)
         The axis handle to plot the histogram on. (if `None`, a new figure and axis is created)
 
     Returns
@@ -967,7 +967,7 @@ def s_hist(ephys_file, units_b, clstrs_b, units=None, n_spks=100, n_ch=10, sr=30
     ax.set_title("'S' Values Hist")
     ax.set_xlabel("'S'")
     ax.set_ylabel('Count')
-    
+
     return s
 
 
@@ -1011,11 +1011,11 @@ def cv_fr_hist(units_b, units=None, hist_win=0.01, fr_win=0.05, n_cv_bins=10, bi
     Examples
     --------
     '''
-    
+
     # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
-    
+
     # Calculate coefficient of variation of firing rate.
     cv_fr = np.ones(len(units),)
     for i, unit in enumerate(units):
@@ -1075,11 +1075,11 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
     Examples
     --------
     '''
-    
+
     # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
-    
+
     # Calculate fraction of missing spikes for each unit.
     frac_missing = np.ones(len(units),)
     for i, unit in enumerate(units):
@@ -1092,8 +1092,8 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
             frac_missing[i], _, _ = bb.metrics.feat_cutoff(
                 amps, spks_per_bin=spks_per_bin, sigma=sigma)
         except:  # if didn't meet min num spikes requirement, set as nan
-            frac_missing[i] = np.nan    
-    
+            frac_missing[i] = np.nan
+
     # Plot histogram.
     if ax is None:
         fig, ax = plt.subplots()
@@ -1102,7 +1102,7 @@ def spks_missed_hist(units_b, units=None, spks_per_bin=20, sigma=5, bins='auto',
     ax.set_title("Fraction of Missing Spikes")
     ax.set_xlabel("Fraction")
     ax.set_ylabel('Count')
-    
+
     return frac_missing
 
 
@@ -1138,11 +1138,11 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     Examples
     --------
     '''
-    
+
     # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
-    
+
     # Calculate fraction of isi violations for each unit.
     frac_isi_viol = np.ones(len(units),)
     for i, unit in enumerate(units):
@@ -1152,7 +1152,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
             continue
         ts = units_b['times'][str(unit)]
         frac_isi_viol[i], _, _ = bb.metrics.isi_viol(ts, rp=rp)
-    
+
     # Plot histogram.
     if ax is None:
         fig, ax = plt.subplots()
@@ -1161,7 +1161,7 @@ def isi_viol_hist(units_b, units=None, rp=0.002, bins='auto', ax=None):
     ax.set_title("Fraction of ISI Violations")
     ax.set_xlabel("Fraction")
     ax.set_ylabel('Count')
-    
+
     return frac_isi_viol
 
 
@@ -1197,11 +1197,11 @@ def max_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
     Examples
     --------
     '''
-    
+
     # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
-    
+
     # Calculate fraction of isi violations for each unit.
     md = np.ones(len(units),)
     for i, unit in enumerate(units):
@@ -1227,7 +1227,7 @@ def max_drift_hist(units_b, feat_name, units=None, bins='auto', ax=None):
     ax.set_title(tit)
     ax.set_xlabel(xlab)
     ax.set_ylabel('Count')
-    
+
     return md
 
 
@@ -1329,11 +1329,11 @@ def pr_hist(units_b, units=None, hist_win=10, bins='auto', ax=None):
     Examples
     --------
     '''
-    
+
     # Get units.
     if units is None:  # we're using all units
         units = list(units_b['times'].keys())
-    
+
     # Calculate presence ratios.
     pr = np.ones(len(units),)
     for i, unit in enumerate(units):
