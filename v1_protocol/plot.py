@@ -66,8 +66,7 @@ import matplotlib.pyplot as plt
 from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
-from ibllib.io import certification_protocol
-from v1_protocol import orientation
+from v1_protocol import orientation, certification_protocol
 from v1_protocol import complete_raster_depth_per_spike as raster_depth
 from v1_protocol import rf_mapping
 
