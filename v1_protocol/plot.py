@@ -66,6 +66,7 @@ import matplotlib.pyplot as plt
 from oneibl.one import ONE
 import alf.io as aio
 import brainbox as bb
+from iblutil.util import Bunch
 from v1_protocol import orientation, certification_protocol
 from v1_protocol import complete_raster_depth_per_spike as raster_depth
 from v1_protocol import rf_mapping
@@ -321,7 +322,7 @@ def gen_figures(
 
     # Initialize outputs #
     # ------------------ #
-    m = bb.core.Bunch()
+    m = Bunch()
     cluster_sets = {}
     fig_h = {}
 
